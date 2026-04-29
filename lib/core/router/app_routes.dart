@@ -1,24 +1,26 @@
 abstract final class AppRoutes {
-  // Auth (shared)
+  // Auth
   static const splash = '/';
   static const login = '/login';
   static const register = '/register';
 
-  // Student portal
+  // Student shell tabs
   static const studentHome = '/student/home';
-  static const studentSchedule = '/student/schedule';
-  static const tutorSearch = '/student/search';
-  static const tutorDetail = '/student/tutor/:id';
-  static const booking = '/student/booking/:tutorId';
+  static const studentCapture = '/student/capture';
+  static const studentSearch = '/student/search';
+  static const studentProfile = '/student/profile';
 
-  // Tutor portal
+  // Student sub-routes
+  static const tutorDetail = '/student/search/tutor/:id';
+  static const booking = '/student/search/booking/:tutorId';
+
+  // Tutor shell tabs
   static const tutorHome = '/tutor/home';
   static const tutorSchedule = '/tutor/schedule';
-  static const tutorStudents = '/tutor/students';
-  static const tutorEarnings = '/tutor/earnings';
+  static const tutorContribute = '/tutor/contribute';
+  static const tutorProfile = '/tutor/profile';
 
-  // Shared (both roles)
-  static const profile = '/profile';
-  static const notifications = '/notifications';
+  // Shared
   static const chat = '/chat/:roomId';
+  static const notifications = '/notifications';
 }

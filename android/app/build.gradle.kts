@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "vn.tutora.mb"
+    namespace = "vn.tutora.tutora_mb"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

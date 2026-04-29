@@ -52,8 +52,10 @@ app.*.map.json
 .env
 .env.*
 *.secrets
+dart_defines.json
 
 # personal config files
 .design/
 .claude/
 CLAUDE.md
+scripts/

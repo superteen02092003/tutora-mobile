@@ -1,13 +1,21 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../errors/app_exception.dart';
 import 'interceptors/auth_interceptor.dart';
 
-const String _baseUrl = String.fromEnvironment(
-  'BASE_URL',
-  defaultValue: 'http://10.0.2.2:5166', // localhost via Android emulator
-);
+const String _configuredBaseUrl = String.fromEnvironment('BASE_URL', defaultValue: '');
+const String _debugDefaultBaseUrl = 'http://10.0.2.2:5166';
+
+String get _baseUrl {
+  if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
+  if (kReleaseMode) {
+    throw StateError('Missing BASE_URL. Provide --dart-define=BASE_URL=<your-api-host>');
+  }
+  // Safe fallback in debug.
+  return _debugDefaultBaseUrl;
+}
 
 final apiClientProvider = Provider<Dio>((ref) {
   final dio = Dio(
