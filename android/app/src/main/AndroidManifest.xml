@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
-        android:label="tutora_mb"
+        android:usesCleartextTraffic="true"
+        android:label="Tutora"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
