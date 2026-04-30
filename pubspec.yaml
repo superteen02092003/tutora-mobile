@@ -40,12 +40,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
-
   # --- Code generation (models only) ---
   build_runner: ^2.4.13
   freezed: ^2.5.7
   json_serializable: ^6.8.0
+  very_good_analysis: ^10.1.0
   # riverpod_generator: removed — uses custom_lint_core which breaks with analyzer 7.x (Dart 3.10)
   # Providers are written manually instead (valid Riverpod 2.x pattern)
 

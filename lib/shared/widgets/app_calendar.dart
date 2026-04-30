@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
 
 /// Reusable month-grid calendar.
 ///
@@ -11,10 +11,10 @@ import '../../core/constants/app_spacing.dart';
 /// - [sessionCountForDay] : (year, month, day) → number of sessions; drives the dots
 class AppCalendar extends StatefulWidget {
   const AppCalendar({
-    super.key,
-    this.selectedDate,
     required this.sessionCountForDay,
     required this.onSelectDate,
+    super.key,
+    this.selectedDate,
   });
 
   final DateTime? selectedDate;
@@ -31,9 +31,19 @@ class _AppCalendarState extends State<AppCalendar> {
 
   static const _weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
   static const _monthNames = [
-    '', 'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4',
-    'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8',
-    'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
+    '',
+    'Tháng 1',
+    'Tháng 2',
+    'Tháng 3',
+    'Tháng 4',
+    'Tháng 5',
+    'Tháng 6',
+    'Tháng 7',
+    'Tháng 8',
+    'Tháng 9',
+    'Tháng 10',
+    'Tháng 11',
+    'Tháng 12',
   ];
 
   @override
@@ -47,25 +57,25 @@ class _AppCalendarState extends State<AppCalendar> {
   int get _daysInMonth => DateTime(_year, _month + 1, 0).day;
 
   // Monday-based offset: Mon=0 … Sun=6  (DateTime.weekday: Mon=1 … Sun=7)
-  int get _firstDayOffset => DateTime(_year, _month, 1).weekday - 1;
+  int get _firstDayOffset => DateTime(_year, _month).weekday - 1;
 
   void _prevMonth() => setState(() {
-        if (_month == 1) {
-          _year--;
-          _month = 12;
-        } else {
-          _month--;
-        }
-      });
+    if (_month == 1) {
+      _year--;
+      _month = 12;
+    } else {
+      _month--;
+    }
+  });
 
   void _nextMonth() => setState(() {
-        if (_month == 12) {
-          _year++;
-          _month = 1;
-        } else {
-          _month++;
-        }
-      });
+    if (_month == 12) {
+      _year++;
+      _month = 1;
+    } else {
+      _month++;
+    }
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -105,18 +115,20 @@ class _AppCalendarState extends State<AppCalendar> {
           // Weekday labels
           Row(
             children: _weekdays
-                .map((d) => Expanded(
-                      child: Text(
-                        d,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.ibmPlexMono(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink3,
-                          letterSpacing: 0.08,
-                        ),
+                .map(
+                  (d) => Expanded(
+                    child: Text(
+                      d,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.ibmPlexMono(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink3,
+                        letterSpacing: 0.08,
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: 6),
@@ -132,85 +144,95 @@ class _AppCalendarState extends State<AppCalendar> {
     final rows = (totalCells / 7).ceil();
 
     return Column(
-      children: List.generate(rows, (row) => Padding(
-        padding: const EdgeInsets.only(bottom: 2),
-        child: Row(
-          children: List.generate(7, (col) {
-            final index = row * 7 + col;
-            if (index < _firstDayOffset ||
-                index - _firstDayOffset + 1 > _daysInMonth) {
-              return const Expanded(child: SizedBox());
-            }
-            final day = index - _firstDayOffset + 1;
-            final isSelected = sel != null &&
-                sel.year == _year &&
-                sel.month == _month &&
-                sel.day == day;
-            final isToday = today.year == _year &&
-                today.month == _month &&
-                today.day == day;
-            final sessionCount =
-                widget.sessionCountForDay(_year, _month, day);
+      children: List.generate(
+        rows,
+        (row) => Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Row(
+            children: List.generate(7, (col) {
+              final index = row * 7 + col;
+              if (index < _firstDayOffset ||
+                  index - _firstDayOffset + 1 > _daysInMonth) {
+                return const Expanded(child: SizedBox());
+              }
+              final day = index - _firstDayOffset + 1;
+              final isSelected =
+                  sel != null &&
+                  sel.year == _year &&
+                  sel.month == _month &&
+                  sel.day == day;
+              final isToday =
+                  today.year == _year &&
+                  today.month == _month &&
+                  today.day == day;
+              final sessionCount = widget.sessionCountForDay(
+                _year,
+                _month,
+                day,
+              );
 
-            return Expanded(
-              child: GestureDetector(
-                onTap: () =>
-                    widget.onSelectDate(DateTime(_year, _month, day)),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.ink : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '$day',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: (isToday || isSelected)
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                            color: isSelected
-                                ? AppColors.cream
-                                : isToday
-                                    ? AppColors.oxblood
-                                    : AppColors.ink,
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () =>
+                      widget.onSelectDate(DateTime(_year, _month, day)),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.ink : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$day',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: (isToday || isSelected)
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? AppColors.cream
+                                  : isToday
+                                  ? AppColors.oxblood
+                                  : AppColors.ink,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        if (sessionCount > 0)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: List.generate(
-                              math.min(sessionCount, 3),
-                              (_) => Container(
-                                width: 4,
-                                height: 4,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isSelected
-                                      ? AppColors.gold
-                                      : AppColors.oxblood,
+                          const SizedBox(height: 2),
+                          if (sessionCount > 0)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(
+                                math.min(sessionCount, 3),
+                                (_) => Container(
+                                  width: 4,
+                                  height: 4,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected
+                                        ? AppColors.gold
+                                        : AppColors.oxblood,
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                        else
-                          const SizedBox(height: 6),
-                      ],
+                            )
+                          else
+                            const SizedBox(height: 6),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
-      )),
+      ),
     );
   }
 }

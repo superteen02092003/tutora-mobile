@@ -109,12 +109,17 @@ List<MockLesson> get kTodayLessons =>
 // April 2026 — days with sessions (day → count)
 // April 1 = Wednesday → Mon-based offset = 2
 const kMockSessionDaysApril = <int, int>{
-  7: 1, 12: 1, 18: 2, 25: 1, 28: 1, 30: 2,
+  7: 1,
+  12: 1,
+  18: 2,
+  25: 1,
+  28: 1,
+  30: 2,
 };
 
 // Sessions by calendar day (April 2026)
 Map<int, List<MockLesson>> get kMockAprilSessions => {
-      30: kTodayLessons,
-      28: kMockLessons.where((l) => l.id == 'd1').toList(),
-      25: kMockLessons.where((l) => l.id == 'd2').toList(),
-    };
+  30: kTodayLessons,
+  28: kMockLessons.where((l) => l.id == 'd1').toList(),
+  25: kMockLessons.where((l) => l.id == 'd2').toList(),
+};

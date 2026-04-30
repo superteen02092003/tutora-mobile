@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_colors.dart';
 
 class UserAvatar extends StatelessWidget {
-  const UserAvatar({super.key, required this.name, this.size = 36, this.imageUrl});
+  const UserAvatar({
+    required this.name,
+    super.key,
+    this.size = 36,
+    this.imageUrl,
+  });
 
   final String name;
   final double size;

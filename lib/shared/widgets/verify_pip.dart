@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_colors.dart';
 
 class VerifyPip extends StatelessWidget {
   const VerifyPip({super.key, this.small = false});

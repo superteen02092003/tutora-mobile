@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_colors.dart';
 
 class AppLogo extends StatelessWidget {
   const AppLogo({super.key, this.size = 15});

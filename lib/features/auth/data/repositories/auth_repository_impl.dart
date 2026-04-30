@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/errors/app_exception.dart';
-import '../../../../core/errors/failure.dart';
-import '../../../../core/network/api_client.dart';
-import '../../../../core/storage/secure_storage.dart';
-import '../../domain/entities/auth_token.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../datasources/auth_remote_datasource.dart';
-import '../models/auth_models.dart';
+import 'package:tutora/core/errors/app_exception.dart';
+import 'package:tutora/core/errors/failure.dart';
+import 'package:tutora/core/network/api_client.dart';
+import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:tutora/features/auth/data/models/auth_models.dart';
+import 'package:tutora/features/auth/domain/entities/auth_token.dart';
+import 'package:tutora/features/auth/domain/repositories/auth_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(
@@ -49,9 +49,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   Failure _mapException(AppException e) => switch (e) {
-        UnauthorizedException() => const AuthFailure('Email/SĐT hoặc mật khẩu không đúng.'),
-        NetworkException() => const NetworkFailure(),
-        ServerException() => ServerFailure(e.message),
-        _ => const ServerFailure(),
-      };
+    UnauthorizedException() => const AuthFailure(
+      'Email/SĐT hoặc mật khẩu không đúng.',
+    ),
+    NetworkException() => const NetworkFailure(),
+    ServerException() => ServerFailure(e.message),
+    _ => const ServerFailure(),
+  };
 }

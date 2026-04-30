@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import '../../../../core/network/api_client.dart';
-import '../models/auth_models.dart';
+import 'package:tutora/core/network/api_client.dart';
+import 'package:tutora/features/auth/data/models/auth_models.dart';
 
 class AuthRemoteDatasource {
   const AuthRemoteDatasource(this._dio);
@@ -9,7 +9,7 @@ class AuthRemoteDatasource {
 
   Future<LoginResponse> login(LoginRequest request) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<dynamic>(
         '/SimpleAuth/login',
         data: request.toJson(),
       );

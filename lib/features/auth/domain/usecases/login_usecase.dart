@@ -1,6 +1,6 @@
-import '../../../../core/errors/failure.dart';
-import '../entities/auth_token.dart';
-import '../repositories/auth_repository.dart';
+import 'package:tutora/core/errors/failure.dart';
+import 'package:tutora/features/auth/domain/entities/auth_token.dart';
+import 'package:tutora/features/auth/domain/repositories/auth_repository.dart';
 
 class LoginUseCase {
   const LoginUseCase(this._repository);
@@ -17,6 +17,9 @@ class LoginUseCase {
         failure: const ValidationFailure('Vui lòng nhập đầy đủ thông tin.'),
       ));
     }
-    return _repository.login(emailOrPhone: emailOrPhone.trim(), password: password);
+    return _repository.login(
+      emailOrPhone: emailOrPhone.trim(),
+      password: password,
+    );
   }
 }

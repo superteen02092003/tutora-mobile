@@ -16,7 +16,10 @@ class SecureStorageService {
   Future<String?> getAccessToken() => _storage.read(key: _keyAccessToken);
   Future<String?> getRefreshToken() => _storage.read(key: _keyRefreshToken);
 
-  Future<void> saveTokens({required String access, required String refresh}) async {
+  Future<void> saveTokens({
+    required String access,
+    required String refresh,
+  }) async {
     await Future.wait([
       _storage.write(key: _keyAccessToken, value: access),
       _storage.write(key: _keyRefreshToken, value: refresh),

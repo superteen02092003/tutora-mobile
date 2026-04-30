@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 // Claim keys từ .NET Identity (Microsoft schema)
-const _roleClaimKey = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
-const _nameClaimKey = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
+const _roleClaimKey =
+    'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+const _nameClaimKey =
+    'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
 const _userIdClaimKey = 'userId';
 
 enum UserRole { student, tutor, unknown }

@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/router/app_routes.dart';
-import '../../../../core/storage/secure_storage.dart';
-import '../../../../core/utils/jwt_utils.dart';
-import '../../../../shared/widgets/app_logo.dart';
-import '../../../../shared/widgets/status_chip.dart';
-import '../../../../shared/widgets/user_avatar.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/utils/jwt_utils.dart';
+import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/status_chip.dart';
+import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class StudentProfilePage extends ConsumerWidget {
   const StudentProfilePage({super.key});
@@ -20,7 +20,9 @@ class StudentProfilePage extends ConsumerWidget {
     return FutureBuilder<String?>(
       future: ref.read(secureStorageProvider).getAccessToken(),
       builder: (context, snap) {
-        final claims = snap.hasData && snap.data != null ? parseJwt(snap.data!) : null;
+        final claims = snap.hasData && snap.data != null
+            ? parseJwt(snap.data!)
+            : null;
         return _ProfileContent(
           name: claims?.name ?? '',
           email: claims?.email ?? '',
@@ -89,7 +91,11 @@ class _TopBar extends StatelessWidget {
               color: AppColors.paper,
               border: Border.all(color: AppColors.line),
             ),
-            child: const Icon(Icons.settings_outlined, size: 16, color: AppColors.ink),
+            child: const Icon(
+              Icons.settings_outlined,
+              size: 16,
+              color: AppColors.ink,
+            ),
           ),
         ],
       ),
@@ -142,11 +148,17 @@ class _StatsRow extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Row(
         children: [
-          Expanded(child: _StatCard(value: '14', label: 'Buổi học')),
+          Expanded(
+            child: _StatCard(value: '14', label: 'Buổi học'),
+          ),
           SizedBox(width: 8),
-          Expanded(child: _StatCard(value: '37', label: 'Bài quét')),
+          Expanded(
+            child: _StatCard(value: '37', label: 'Bài quét'),
+          ),
           SizedBox(width: 8),
-          Expanded(child: _StatCard(value: '3', label: 'Gia sư')),
+          Expanded(
+            child: _StatCard(value: '3', label: 'Gia sư'),
+          ),
         ],
       ),
     );
@@ -270,7 +282,11 @@ class _MenuItem extends StatelessWidget {
                 Expanded(
                   child: Text(label, style: AppTextStyles.label()),
                 ),
-                const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.ink3),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: AppColors.ink3,
+                ),
               ],
             ),
           ),
@@ -314,7 +330,11 @@ class _LogoutButton extends ConsumerWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.logout_rounded, size: 16, color: AppColors.oxblood),
+            const Icon(
+              Icons.logout_rounded,
+              size: 16,
+              color: AppColors.oxblood,
+            ),
             const SizedBox(width: 8),
             Text(
               'Đăng xuất',

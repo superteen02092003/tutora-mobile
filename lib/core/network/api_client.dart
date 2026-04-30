@@ -2,16 +2,20 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
-import '../errors/app_exception.dart';
-import 'interceptors/auth_interceptor.dart';
+import 'package:tutora/core/errors/app_exception.dart';
+import 'package:tutora/core/network/interceptors/auth_interceptor.dart';
 
-const String _configuredBaseUrl = String.fromEnvironment('BASE_URL', defaultValue: '');
+const String _configuredBaseUrl = String.fromEnvironment(
+  'BASE_URL',
+);
 const String _debugDefaultBaseUrl = 'http://10.0.2.2:5166';
 
 String get _baseUrl {
   if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
   if (kReleaseMode) {
-    throw StateError('Missing BASE_URL. Provide --dart-define=BASE_URL=<your-api-host>');
+    throw StateError(
+      'Missing BASE_URL. Provide --dart-define=BASE_URL=<your-api-host>',
+    );
   }
   // Safe fallback in debug.
   return _debugDefaultBaseUrl;
@@ -29,7 +33,9 @@ final apiClientProvider = Provider<Dio>((ref) {
 
   dio.interceptors.addAll([
     AuthInterceptor(ref),
-    PrettyDioLogger(requestHeader: false, requestBody: true, responseBody: true),
+    PrettyDioLogger(
+      requestBody: true,
+    ),
   ]);
 
   return dio;
@@ -39,19 +45,20 @@ AppException mapDioException(DioException e) {
   return switch (e.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.receiveTimeout ||
-    DioExceptionType.sendTimeout =>
-      const NetworkException(),
+    DioExceptionType.sendTimeout => const NetworkException(),
     DioExceptionType.connectionError => const NetworkException(),
     DioExceptionType.badResponse => switch (e.response?.statusCode) {
-        401 => const UnauthorizedException(),
-        404 => const NotFoundException(),
-        final int code when code >= 500 => ServerException.withMessage(
-            e.response?.data?['message'] as String? ?? 'Lỗi máy chủ.',
-          ),
-        _ => ServerException.withMessage(
-            e.response?.data?['message'] as String? ?? 'Lỗi không xác định.',
-          ),
-      },
+      401 => const UnauthorizedException(),
+      404 => const NotFoundException(),
+      final int code when code >= 500 => ServerException.withMessage(
+        (e.response?.data as Map<String, dynamic>?)?['message'] as String? ??
+            'Lỗi máy chủ.',
+      ),
+      _ => ServerException.withMessage(
+        (e.response?.data as Map<String, dynamic>?)?['message'] as String? ??
+            'Lỗi không xác định.',
+      ),
+    },
     _ => const NetworkException(),
   };
 }

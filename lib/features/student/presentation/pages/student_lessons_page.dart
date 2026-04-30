@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../shared/widgets/app_calendar.dart';
-import '../../../../shared/widgets/app_logo.dart';
-import '../../../../mock/student_lessons_mock.dart';
-import 'student_session_detail_page.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/student/presentation/pages/student_session_detail_page.dart';
+import 'package:tutora/mock/student_lessons_mock.dart';
+import 'package:tutora/shared/widgets/app_calendar.dart';
+import 'package:tutora/shared/widgets/app_logo.dart';
 
 class StudentLessonsPage extends StatefulWidget {
   const StudentLessonsPage({super.key});
@@ -109,7 +109,9 @@ class _TopBar extends StatelessWidget {
                 border: Border.all(color: AppColors.line),
               ),
               child: Icon(
-                showCalendar ? Icons.view_list_rounded : Icons.calendar_month_outlined,
+                showCalendar
+                    ? Icons.view_list_rounded
+                    : Icons.calendar_month_outlined,
                 size: 16,
                 color: showCalendar ? AppColors.cream : AppColors.ink,
               ),
@@ -155,14 +157,15 @@ class _TodayCard extends StatelessWidget {
             ),
           ),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hôm nay · 30 tháng 4',
-                        style: AppTextStyles.eyebrow(color: AppColors.gold)),
+                    Text(
+                      'Hôm nay · 30 tháng 4',
+                      style: AppTextStyles.eyebrow(color: AppColors.gold),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       '${lessons.length} buổi học',
@@ -190,7 +193,9 @@ class _TodayCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   color: AppColors.gold.withValues(alpha: 0.15),
-                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.gold.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -300,17 +305,33 @@ class _SessionCard extends StatelessWidget {
   final MockLesson lesson;
 
   Color get _dividerColor => switch (lesson.status) {
-        LessonStatus.upcoming  => AppColors.oxblood,
-        LessonStatus.confirmed => AppColors.moss,
-        _                      => AppColors.line,
-      };
+    LessonStatus.upcoming => AppColors.oxblood,
+    LessonStatus.confirmed => AppColors.moss,
+    _ => AppColors.line,
+  };
 
   _ChipStyle get _chipStyle => switch (lesson.status) {
-        LessonStatus.upcoming  => (bg: AppColors.oxblood,       fg: const Color(0xFFFFF1E6), label: 'Sắp diễn ra'),
-        LessonStatus.confirmed => (bg: AppColors.moss,           fg: const Color(0xFFE0E7DF), label: 'Đã xác nhận'),
-        LessonStatus.pending   => (bg: const Color(0xFFF0E3CA), fg: const Color(0xFF5C3A1A), label: 'Chờ xác nhận'),
-        LessonStatus.done      => (bg: AppColors.cream2,         fg: AppColors.ink3,          label: 'Hoàn thành'),
-      };
+    LessonStatus.upcoming => (
+      bg: AppColors.oxblood,
+      fg: const Color(0xFFFFF1E6),
+      label: 'Sắp diễn ra',
+    ),
+    LessonStatus.confirmed => (
+      bg: AppColors.moss,
+      fg: const Color(0xFFE0E7DF),
+      label: 'Đã xác nhận',
+    ),
+    LessonStatus.pending => (
+      bg: const Color(0xFFF0E3CA),
+      fg: const Color(0xFF5C3A1A),
+      label: 'Chờ xác nhận',
+    ),
+    LessonStatus.done => (
+      bg: AppColors.cream2,
+      fg: AppColors.ink3,
+      label: 'Hoàn thành',
+    ),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +342,7 @@ class _SessionCard extends StatelessWidget {
       opacity: isDone ? 0.75 : 1.0,
       child: GestureDetector(
         onTap: () => Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (_) => StudentSessionDetailPage(lesson: lesson),
           ),
         ),
@@ -333,13 +354,11 @@ class _SessionCard extends StatelessWidget {
             border: Border.all(color: AppColors.line),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Time block
               SizedBox(
                 width: 50,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       lesson.timeStart,
@@ -352,7 +371,10 @@ class _SessionCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       lesson.date,
-                      style: GoogleFonts.inter(fontSize: 9, color: AppColors.ink3),
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        color: AppColors.ink3,
+                      ),
                     ),
                   ],
                 ),
@@ -383,14 +405,20 @@ class _SessionCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       '${lesson.tutorName} · ${lesson.subject}',
-                      style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.ink3),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: AppColors.ink3,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 7),
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: chip.bg,
                             borderRadius: BorderRadius.circular(99),
@@ -419,7 +447,11 @@ class _SessionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.ink3),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: AppColors.ink3,
+              ),
             ],
           ),
         ),
@@ -492,7 +524,11 @@ class _CalendarViewState extends State<_CalendarView> {
           for (int i = 0; i < _selectedSessions.length; i++)
             Padding(
               padding: EdgeInsets.fromLTRB(
-                  16, 0, 16, i < _selectedSessions.length - 1 ? 8 : 0),
+                16,
+                0,
+                16,
+                i < _selectedSessions.length - 1 ? 8 : 0,
+              ),
               child: _SessionCard(lesson: _selectedSessions[i]),
             ),
         const SizedBox(height: AppSpacing.xxl),

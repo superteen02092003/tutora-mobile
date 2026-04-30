@@ -1,12 +1,13 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../core/constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:tutora/core/constants/app_colors.dart';
 
 // Tab order: Home(0) · Search(1) · Capture/AI(2, center bump) · Lessons(3) · Profile(4)
 class StudentShell extends StatelessWidget {
-  const StudentShell({super.key, required this.navigationShell});
+  const StudentShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
@@ -58,12 +59,40 @@ class StudentShell extends StatelessWidget {
               height: _barFlatHeight,
               child: Row(
                 children: [
-                  _NavTab(index: 0, current: current, onTap: _onTap, icon: Icons.home_outlined,           activeIcon: Icons.home_rounded,           label: 'Trang chủ'),
-                  _NavTab(index: 1, current: current, onTap: _onTap, icon: Icons.search_outlined,         activeIcon: Icons.search_rounded,         label: 'Gia sư'),
+                  _NavTab(
+                    index: 0,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
+                    label: 'Trang chủ',
+                  ),
+                  _NavTab(
+                    index: 1,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.search_outlined,
+                    activeIcon: Icons.search_rounded,
+                    label: 'Gia sư',
+                  ),
                   // Spacer reserves room for the center bump
                   const Expanded(child: SizedBox()),
-                  _NavTab(index: 3, current: current, onTap: _onTap, icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Lịch học'),
-                  _NavTab(index: 4, current: current, onTap: _onTap, icon: Icons.person_outline_rounded,  activeIcon: Icons.person_rounded,         label: 'Hồ sơ'),
+                  _NavTab(
+                    index: 3,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.calendar_today_outlined,
+                    activeIcon: Icons.calendar_today_rounded,
+                    label: 'Lịch học',
+                  ),
+                  _NavTab(
+                    index: 4,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.person_outline_rounded,
+                    activeIcon: Icons.person_rounded,
+                    label: 'Hồ sơ',
+                  ),
                 ],
               ),
             ),
@@ -143,15 +172,16 @@ class _BumpBarPainter extends CustomPainter {
       ..lineTo(size.width, size.height)
       ..close();
 
-    canvas.drawShadow(path, shadowColor, 8, false);
-    canvas.drawPath(path, Paint()..color = color);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = borderColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
-    );
+    canvas
+      ..drawShadow(path, shadowColor, 8, false)
+      ..drawPath(path, Paint()..color = color)
+      ..drawPath(
+        path,
+        Paint()
+          ..color = borderColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
+      );
   }
 
   @override
@@ -164,9 +194,12 @@ class _BumpBarPainter extends CustomPainter {
       old.borderColor != borderColor;
 }
 
-
 class _AiFab extends StatelessWidget {
-  const _AiFab({required this.size, required this.isActive, required this.onTap});
+  const _AiFab({
+    required this.size,
+    required this.isActive,
+    required this.onTap,
+  });
 
   final double size;
   final bool isActive;
@@ -197,7 +230,9 @@ class _AiFab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                isActive ? Icons.document_scanner : Icons.document_scanner_outlined,
+                isActive
+                    ? Icons.document_scanner
+                    : Icons.document_scanner_outlined,
                 size: 22,
                 color: isActive ? const Color(0xFFFFF1E6) : AppColors.cream,
               ),
