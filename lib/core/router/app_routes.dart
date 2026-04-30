@@ -9,6 +9,7 @@ abstract final class AppRoutes {
   static const studentCapture = '/student/capture';
   static const studentSearch = '/student/search';
   static const studentProfile = '/student/profile';
+  static const studentLessons = '/student/lessons';
 
   // Student sub-routes
   static const tutorDetail = '/student/search/tutor/:id';
