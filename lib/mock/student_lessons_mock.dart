@@ -1,4 +1,4 @@
-enum LessonStatus { upcoming, confirmed, pending, completed }
+enum LessonStatus { upcoming, confirmed, pending, done }
 
 class MockLesson {
   const MockLesson({
@@ -6,107 +6,115 @@ class MockLesson {
     required this.tutorName,
     required this.subject,
     required this.topic,
-    required this.dayLabel,
-    required this.timeLabel,
-    required this.fullDate,
+    required this.date,
+    required this.timeRange,
+    required this.timeStart,
+    required this.priceK,
     required this.status,
+    this.isToday = false,
   });
 
   final String id;
   final String tutorName;
   final String subject;
   final String topic;
-  final String dayLabel;  // 'T4', 'T5', etc.
-  final String timeLabel; // '19:30'
-  final String fullDate;  // 'T4 · 24/06'
+  final String date;
+  final String timeRange; // '15:00 – 16:00'
+  final String timeStart; // '15:00'
+  final int priceK;
   final LessonStatus status;
+  final bool isToday;
 }
 
-const kMockUpcomingLessons = [
+const kMockLessons = [
   MockLesson(
     id: 'u1',
     tutorName: 'Cô Mai Anh',
     subject: 'Toán 10',
     topic: 'Hệ thức Vi-ét',
-    dayLabel: 'T4',
-    timeLabel: '19:30',
-    fullDate: 'T4 · 24/06',
+    date: 'Hôm nay',
+    timeRange: '15:00 – 16:00',
+    timeStart: '15:00',
+    priceK: 280,
     status: LessonStatus.upcoming,
+    isToday: true,
   ),
   MockLesson(
     id: 'u2',
-    tutorName: 'Cô Linh Chi',
-    subject: 'Tiếng Anh',
-    topic: 'IELTS Writing Task 2',
-    dayLabel: 'T5',
-    timeLabel: '18:00',
-    fullDate: 'T5 · 25/06',
+    tutorName: 'Thầy Đức Huy',
+    subject: 'Hóa 10',
+    topic: 'Cấu hình electron',
+    date: 'Hôm nay',
+    timeRange: '19:00 – 20:00',
+    timeStart: '19:00',
+    priceK: 220,
     status: LessonStatus.confirmed,
+    isToday: true,
   ),
   MockLesson(
     id: 'u3',
-    tutorName: 'Thầy Đức Huy',
-    subject: 'Hóa 10',
-    topic: 'Cấu tạo nguyên tử',
-    dayLabel: 'T7',
-    timeLabel: '20:00',
-    fullDate: 'T7 · 27/06',
-    status: LessonStatus.pending,
-  ),
-];
-
-const kMockCompletedLessons = [
-  MockLesson(
-    id: 'c1',
     tutorName: 'Cô Mai Anh',
     subject: 'Toán 10',
-    topic: 'Phương trình bậc hai',
-    dayLabel: 'T2',
-    timeLabel: '19:00',
-    fullDate: 'T2 · 19/06',
-    status: LessonStatus.completed,
+    topic: 'Bất phương trình',
+    date: 'T5, 2/5',
+    timeRange: '17:00 – 18:00',
+    timeStart: '17:00',
+    priceK: 280,
+    status: LessonStatus.confirmed,
   ),
   MockLesson(
-    id: 'c2',
+    id: 'u4',
     tutorName: 'Cô Linh Chi',
     subject: 'Tiếng Anh',
-    topic: 'Grammar · Present Perfect',
-    dayLabel: 'CN',
-    timeLabel: '15:00',
-    fullDate: 'CN · 16/06',
-    status: LessonStatus.completed,
+    topic: 'Writing Task 2',
+    date: 'T7, 4/5',
+    timeRange: '10:00 – 11:30',
+    timeStart: '10:00',
+    priceK: 375,
+    status: LessonStatus.pending,
   ),
   MockLesson(
-    id: 'c3',
-    tutorName: 'Thầy Đức Huy',
-    subject: 'Hóa 10',
-    topic: 'Bảng tuần hoàn các nguyên tố',
-    dayLabel: 'T6',
-    timeLabel: '17:30',
-    fullDate: 'T6 · 14/06',
-    status: LessonStatus.completed,
+    id: 'd1',
+    tutorName: 'Cô Mai Anh',
+    subject: 'Toán 10',
+    topic: 'Đạo hàm cơ bản',
+    date: '28/4',
+    timeRange: '28/4 · 15:00',
+    timeStart: '15:00',
+    priceK: 280,
+    status: LessonStatus.done,
+  ),
+  MockLesson(
+    id: 'd2',
+    tutorName: 'Thầy Quang',
+    subject: 'Vật Lý 10',
+    topic: 'Định luật III Newton',
+    date: '25/4',
+    timeRange: '25/4 · 18:00',
+    timeStart: '18:00',
+    priceK: 180,
+    status: LessonStatus.done,
   ),
 ];
 
-class WeekDay {
-  const WeekDay({
-    required this.label,
-    required this.date,
-    required this.hasSession,
-    this.isToday = false,
-  });
-  final String label;
-  final String date;
-  final bool hasSession;
-  final bool isToday;
-}
+List<MockLesson> get kUpcomingLessons =>
+    kMockLessons.where((l) => l.status != LessonStatus.done).toList();
 
-const kMockWeekDays = [
-  WeekDay(label: 'T2', date: '23', hasSession: false),
-  WeekDay(label: 'T3', date: '24', hasSession: false),
-  WeekDay(label: 'T4', date: '25', hasSession: true, isToday: true),
-  WeekDay(label: 'T5', date: '26', hasSession: true),
-  WeekDay(label: 'T6', date: '27', hasSession: false),
-  WeekDay(label: 'T7', date: '28', hasSession: true),
-  WeekDay(label: 'CN', date: '29', hasSession: false),
-];
+List<MockLesson> get kDoneLessons =>
+    kMockLessons.where((l) => l.status == LessonStatus.done).toList();
+
+List<MockLesson> get kTodayLessons =>
+    kMockLessons.where((l) => l.isToday).toList();
+
+// April 2026 — days with sessions (day → count)
+// April 1 = Wednesday → Mon-based offset = 2
+const kMockSessionDaysApril = <int, int>{
+  7: 1, 12: 1, 18: 2, 25: 1, 28: 1, 30: 2,
+};
+
+// Sessions by calendar day (April 2026)
+Map<int, List<MockLesson>> get kMockAprilSessions => {
+      30: kTodayLessons,
+      28: kMockLessons.where((l) => l.id == 'd1').toList(),
+      25: kMockLessons.where((l) => l.id == 'd2').toList(),
+    };
