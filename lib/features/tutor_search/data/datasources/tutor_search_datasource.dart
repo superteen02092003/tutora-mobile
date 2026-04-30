@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/api_client.dart';
-import '../models/tutor_search_models.dart';
+import 'package:tutora/core/network/api_client.dart';
+import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 
 class TutorSearchDatasource {
   const TutorSearchDatasource(this._dio);
@@ -25,7 +25,7 @@ class TutorSearchDatasource {
       final params = <String, dynamic>{
         'pageNumber': pageNumber,
         'pageSize': pageSize,
-        if (searchTerm?.isNotEmpty == true) 'searchTerm': searchTerm,
+        if (searchTerm?.isNotEmpty ?? false) 'searchTerm': searchTerm,
         'category': ?category,
         'gradeLevel': ?gradeLevel,
         'teachingMode': ?teachingMode,
@@ -36,7 +36,10 @@ class TutorSearchDatasource {
         'sortBy': ?sortBy,
       };
 
-      final response = await _dio.get('/tutor-search', queryParameters: params);
+      final response = await _dio.get<dynamic>(
+        '/tutor-search',
+        queryParameters: params,
+      );
       return TutorSearchPage.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw mapDioException(e);

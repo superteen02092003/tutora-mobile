@@ -83,11 +83,17 @@ class TutorSearchResult {
 
   String get subjectSummary {
     if (subjects == null || subjects!.isEmpty) return '';
-    return subjects!.map((s) => s.subjectName ?? '').where((s) => s.isNotEmpty).join(' · ');
+    return subjects!
+        .map((s) => s.subjectName ?? '')
+        .where((s) => s.isNotEmpty)
+        .join(' · ');
   }
 
   String get locationSummary {
-    final parts = [teachingAreaCity, teachingAreaDistrict].whereType<String>().toList();
+    final parts = [
+      teachingAreaCity,
+      teachingAreaDistrict,
+    ].whereType<String>().toList();
     return parts.isEmpty ? '' : parts.first;
   }
 
@@ -95,7 +101,12 @@ class TutorSearchResult {
 }
 
 class TutorSubjectInfo {
-  const TutorSubjectInfo({this.subjectId, this.subjectName, this.gradeLevels, this.tags});
+  const TutorSubjectInfo({
+    this.subjectId,
+    this.subjectName,
+    this.gradeLevels,
+    this.tags,
+  });
 
   factory TutorSubjectInfo.fromJson(Map<String, dynamic> json) {
     return TutorSubjectInfo(

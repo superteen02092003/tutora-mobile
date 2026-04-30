@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/tutor_search_datasource.dart';
-import '../../data/models/tutor_search_models.dart';
+import 'package:tutora/features/tutor_search/data/datasources/tutor_search_datasource.dart';
+import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 
 // ── State ──────────────────────────────────────────────────────────────
 
@@ -40,8 +42,12 @@ final class MarketplaceLoaded extends MarketplaceState {
       hasNext: hasNext ?? this.hasNext,
       totalCount: totalCount ?? this.totalCount,
       searchTerm: searchTerm ?? this.searchTerm,
-      selectedCity: selectedCity == _sentinel ? this.selectedCity : selectedCity as String?,
-      selectedMode: selectedMode == _sentinel ? this.selectedMode : selectedMode as String?,
+      selectedCity: selectedCity == _sentinel
+          ? this.selectedCity
+          : selectedCity as String?,
+      selectedMode: selectedMode == _sentinel
+          ? this.selectedMode
+          : selectedMode as String?,
     );
   }
 
@@ -57,25 +63,25 @@ final class MarketplaceError extends MarketplaceState {
 
 class MarketplaceController extends StateNotifier<MarketplaceState> {
   MarketplaceController(this._datasource) : super(MarketplaceIdle()) {
-    load();
+    unawaited(load());
   }
 
   final TutorSearchDatasource _datasource;
 
   int _page = 1;
-  static const _pageSize = 10;
 
   Future<void> load({bool reset = false}) async {
     if (reset) _page = 1;
     state = MarketplaceLoading();
     try {
-      final current = state is MarketplaceLoaded ? state as MarketplaceLoaded : null;
+      final current = state is MarketplaceLoaded
+          ? state as MarketplaceLoaded
+          : null;
       final result = await _datasource.search(
         searchTerm: current?.searchTerm,
         teachingMode: current?.selectedMode,
         teachingAreaCity: current?.selectedCity,
         pageNumber: _page,
-        pageSize: _pageSize,
       );
       state = MarketplaceLoaded(
         tutors: result.items,
@@ -94,7 +100,6 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
       final result = await _datasource.search(
         searchTerm: term,
         pageNumber: _page,
-        pageSize: _pageSize,
       );
       state = MarketplaceLoaded(
         tutors: result.items,
@@ -117,7 +122,6 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         teachingMode: current.selectedMode,
         teachingAreaCity: current.selectedCity,
         pageNumber: _page,
-        pageSize: _pageSize,
       );
       state = current.copyWith(
         tutors: [...current.tutors, ...result.items],
@@ -129,7 +133,10 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
   }
 }
 
-final marketplaceControllerProvider =
-    StateNotifierProvider.autoDispose<MarketplaceController, MarketplaceState>((ref) {
-  return MarketplaceController(ref.read(tutorSearchDatasourceProvider));
-});
+final AutoDisposeStateNotifierProvider<MarketplaceController, MarketplaceState>
+marketplaceControllerProvider =
+    StateNotifierProvider.autoDispose<MarketplaceController, MarketplaceState>((
+      ref,
+    ) {
+      return MarketplaceController(ref.read(tutorSearchDatasourceProvider));
+    });

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../shared/widgets/status_chip.dart';
-import '../../../../shared/widgets/user_avatar.dart';
-import '../../../../shared/widgets/verify_pip.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/shared/widgets/status_chip.dart';
+import 'package:tutora/shared/widgets/user_avatar.dart';
+import 'package:tutora/shared/widgets/verify_pip.dart';
 
 // ── Placeholder tutor data (mirrors marketplace list by index) ─────────────
 class _TutorInfo {
@@ -22,9 +22,16 @@ class _TutorInfo {
     required this.experience,
     required this.quote,
   });
-  final String name, subj, tier, badge, city, quote;
+  final String name;
+  final String subj;
+  final String tier;
+  final String badge;
+  final String city;
+  final String quote;
   final double rating;
-  final int sessions, price, experience;
+  final int sessions;
+  final int price;
+  final int experience;
 }
 
 const _kTutors = [
@@ -80,7 +87,7 @@ const _kTutors = [
 
 // ── Page ───────────────────────────────────────────────────────────────────
 class TutorDetailPage extends StatelessWidget {
-  const TutorDetailPage({super.key, required this.tutorId});
+  const TutorDetailPage({required this.tutorId, super.key});
 
   final String tutorId;
 
@@ -116,10 +123,10 @@ class _TopBar extends StatelessWidget {
   final String tier;
 
   ChipTone get _chipTone => switch (tier) {
-        'Senior' => ChipTone.ox,
-        'New'    => ChipTone.cream,
-        _        => ChipTone.moss,
-      };
+    'Senior' => ChipTone.ox,
+    'New' => ChipTone.cream,
+    _ => ChipTone.moss,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +146,11 @@ class _TopBar extends StatelessWidget {
                 color: AppColors.paper,
                 border: Border.all(color: AppColors.line),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.ink),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 14,
+                color: AppColors.ink,
+              ),
             ),
           ),
           StatusChip(label: badge, tone: _chipTone),
@@ -199,12 +210,18 @@ class _HeroSection extends StatelessWidget {
                 '${tutor.rating}',
                 style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
               ),
-              Text(' · ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3)),
+              Text(
+                ' · ',
+                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
+              ),
               Text(
                 '${tutor.sessions} buổi',
                 style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
               ),
-              Text(' · ', style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3)),
+              Text(
+                ' · ',
+                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
+              ),
               Text(
                 '${tutor.experience} năm KN',
                 style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
@@ -225,8 +242,8 @@ class _StatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     const items = [
       (label: 'Tỷ lệ điểm tăng', value: '+1.8'),
-      (label: 'Hoàn tiền',        value: '0%'),
-      (label: 'Phản hồi',         value: '< 1h'),
+      (label: 'Hoàn tiền', value: '0%'),
+      (label: 'Phản hồi', value: '< 1h'),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
@@ -236,7 +253,10 @@ class _StatsGrid extends StatelessWidget {
             if (i > 0) const SizedBox(width: 8),
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 10,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.paper,
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -282,7 +302,7 @@ class _BookingCardState extends State<_BookingCard> {
   int _selectedDay = 1;
   int _selectedSlot = 2;
 
-  static const _days  = ['T2 22', 'T3 23', 'T4 24', 'T5 25', 'T6 26'];
+  static const _days = ['T2 22', 'T3 23', 'T4 24', 'T5 25', 'T6 26'];
   static const _slots = ['18:00', '19:00', '19:30', '20:00', '20:30'];
 
   @override
@@ -297,7 +317,10 @@ class _BookingCardState extends State<_BookingCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('ĐẶT BUỔI HỌC', style: AppTextStyles.eyebrow(color: AppColors.gold)),
+          Text(
+            'ĐẶT BUỔI HỌC',
+            style: AppTextStyles.eyebrow(color: AppColors.gold),
+          ),
 
           // Date row
           const SizedBox(height: 10),
@@ -310,7 +333,10 @@ class _BookingCardState extends State<_BookingCard> {
                   GestureDetector(
                     onTap: () => setState(() => _selectedDay = i),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: i == _selectedDay
                             ? AppColors.gold
@@ -322,7 +348,9 @@ class _BookingCardState extends State<_BookingCard> {
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          color: i == _selectedDay ? AppColors.ink : AppColors.cream,
+                          color: i == _selectedDay
+                              ? AppColors.ink
+                              : AppColors.cream,
                         ),
                       ),
                     ),
@@ -342,7 +370,10 @@ class _BookingCardState extends State<_BookingCard> {
                 GestureDetector(
                   onTap: () => setState(() => _selectedSlot = i),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: i == _selectedSlot
                           ? AppColors.cream
@@ -350,13 +381,17 @@ class _BookingCardState extends State<_BookingCard> {
                       borderRadius: BorderRadius.circular(8),
                       border: i == _selectedSlot
                           ? null
-                          : Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                          : Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
                     ),
                     child: Text(
                       _slots[i],
                       style: GoogleFonts.ibmPlexMono(
                         fontSize: 11,
-                        color: i == _selectedSlot ? AppColors.ink : AppColors.cream,
+                        color: i == _selectedSlot
+                            ? AppColors.ink
+                            : AppColors.cream,
                       ),
                     ),
                   ),
@@ -381,7 +416,10 @@ class _BookingCardState extends State<_BookingCard> {
                   height: 1.5,
                 ),
                 children: [
-                  TextSpan(text: '1 giờ · ${widget.tutor.price}.000đ · Thanh toán giữ tạm qua '),
+                  TextSpan(
+                    text:
+                        '1 giờ · ${widget.tutor.price}.000đ · Thanh toán giữ tạm qua ',
+                  ),
                   TextSpan(
                     text: 'Tutora Escrow',
                     style: GoogleFonts.inter(
@@ -400,7 +438,9 @@ class _BookingCardState extends State<_BookingCard> {
           GestureDetector(
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tính năng thanh toán đang phát triển…')),
+                const SnackBar(
+                  content: Text('Tính năng thanh toán đang phát triển…'),
+                ),
               );
             },
             child: Container(

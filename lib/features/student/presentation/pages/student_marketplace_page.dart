@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/router/app_routes.dart';
-import '../../../../shared/widgets/app_logo.dart';
-import '../../../../shared/widgets/status_chip.dart';
-import '../../../../shared/widgets/user_avatar.dart';
-import '../../../../shared/widgets/verify_pip.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/status_chip.dart';
+import 'package:tutora/shared/widgets/user_avatar.dart';
+import 'package:tutora/shared/widgets/verify_pip.dart';
 
 // ── Placeholder data ───────────────────────────────────────────────────────
 class _Tutor {
@@ -22,19 +22,67 @@ class _Tutor {
     required this.badge,
     required this.city,
   });
-  final String name, subj, tier, badge, city;
+  final String name;
+  final String subj;
+  final String tier;
+  final String badge;
+  final String city;
   final double rating;
-  final int sessions, price;
+  final int sessions;
+  final int price;
 }
 
 const _kTutors = [
-  _Tutor(name: 'Cô Mai Anh',   subj: 'Toán · Lý',      tier: 'Senior',   rating: 4.96, sessions: 482, price: 280, badge: 'Top 1%',    city: 'Hà Nội'),
-  _Tutor(name: 'Thầy Đức Huy', subj: 'Toán · Hóa',     tier: 'Verified', rating: 4.89, sessions: 211, price: 220, badge: 'Verified',   city: 'TP.HCM'),
-  _Tutor(name: 'Cô Linh Chi',  subj: 'Tiếng Anh',       tier: 'Verified', rating: 4.92, sessions: 156, price: 250, badge: 'IELTS 8.5', city: 'Đà Nẵng'),
-  _Tutor(name: 'Thầy Quang',   subj: 'Vật Lý',          tier: 'New',      rating: 4.80, sessions: 38,  price: 180, badge: 'Mới',       city: 'Hà Nội'),
+  _Tutor(
+    name: 'Cô Mai Anh',
+    subj: 'Toán · Lý',
+    tier: 'Senior',
+    rating: 4.96,
+    sessions: 482,
+    price: 280,
+    badge: 'Top 1%',
+    city: 'Hà Nội',
+  ),
+  _Tutor(
+    name: 'Thầy Đức Huy',
+    subj: 'Toán · Hóa',
+    tier: 'Verified',
+    rating: 4.89,
+    sessions: 211,
+    price: 220,
+    badge: 'Verified',
+    city: 'TP.HCM',
+  ),
+  _Tutor(
+    name: 'Cô Linh Chi',
+    subj: 'Tiếng Anh',
+    tier: 'Verified',
+    rating: 4.92,
+    sessions: 156,
+    price: 250,
+    badge: 'IELTS 8.5',
+    city: 'Đà Nẵng',
+  ),
+  _Tutor(
+    name: 'Thầy Quang',
+    subj: 'Vật Lý',
+    tier: 'New',
+    rating: 4.80,
+    sessions: 38,
+    price: 180,
+    badge: 'Mới',
+    city: 'Hà Nội',
+  ),
 ];
 
-const _kChips = ['Toán 10', 'Cánh Diều', '≤300k/giờ', 'Senior', 'Online', 'Hà Nội'];
+const _kChips = [
+  'Toán 10',
+  'Cánh Diều',
+  '≤300k/giờ',
+  'Senior',
+  'Online',
+  'Hà Nội',
+];
 
 // ── Page ───────────────────────────────────────────────────────────────────
 class StudentMarketplacePage extends StatelessWidget {
@@ -82,7 +130,11 @@ class _TopBar extends StatelessWidget {
                 color: AppColors.paper,
                 border: Border.all(color: AppColors.line),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.ink),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 14,
+                color: AppColors.ink,
+              ),
             ),
           ),
           const Spacer(),
@@ -106,8 +158,10 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CHỢ GIA SƯ · TUTORA MARKETPLACE',
-              style: AppTextStyles.eyebrow(color: AppColors.oxblood)),
+          Text(
+            'CHỢ GIA SƯ · TUTORA MARKETPLACE',
+            style: AppTextStyles.eyebrow(color: AppColors.oxblood),
+          ),
           const SizedBox(height: 6),
           RichText(
             text: TextSpan(
@@ -161,10 +215,19 @@ class _SearchRow extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search_rounded, size: 16, color: AppColors.ink3),
+                  const Icon(
+                    Icons.search_rounded,
+                    size: 16,
+                    color: AppColors.ink3,
+                  ),
                   const SizedBox(width: 8),
-                  Text('Toán · Hệ thức Vi-ét…',
-                      style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3)),
+                  Text(
+                    'Toán · Hệ thức Vi-ét…',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: AppColors.ink3,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -177,7 +240,11 @@ class _SearchRow extends StatelessWidget {
               color: AppColors.ink,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: const Icon(Icons.tune_rounded, size: 16, color: AppColors.cream),
+            child: const Icon(
+              Icons.tune_rounded,
+              size: 16,
+              color: AppColors.cream,
+            ),
           ),
         ],
       ),
@@ -228,10 +295,16 @@ class _AiCallout extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome_rounded, size: 14, color: AppColors.oxblood),
+              const Icon(
+                Icons.auto_awesome_rounded,
+                size: 14,
+                color: AppColors.oxblood,
+              ),
               const SizedBox(width: 8),
-              Text('GỢI Ý TỪ TUTORA AI',
-                  style: AppTextStyles.eyebrow(color: AppColors.oxblood)),
+              Text(
+                'GỢI Ý TỪ TUTORA AI',
+                style: AppTextStyles.eyebrow(color: AppColors.oxblood),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -240,7 +313,11 @@ class _AiCallout extends StatelessWidget {
               children: [
                 TextSpan(
                   text: 'Dựa trên bài ',
-                  style: GoogleFonts.ibmPlexSerif(fontSize: 14, height: 1.4, color: AppColors.ink),
+                  style: GoogleFonts.ibmPlexSerif(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: AppColors.ink,
+                  ),
                 ),
                 TextSpan(
                   text: 'Hệ thức Vi-ét',
@@ -253,7 +330,11 @@ class _AiCallout extends StatelessWidget {
                 ),
                 TextSpan(
                   text: ' bạn vừa quét — 4 gia sư phù hợp.',
-                  style: GoogleFonts.ibmPlexSerif(fontSize: 14, height: 1.4, color: AppColors.ink),
+                  style: GoogleFonts.ibmPlexSerif(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: AppColors.ink,
+                  ),
                 ),
               ],
             ),
@@ -276,7 +357,9 @@ class _TutorList extends StatelessWidget {
         children: [
           for (int i = 0; i < _kTutors.length; i++)
             Padding(
-              padding: EdgeInsets.only(bottom: i < _kTutors.length - 1 ? 10 : 0),
+              padding: EdgeInsets.only(
+                bottom: i < _kTutors.length - 1 ? 10 : 0,
+              ),
               child: _TutorCard(tutor: _kTutors[i], index: i),
             ),
         ],
@@ -292,10 +375,10 @@ class _TutorCard extends StatelessWidget {
   final int index;
 
   ChipTone get _badgeTone => switch (tutor.tier) {
-        'Senior' => ChipTone.ox,
-        'New'    => ChipTone.cream,
-        _        => ChipTone.moss,
-      };
+    'Senior' => ChipTone.ox,
+    'New' => ChipTone.cream,
+    _ => ChipTone.moss,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +419,10 @@ class _TutorCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${tutor.subj} · ${tutor.city}',
-                    style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.ink3),
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: AppColors.ink3,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Wrap(
@@ -344,7 +430,11 @@ class _TutorCard extends StatelessWidget {
                     spacing: 4,
                     runSpacing: 4,
                     children: [
-                      const Icon(Icons.star_rounded, size: 10, color: AppColors.gold),
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 10,
+                        color: AppColors.gold,
+                      ),
                       Text(
                         '${tutor.rating}',
                         style: GoogleFonts.inter(
@@ -355,7 +445,10 @@ class _TutorCard extends StatelessWidget {
                       ),
                       Text(
                         '· ${tutor.sessions} buổi',
-                        style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink3),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppColors.ink3,
+                        ),
                       ),
                       StatusChip(label: tutor.badge, tone: _badgeTone),
                     ],
@@ -374,7 +467,10 @@ class _TutorCard extends StatelessWidget {
                     color: AppColors.ink,
                   ),
                 ),
-                Text('/ giờ', style: GoogleFonts.inter(fontSize: 10, color: AppColors.ink3)),
+                Text(
+                  '/ giờ',
+                  style: GoogleFonts.inter(fontSize: 10, color: AppColors.ink3),
+                ),
               ],
             ),
           ],

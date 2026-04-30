@@ -4,7 +4,9 @@ sealed class AppException implements Exception {
 }
 
 final class NetworkException extends AppException {
-  const NetworkException([super.message = 'Lỗi kết nối mạng. Vui lòng thử lại.']);
+  const NetworkException([
+    super.message = 'Lỗi kết nối mạng. Vui lòng thử lại.',
+  ]);
 }
 
 final class UnauthorizedException extends AppException {

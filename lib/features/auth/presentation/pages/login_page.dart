@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/router/app_routes.dart';
-import '../../../../core/utils/jwt_utils.dart';
-import '../../../../core/storage/secure_storage.dart';
-import '../controllers/login_controller.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/utils/jwt_utils.dart';
+import 'package:tutora/features/auth/presentation/controllers/login_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -29,13 +31,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _submit() async {
-    await ref.read(loginControllerProvider.notifier).login(
+    await ref
+        .read(loginControllerProvider.notifier)
+        .login(
           _emailCtrl.text,
           _passCtrl.text,
         );
   }
 
-  void _navigateByRole() async {
+  Future<void> _navigateByRole() async {
     final token = await ref.read(secureStorageProvider).getAccessToken();
     if (!mounted || token == null) return;
     final claims = parseJwt(token);
@@ -53,14 +57,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     ref.listen(loginControllerProvider, (_, state) {
-      if (state is LoginSuccess) _navigateByRole();
+      if (state is LoginSuccess) unawaited(_navigateByRole());
       if (state is LoginError) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: Text(state.message),
-            backgroundColor: AppColors.error,
-          ));
+          ..showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: AppColors.error,
+            ),
+          );
         ref.read(loginControllerProvider.notifier).resetError();
       }
     });
@@ -81,7 +87,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               // Wordmark
               Text(
                 'TUTORA.',
-                style: AppTextStyles.eyebrow(color: AppColors.oxblood).copyWith(fontSize: 12),
+                style: AppTextStyles.eyebrow(
+                  color: AppColors.oxblood,
+                ).copyWith(fontSize: 12),
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -101,7 +109,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 enabled: !isLoading,
-                decoration: const InputDecoration(labelText: 'Email hoặc số điện thoại'),
+                decoration: const InputDecoration(
+                  labelText: 'Email hoặc số điện thoại',
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -116,7 +126,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   labelText: 'Mật khẩu',
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      _obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                       size: 18,
                       color: AppColors.ink4,
                     ),
@@ -130,7 +142,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: isLoading ? null : () {},
-                  child: Text('Quên mật khẩu?', style: AppTextStyles.label(color: AppColors.oxblood)),
+                  child: Text(
+                    'Quên mật khẩu?',
+                    style: AppTextStyles.label(color: AppColors.oxblood),
+                  ),
                 ),
               ),
 

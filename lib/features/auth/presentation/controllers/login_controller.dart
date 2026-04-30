@@ -1,12 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/auth_repository_impl.dart';
-import '../../domain/usecases/login_usecase.dart';
+import 'package:tutora/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:tutora/features/auth/domain/usecases/login_usecase.dart';
 
 // State
 sealed class LoginState {}
+
 final class LoginIdle extends LoginState {}
+
 final class LoginLoading extends LoginState {}
+
 final class LoginSuccess extends LoginState {}
+
 final class LoginError extends LoginState {
   LoginError(this.message);
   final String message;
@@ -20,7 +24,10 @@ class LoginController extends StateNotifier<LoginState> {
 
   Future<void> login(String emailOrPhone, String password) async {
     state = LoginLoading();
-    final result = await _useCase(emailOrPhone: emailOrPhone, password: password);
+    final result = await _useCase(
+      emailOrPhone: emailOrPhone,
+      password: password,
+    );
 
     if (result.failure != null) {
       state = LoginError(result.failure!.message);
@@ -34,9 +41,10 @@ class LoginController extends StateNotifier<LoginState> {
   }
 }
 
-final loginControllerProvider =
+final AutoDisposeStateNotifierProvider<LoginController, LoginState>
+loginControllerProvider =
     StateNotifierProvider.autoDispose<LoginController, LoginState>((ref) {
-  return LoginController(
-    LoginUseCase(ref.read(authRepositoryProvider)),
-  );
-});
+      return LoginController(
+        LoginUseCase(ref.read(authRepositoryProvider)),
+      );
+    });

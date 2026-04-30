@@ -1,4 +1,4 @@
-import '../../domain/entities/auth_token.dart';
+import 'package:tutora/features/auth/domain/entities/auth_token.dart';
 
 class LoginRequest {
   const LoginRequest({required this.emailOrPhone, required this.password});
@@ -7,9 +7,9 @@ class LoginRequest {
   final String password;
 
   Map<String, dynamic> toJson() => {
-        'emailOrPhone': emailOrPhone,
-        'password': password,
-      };
+    'emailOrPhone': emailOrPhone,
+    'password': password,
+  };
 }
 
 class LoginResponse {

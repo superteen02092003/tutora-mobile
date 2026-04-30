@@ -1,4 +1,4 @@
-include: package:flutter_lints/flutter.yaml
+include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
   exclude:
@@ -7,9 +7,9 @@ analyzer:
 
 linter:
   rules:
-    prefer_single_quotes: true
-    avoid_print: true
-    prefer_const_constructors: true
-    prefer_const_literals_to_create_immutables: true
-    sized_box_for_whitespace: true
-    use_super_parameters: true
+    public_member_api_docs: false
+    lines_longer_than_80_chars: false
+    flutter_style_todos: false
+    one_member_abstracts: false
+    sort_pub_dependencies: false
+    avoid_catches_without_on_clauses: false

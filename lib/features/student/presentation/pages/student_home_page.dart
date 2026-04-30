@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_spacing.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/router/app_routes.dart';
-import '../../../../core/storage/secure_storage.dart';
-import '../../../../core/utils/jwt_utils.dart';
-import '../../../../shared/widgets/app_logo.dart';
-import '../../../../shared/widgets/user_avatar.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/utils/jwt_utils.dart';
+import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class StudentHomePage extends ConsumerWidget {
   const StudentHomePage({super.key});
@@ -39,10 +39,26 @@ class _HomeContent extends StatelessWidget {
   final String firstName;
 
   // Placeholder recent AI solutions
-  static const _recents = [
-    (sub: 'Toán 10', topic: 'Hệ thức Vi-ét', book: 'Cánh Diều · §3.4', time: '5p trước'),
-    (sub: 'Vật Lý 10', topic: 'Định luật II Newton', book: 'Chân trời · §9.2', time: 'Hôm qua'),
-    (sub: 'Hóa 10', topic: 'Cấu hình electron', book: 'Kết nối · §4.1', time: '2 ngày'),
+  static const List<({String book, String sub, String time, String topic})>
+  _recents = [
+    (
+      sub: 'Toán 10',
+      topic: 'Hệ thức Vi-ét',
+      book: 'Cánh Diều · §3.4',
+      time: '5p trước',
+    ),
+    (
+      sub: 'Vật Lý 10',
+      topic: 'Định luật II Newton',
+      book: 'Chân trời · §9.2',
+      time: 'Hôm qua',
+    ),
+    (
+      sub: 'Hóa 10',
+      topic: 'Cấu hình electron',
+      book: 'Kết nối · §4.1',
+      time: '2 ngày',
+    ),
   ];
 
   @override
@@ -65,13 +81,15 @@ class _HomeContent extends StatelessWidget {
               title: 'Gần đây',
               onSeeAll: () {},
             ),
-            ..._recents.map((r) => _RecentItem(
-                  subject: r.sub,
-                  topic: r.topic,
-                  book: r.book,
-                  time: r.time,
-                  onTap: () {},
-                )),
+            ..._recents.map(
+              (r) => _RecentItem(
+                subject: r.sub,
+                topic: r.topic,
+                book: r.book,
+                time: r.time,
+                onTap: () {},
+              ),
+            ),
             const SizedBox(height: AppSpacing.xl),
           ],
         ),
@@ -93,7 +111,7 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
-          const AppLogo(size: 15),
+          const AppLogo(),
           const Spacer(),
           // Bell icon
           Container(
@@ -107,7 +125,11 @@ class _TopBar extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Icon(Icons.notifications_outlined, size: 18, color: AppColors.ink),
+                const Icon(
+                  Icons.notifications_outlined,
+                  size: 18,
+                  color: AppColors.ink,
+                ),
                 Positioned(
                   top: 8,
                   right: 8,
@@ -124,7 +146,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          UserAvatar(name: name, size: 36),
+          UserAvatar(name: name),
         ],
       ),
     );
@@ -205,7 +227,7 @@ class _HeroCapture extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(22),
                   gradient: const RadialGradient(
-                    center: Alignment(0.9, -1.0),
+                    center: Alignment(0.9, -1),
                     radius: 1.2,
                     colors: [Color(0x2ED4B483), Colors.transparent],
                     stops: [0.0, 0.55],
@@ -286,7 +308,11 @@ class _CameraButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.camera_alt_outlined, size: 16, color: AppColors.ink),
+            const Icon(
+              Icons.camera_alt_outlined,
+              size: 16,
+              color: AppColors.ink,
+            ),
             const SizedBox(width: 8),
             Text(
               'Mở camera quét',

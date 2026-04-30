@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_colors.dart';
 
 const _kBg = Color(0xFF0B0E18);
 // Height of StudentShell bottom nav bar (barFlatHeight + fabLift = 64 + 18)
@@ -33,7 +33,8 @@ class _StudentCapturePageState extends State<StudentCapturePage>
     _scanCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
+    );
+    unawaited(_scanCtrl.repeat(reverse: true));
     _scanAnim = CurvedAnimation(parent: _scanCtrl, curve: Curves.easeInOut);
     _alignTimer = Timer(const Duration(milliseconds: 1100), () {
       if (mounted) setState(() => _aligning = false);
@@ -245,7 +246,10 @@ class _DimOverlayPainter extends CustomPainter {
     required this.frameBottom,
   });
 
-  final double frameLeft, frameTop, frameRight, frameBottom;
+  final double frameLeft;
+  final double frameTop;
+  final double frameRight;
+  final double frameBottom;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -376,7 +380,7 @@ class _CornerBracketPainter extends CustomPainter {
     //   BL (L=true,T=false): clockwise=false
     //   BR (L=false,T=false): clockwise=true
     // Formula: clockwise = left ? top : true
-    final cw = left ? top : true;
+    final cw = !left || top;
 
     final path = Path()
       ..moveTo(x, y + dy * (_len + _r))
@@ -393,8 +397,8 @@ class _CornerBracketPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _drawBracket(canvas, size, top: true,  left: true);
-    _drawBracket(canvas, size, top: true,  left: false);
+    _drawBracket(canvas, size, top: true, left: true);
+    _drawBracket(canvas, size, top: true, left: false);
     _drawBracket(canvas, size, top: false, left: true);
     _drawBracket(canvas, size, top: false, left: false);
   }
@@ -476,7 +480,7 @@ class _TopChrome extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
+              letterSpacing: 1,
               color: Colors.white,
             ),
           ),
@@ -497,7 +501,11 @@ class _TopChrome extends StatelessWidget {
 }
 
 class _ChromeButton extends StatelessWidget {
-  const _ChromeButton({required this.color, required this.onTap, required this.child});
+  const _ChromeButton({
+    required this.color,
+    required this.onTap,
+    required this.child,
+  });
   final Color color;
   final VoidCallback onTap;
   final Widget child;
@@ -542,7 +550,7 @@ class _ModeToggle extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
+                    letterSpacing: 1,
                     color: i == modeIndex
                         ? AppColors.gold
                         : Colors.white.withValues(alpha: 0.5),
@@ -579,7 +587,11 @@ class _ShutterRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const _SideButton(
-            child: Icon(Icons.photo_library_outlined, size: 18, color: Colors.white),
+            child: Icon(
+              Icons.photo_library_outlined,
+              size: 18,
+              color: Colors.white,
+            ),
           ),
           _ShutterButton(onTap: onShutter),
           _SideButton(
@@ -631,11 +643,13 @@ class _ShutterButton extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 4),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.3),
+            width: 4,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.white.withValues(alpha: 0.5),
-              blurRadius: 0,
               spreadRadius: 2,
             ),
           ],
@@ -653,7 +667,6 @@ class _ShutterButton extends StatelessWidget {
 }
 
 // ── Pulsing dot helper ─────────────────────────────────────────────────────
-// ignore: unused_element
 class _PulseDot extends StatefulWidget {
   const _PulseDot({required this.color});
   final Color color;
@@ -662,16 +675,20 @@ class _PulseDot extends StatefulWidget {
   State<_PulseDot> createState() => _PulseDotState();
 }
 
-class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))
-      ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 1.0).animate(_ctrl);
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    unawaited(_ctrl.repeat(reverse: true));
+    _anim = Tween<double>(begin: 0.4, end: 1).animate(_ctrl);
   }
 
   @override
@@ -689,10 +706,12 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
         child: Container(
           width: 6,
           height: 6,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.color,
+          ),
         ),
       ),
     );
   }
 }
-

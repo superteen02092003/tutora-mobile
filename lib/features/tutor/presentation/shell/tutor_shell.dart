@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../../core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_colors.dart';
 
 class TutorShell extends StatelessWidget {
-  const TutorShell({super.key, required this.navigationShell});
+  const TutorShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   static const _tabs = [
-    _TabItem(label: 'Trang chủ', icon: Icons.home_outlined, activeIcon: Icons.home),
-    _TabItem(label: 'Lịch dạy', icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today),
-    _TabItem(label: 'Đóng góp', icon: Icons.add_box_outlined, activeIcon: Icons.add_box),
-    _TabItem(label: 'Hồ sơ', icon: Icons.person_outline, activeIcon: Icons.person),
+    _TabItem(
+      label: 'Trang chủ',
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home,
+    ),
+    _TabItem(
+      label: 'Lịch dạy',
+      icon: Icons.calendar_today_outlined,
+      activeIcon: Icons.calendar_today,
+    ),
+    _TabItem(
+      label: 'Đóng góp',
+      icon: Icons.add_box_outlined,
+      activeIcon: Icons.add_box,
+    ),
+    _TabItem(
+      label: 'Hồ sơ',
+      icon: Icons.person_outline,
+      activeIcon: Icons.person,
+    ),
   ];
 
   void _onTap(int index) {
@@ -50,7 +66,7 @@ class _TutorBottomNav extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.paper,
-        border: Border(top: BorderSide(color: AppColors.line, width: 1)),
+        border: Border(top: BorderSide(color: AppColors.line)),
       ),
       child: SafeArea(
         top: false,
@@ -78,7 +94,9 @@ class _TutorBottomNav extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 10,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                           color: selected ? AppColors.ink : AppColors.ink4,
                         ),
                       ),
@@ -95,7 +113,11 @@ class _TutorBottomNav extends StatelessWidget {
 }
 
 class _TabItem {
-  const _TabItem({required this.label, required this.icon, required this.activeIcon});
+  const _TabItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+  });
   final String label;
   final IconData icon;
   final IconData activeIcon;
