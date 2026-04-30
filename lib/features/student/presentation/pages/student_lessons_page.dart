@@ -3,30 +3,71 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../shared/widgets/app_calendar.dart';
 import '../../../../shared/widgets/app_logo.dart';
-import '../../../../shared/widgets/status_chip.dart';
-import '../../../../shared/widgets/user_avatar.dart';
 import '../../../../mock/student_lessons_mock.dart';
+import 'student_session_detail_page.dart';
 
-// ── Page ───────────────────────────────────────────────────────────────────
-class StudentLessonsPage extends StatelessWidget {
+class StudentLessonsPage extends StatefulWidget {
   const StudentLessonsPage({super.key});
+
+  @override
+  State<StudentLessonsPage> createState() => _StudentLessonsPageState();
+}
+
+class _StudentLessonsPageState extends State<StudentLessonsPage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+  bool _showCalendar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+    // Keep segmented control in sync when user swipes
+    _tabs.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: const [
-            _TopBar(),
-            _Header(),
-            _SummaryStrip(),
-            _WeekStrip(),
-            _UpcomingSection(),
-            _CompletedSection(),
-            SizedBox(height: AppSpacing.xxl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _TopBar(
+              showCalendar: _showCalendar,
+              onToggle: () => setState(() => _showCalendar = !_showCalendar),
+            ),
+            if (_showCalendar) ...[
+              const Expanded(child: _CalendarView()),
+            ] else ...[
+              _TodayCard(lessons: kTodayLessons),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: _SegmentedTabs(
+                  selected: _tabs.index,
+                  onSelect: (i) => _tabs.animateTo(i),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabs,
+                  children: [
+                    _SessionListView(lessons: kUpcomingLessons),
+                    _SessionListView(lessons: kDoneLessons),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -34,9 +75,10 @@ class StudentLessonsPage extends StatelessWidget {
   }
 }
 
-// ── Top bar ────────────────────────────────────────────────────────────────
 class _TopBar extends StatelessWidget {
-  const _TopBar();
+  const _TopBar({required this.showCalendar, required this.onToggle});
+  final bool showCalendar;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -45,470 +87,416 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           const AppLogo(size: 13),
-          const Spacer(),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.paper,
-              border: Border.all(color: AppColors.line),
-            ),
-            child: const Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.ink),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Header ─────────────────────────────────────────────────────────────────
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('LỊCH HỌC', style: AppTextStyles.eyebrow(color: AppColors.oxblood)),
-          const SizedBox(height: 6),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Buổi học ',
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 28,
-                    height: 1.05,
-                    letterSpacing: -0.56,
-                    color: AppColors.ink,
-                  ),
-                ),
-                TextSpan(
-                  text: 'của bạn.',
-                  style: GoogleFonts.ibmPlexSerif(
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w400,
-                    fontSize: 26,
-                    color: AppColors.ink2,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Summary strip ──────────────────────────────────────────────────────────
-class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-      child: Row(
-        children: [
-          _StatPair(value: '${kMockUpcomingLessons.length}', label: 'sắp tới'),
-          _dot(),
-          _StatPair(value: '${kMockCompletedLessons.length}', label: 'hoàn tất'),
-          _dot(),
-          const _StatPair(value: '2', label: 'gia sư'),
-        ],
-      ),
-    );
-  }
-
-  Widget _dot() => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Container(
-          width: 3,
-          height: 3,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.line,
-          ),
-        ),
-      );
-}
-
-class _StatPair extends StatelessWidget {
-  const _StatPair({required this.value, required this.label});
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.bricolageGrotesque(
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-            color: AppColors.ink,
-          ),
-        ),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Week strip ─────────────────────────────────────────────────────────────
-class _WeekStrip extends StatelessWidget {
-  const _WeekStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.paper,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            for (final day in kMockWeekDays) _DayPill(day: day),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DayPill extends StatelessWidget {
-  const _DayPill({required this.day});
-  final WeekDay day;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: day.isToday ? AppColors.ink : Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            day.label,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: day.isToday ? AppColors.cream : AppColors.ink3,
-              letterSpacing: 0.1,
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            day.date,
-            style: GoogleFonts.bricolageGrotesque(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: day.isToday ? AppColors.cream : AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: day.hasSession
-                  ? (day.isToday
-                      ? AppColors.gold
-                      : AppColors.oxblood.withValues(alpha: 0.45))
-                  : Colors.transparent,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Upcoming section ───────────────────────────────────────────────────────
-class _UpcomingSection extends StatelessWidget {
-  const _UpcomingSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'SẮP TỚI · ${kMockUpcomingLessons.length} buổi',
-                style: AppTextStyles.eyebrow(),
+          Expanded(
+            child: Text(
+              'Lịch học',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.ibmPlexSerif(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: AppColors.ink,
               ),
-              Text(
-                'Xem tất cả',
-                style: GoogleFonts.ibmPlexSerif(
-                  fontStyle: FontStyle.italic,
-                  fontSize: 12,
-                  color: AppColors.ink3,
-                ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onToggle,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: showCalendar ? AppColors.ink : AppColors.paper,
+                border: Border.all(color: AppColors.line),
               ),
-            ],
+              child: Icon(
+                showCalendar ? Icons.view_list_rounded : Icons.calendar_month_outlined,
+                size: 16,
+                color: showCalendar ? AppColors.cream : AppColors.ink,
+              ),
+            ),
           ),
-        ),
-        for (int i = 0; i < kMockUpcomingLessons.length; i++)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-                16, 0, 16, i < kMockUpcomingLessons.length - 1 ? 8 : 0),
-            child: _UpcomingCard(lesson: kMockUpcomingLessons[i], isFirst: i == 0),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-typedef _StatusStyle = ({
-  ChipTone chip,
-  String? ctaLabel,
-  bool ctaDark,
-  bool showChipOnly,
-});
-
-class _UpcomingCard extends StatelessWidget {
-  const _UpcomingCard({required this.lesson, required this.isFirst});
-  final MockLesson lesson;
-  final bool isFirst;
-
-  _StatusStyle get _style => switch (lesson.status) {
-        LessonStatus.upcoming  => (chip: ChipTone.ox,   ctaLabel: 'Vào lớp',  ctaDark: true,  showChipOnly: false),
-        LessonStatus.confirmed => (chip: ChipTone.moss,  ctaLabel: 'Chuẩn bị', ctaDark: false, showChipOnly: false),
-        LessonStatus.pending   => (chip: ChipTone.line,  ctaLabel: null,        ctaDark: false, showChipOnly: true),
-        LessonStatus.completed => (chip: ChipTone.moss,  ctaLabel: null,        ctaDark: false, showChipOnly: true),
-      };
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({required this.lessons});
+  final List<MockLesson> lessons;
 
   @override
   Widget build(BuildContext context) {
-    final s = _style;
+    if (lessons.isEmpty) return const SizedBox(height: 4);
+    final times = lessons.map((l) => l.timeStart).join(' · ');
+
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.paper,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border(
-          left: BorderSide(
-            color: isFirst ? AppColors.oxblood : AppColors.line,
-            width: isFirst ? 3 : 1,
-          ),
-          top: const BorderSide(color: AppColors.line),
-          right: const BorderSide(color: AppColors.line),
-          bottom: const BorderSide(color: AppColors.line),
-        ),
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
         children: [
-          // Time column
-          SizedBox(
-            width: 52,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  lesson.dayLabel,
-                  style: GoogleFonts.ibmPlexMono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink3,
-                    letterSpacing: 0.05,
-                  ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                gradient: RadialGradient(
+                  center: const Alignment(1.1, -1.1),
+                  radius: 1.2,
+                  colors: [
+                    AppColors.gold.withValues(alpha: 0.2),
+                    Colors.transparent,
+                  ],
                 ),
-                Text(
-                  lesson.timeLabel,
-                  style: GoogleFonts.ibmPlexMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isFirst ? AppColors.oxblood : AppColors.ink,
-                    height: 1.2,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          Container(width: 1, height: 36, color: AppColors.line),
-          const SizedBox(width: 12),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    UserAvatar(name: lesson.tutorName, size: 16),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        lesson.tutorName,
-                        style: GoogleFonts.bricolageGrotesque(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
-                          color: AppColors.ink,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    Text('Hôm nay · 30 tháng 4',
+                        style: AppTextStyles.eyebrow(color: AppColors.gold)),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${lessons.length} buổi học',
+                      style: GoogleFonts.bricolageGrotesque(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        height: 1.1,
+                        color: AppColors.cream,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      times,
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: AppColors.cream.withValues(alpha: 0.65),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  '${lesson.subject} · ${lesson.topic}',
-                  style: GoogleFonts.inter(
-                      fontSize: 11.5, color: AppColors.ink3, height: 1.3),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          // CTA or status chip
-          if (s.showChipOnly)
-            StatusChip(
-              label: lesson.status == LessonStatus.pending ? 'Chờ xác nhận' : 'Hoàn tất',
-              tone: s.chip,
-            )
-          else
-            GestureDetector(
-              onTap: () {},
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              ),
+              Container(
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: s.ctaDark ? AppColors.ink : Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                  border: s.ctaDark ? null : Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(16),
+                  color: AppColors.gold.withValues(alpha: 0.15),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
                 ),
-                child: Text(
-                  s.ctaLabel!,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: s.ctaDark ? AppColors.cream : AppColors.ink,
-                  ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '30',
+                      style: GoogleFonts.bricolageGrotesque(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        color: AppColors.gold,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'T4',
+                      style: GoogleFonts.ibmPlexMono(
+                        fontSize: 8,
+                        color: AppColors.cream.withValues(alpha: 0.6),
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Completed section ──────────────────────────────────────────────────────
-class _CompletedSection extends StatelessWidget {
-  const _CompletedSection();
+class _SegmentedTabs extends StatelessWidget {
+  const _SegmentedTabs({required this.selected, required this.onSelect});
+  final int selected;
+  final ValueChanged<int> onSelect;
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('ĐÃ HOÀN THÀNH', style: AppTextStyles.eyebrow()),
-              Text(
-                'Xem tất cả',
-                style: GoogleFonts.ibmPlexSerif(
-                  fontStyle: FontStyle.italic,
-                  fontSize: 12,
-                  color: AppColors.ink3,
-                ),
-              ),
-            ],
-          ),
-        ),
-        for (int i = 0; i < kMockCompletedLessons.length; i++)
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-                16, 0, 16, i < kMockCompletedLessons.length - 1 ? 8 : 0),
-            child: _CompletedCard(lesson: kMockCompletedLessons[i]),
-          ),
-      ],
-    );
-  }
-}
-
-class _CompletedCard extends StatelessWidget {
-  const _CompletedCard({required this.lesson});
-  final MockLesson lesson;
+  static const _labels = ['Sắp tới', 'Đã xong'];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      height: 40,
       decoration: BoxDecoration(
         color: AppColors.paper,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.line),
       ),
       child: Row(
-        children: [
-          SizedBox(
-            width: 44,
-            child: Text(
-              '${lesson.dayLabel}\n${lesson.timeLabel}',
-              style: GoogleFonts.ibmPlexMono(
-                fontSize: 10.5,
-                color: AppColors.ink3,
-                height: 1.4,
-              ),
-            ),
-          ),
-          Container(width: 1, height: 28, color: AppColors.line),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  lesson.tutorName,
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontWeight: FontWeight.w600,
+        children: List.generate(_labels.length, (i) {
+          final active = i == selected;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onSelect(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: active ? AppColors.ink : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _labels[i],
+                  style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: AppColors.ink2,
+                    fontWeight: FontWeight.w600,
+                    color: active ? AppColors.cream : AppColors.ink3,
                   ),
                 ),
-                Text(
-                  '${lesson.subject} · ${lesson.topic}',
-                  style: GoogleFonts.inter(
-                      fontSize: 11, color: AppColors.ink3, height: 1.3),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
-          ),
-          const StatusChip(label: 'Hoàn tất', tone: ChipTone.moss),
-        ],
+          );
+        }),
       ),
+    );
+  }
+}
+
+class _SessionListView extends StatelessWidget {
+  const _SessionListView({required this.lessons});
+  final List<MockLesson> lessons;
+
+  @override
+  Widget build(BuildContext context) {
+    if (lessons.isEmpty) {
+      return Center(
+        child: Text(
+          'Không có buổi học nào.',
+          style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, AppSpacing.xxl),
+      itemCount: lessons.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, i) => _SessionCard(lesson: lessons[i]),
+    );
+  }
+}
+
+// ── Session card ───────────────────────────────────────────────────────────
+class _SessionCard extends StatelessWidget {
+  const _SessionCard({required this.lesson});
+  final MockLesson lesson;
+
+  Color get _dividerColor => switch (lesson.status) {
+        LessonStatus.upcoming  => AppColors.oxblood,
+        LessonStatus.confirmed => AppColors.moss,
+        _                      => AppColors.line,
+      };
+
+  _ChipStyle get _chipStyle => switch (lesson.status) {
+        LessonStatus.upcoming  => (bg: AppColors.oxblood,       fg: const Color(0xFFFFF1E6), label: 'Sắp diễn ra'),
+        LessonStatus.confirmed => (bg: AppColors.moss,           fg: const Color(0xFFE0E7DF), label: 'Đã xác nhận'),
+        LessonStatus.pending   => (bg: const Color(0xFFF0E3CA), fg: const Color(0xFF5C3A1A), label: 'Chờ xác nhận'),
+        LessonStatus.done      => (bg: AppColors.cream2,         fg: AppColors.ink3,          label: 'Hoàn thành'),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = _chipStyle;
+    final isDone = lesson.status == LessonStatus.done;
+
+    return Opacity(
+      opacity: isDone ? 0.75 : 1.0,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (_) => StudentSessionDetailPage(lesson: lesson),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.paper,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Time block
+              SizedBox(
+                width: 50,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      lesson.timeStart,
+                      style: GoogleFonts.ibmPlexMono(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      lesson.date,
+                      style: GoogleFonts.inter(fontSize: 9, color: AppColors.ink3),
+                    ),
+                  ],
+                ),
+              ),
+              // Colored vertical divider
+              Container(
+                width: 2,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _dividerColor,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lesson.topic,
+                      style: GoogleFonts.ibmPlexSerif(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${lesson.tutorName} · ${lesson.subject}',
+                      style: GoogleFonts.inter(fontSize: 11.5, color: AppColors.ink3),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: chip.bg,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            chip.label,
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: chip.fg,
+                              letterSpacing: 0.06,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${lesson.priceK}k',
+                          style: GoogleFonts.ibmPlexMono(
+                            fontSize: 11,
+                            color: AppColors.ink3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.ink3),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+typedef _ChipStyle = ({Color bg, Color fg, String label});
+
+class _CalendarView extends StatefulWidget {
+  const _CalendarView();
+
+  @override
+  State<_CalendarView> createState() => _CalendarViewState();
+}
+
+class _CalendarViewState extends State<_CalendarView> {
+  DateTime _selected = DateTime(2026, 4, 30);
+
+  String get _dayHeader {
+    final today = DateTime.now();
+    if (_selected.year == today.year &&
+        _selected.month == today.month &&
+        _selected.day == today.day) {
+      return 'Hôm nay · ${_selected.day} tháng ${_selected.month}';
+    }
+    return 'Ngày ${_selected.day} tháng ${_selected.month}';
+  }
+
+  List<MockLesson> get _selectedSessions {
+    if (_selected.year == 2026 && _selected.month == 4) {
+      return kMockAprilSessions[_selected.day] ?? [];
+    }
+    return [];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        const SizedBox(height: 4),
+        AppCalendar(
+          selectedDate: _selected,
+          sessionCountForDay: (y, m, d) {
+            if (y == 2026 && m == 4) return kMockSessionDaysApril[d] ?? 0;
+            return 0;
+          },
+          onSelectDate: (date) => setState(() => _selected = date),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+          child: Text(
+            _dayHeader.toUpperCase(),
+            style: AppTextStyles.eyebrow(color: AppColors.ink3),
+          ),
+        ),
+        if (_selectedSessions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            child: Center(
+              child: Text(
+                'Không có buổi học nào ngày này.',
+                style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+              ),
+            ),
+          )
+        else
+          for (int i = 0; i < _selectedSessions.length; i++)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  16, 0, 16, i < _selectedSessions.length - 1 ? 8 : 0),
+              child: _SessionCard(lesson: _selectedSessions[i]),
+            ),
+        const SizedBox(height: AppSpacing.xxl),
+      ],
     );
   }
 }
