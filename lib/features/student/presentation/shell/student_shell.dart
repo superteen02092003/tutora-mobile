@@ -45,7 +45,8 @@ class StudentShell extends StatelessWidget {
                   bumpRadius: _bumpRadius,
                   fabGap: _fabGap,
                   color: AppColors.paper,
-                  shadowColor: Colors.black.withValues(alpha: 0.10),
+                  shadowColor: Colors.black.withValues(alpha: 0.8),
+                  borderColor: Colors.black.withValues(alpha: 0.18),
                 ),
               ),
             ),
@@ -93,6 +94,7 @@ class _BumpBarPainter extends CustomPainter {
     required this.fabGap,
     required this.color,
     required this.shadowColor,
+    required this.borderColor,
   });
 
   final double fabLift;
@@ -100,6 +102,7 @@ class _BumpBarPainter extends CustomPainter {
   final double fabGap; // gap between arc apex and FAB top
   final Color color;
   final Color shadowColor;
+  final Color borderColor;
 
   static const double _cornerR = 14;
 
@@ -142,6 +145,13 @@ class _BumpBarPainter extends CustomPainter {
 
     canvas.drawShadow(path, shadowColor, 8, false);
     canvas.drawPath(path, Paint()..color = color);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
   }
 
   @override
@@ -150,7 +160,8 @@ class _BumpBarPainter extends CustomPainter {
       old.bumpRadius != bumpRadius ||
       old.fabGap != fabGap ||
       old.color != color ||
-      old.shadowColor != shadowColor;
+      old.shadowColor != shadowColor ||
+      old.borderColor != borderColor;
 }
 
 
