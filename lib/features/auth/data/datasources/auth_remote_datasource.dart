@@ -7,6 +7,18 @@ class AuthRemoteDatasource {
 
   final Dio _dio;
 
+  Future<RegisterResponse> register(RegisterRequest request) async {
+    try {
+      final response = await _dio.post<dynamic>(
+        '/SimpleAuth/register',
+        data: request.toJson(),
+      );
+      return RegisterResponse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
   Future<LoginResponse> login(LoginRequest request) async {
     try {
       final response = await _dio.post<dynamic>(
