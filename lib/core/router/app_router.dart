@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
+import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/student/presentation/pages/student_capture_page.dart';
 import 'package:tutora/features/student/presentation/pages/student_home_page.dart';
@@ -28,6 +31,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, _) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        builder: (context, _) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgot,
+        builder: (context, _) => const ForgotPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.otp,
+        builder: (context, state) => OtpPage(
+          email: state.extra as String? ?? '',
+        ),
       ),
 
       // ── Student shell — 5 tabs: Home(0) · Search(1) · Capture(2,center) · Lessons(3) · Profile(4)
