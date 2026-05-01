@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 
 class TutorShell extends StatelessWidget {
@@ -7,28 +10,11 @@ class TutorShell extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  static const _tabs = [
-    _TabItem(
-      label: 'Trang chủ',
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home,
-    ),
-    _TabItem(
-      label: 'Lịch dạy',
-      icon: Icons.calendar_today_outlined,
-      activeIcon: Icons.calendar_today,
-    ),
-    _TabItem(
-      label: 'Đóng góp',
-      icon: Icons.add_box_outlined,
-      activeIcon: Icons.add_box,
-    ),
-    _TabItem(
-      label: 'Hồ sơ',
-      icon: Icons.person_outline,
-      activeIcon: Icons.person,
-    ),
-  ];
+  static const double _fabSize = 60;
+  static const double _bumpRadius = 40;
+  static const double _barFlatHeight = 64;
+  static const double _fabLift = 18;
+  static const double _fabGap = -6;
 
   void _onTap(int index) {
     navigationShell.goBranch(
@@ -39,72 +25,215 @@ class TutorShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final current = navigationShell.currentIndex;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final totalHeight = _barFlatHeight + _fabLift + bottomPad;
+
     return Scaffold(
+      extendBody: true,
       body: navigationShell,
-      bottomNavigationBar: _TutorBottomNav(
-        currentIndex: navigationShell.currentIndex,
-        onTap: _onTap,
-        tabs: _tabs,
+      bottomNavigationBar: SizedBox(
+        height: totalHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Painted bar with convex bump
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _BumpBarPainter(
+                  fabLift: _fabLift,
+                  bumpRadius: _bumpRadius,
+                  fabGap: _fabGap,
+                  color: AppColors.paper,
+                  shadowColor: Colors.black.withValues(alpha: 0.8),
+                  borderColor: Colors.black.withValues(alpha: 0.18),
+                ),
+              ),
+            ),
+            // Tab row sits on the flat portion of the bar
+            Positioned(
+              left: 0,
+              right: 0,
+              top: _fabLift,
+              height: _barFlatHeight,
+              child: Row(
+                children: [
+                  _NavTab(
+                    index: 0,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.home_outlined,
+                    activeIcon: Icons.home_rounded,
+                    label: 'Trang chủ',
+                  ),
+                  _NavTab(
+                    index: 1,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.add_box_outlined,
+                    activeIcon: Icons.add_box_rounded,
+                    label: 'Diễn đàn',
+                  ),
+                  // Spacer reserves room for the center bump
+                  const Expanded(child: SizedBox()),
+                  _NavTab(
+                    index: 3,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.chat_bubble_outline_rounded,
+                    activeIcon: Icons.chat_bubble_rounded,
+                    label: 'Tin nhắn',
+                  ),
+                  _NavTab(
+                    index: 4,
+                    current: current,
+                    onTap: _onTap,
+                    icon: Icons.person_outline_rounded,
+                    activeIcon: Icons.person_rounded,
+                    label: 'Tôi',
+                  ),
+                ],
+              ),
+            ),
+            // Center Schedule button — sits inside the upward bump
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _ScheduleFab(
+                  size: _fabSize,
+                  isActive: current == 2,
+                  onTap: () => _onTap(2),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TutorBottomNav extends StatelessWidget {
-  const _TutorBottomNav({
-    required this.currentIndex,
-    required this.onTap,
-    required this.tabs,
+class _BumpBarPainter extends CustomPainter {
+  _BumpBarPainter({
+    required this.fabLift,
+    required this.bumpRadius,
+    required this.fabGap,
+    required this.color,
+    required this.shadowColor,
+    required this.borderColor,
   });
 
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-  final List<_TabItem> tabs;
+  final double fabLift;
+  final double bumpRadius;
+  final double fabGap;
+  final Color color;
+  final Color shadowColor;
+  final Color borderColor;
+
+  static const double _cornerR = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final flatTop = fabLift;
+
+    // Arc center: apex = cy - bumpRadius = fabGap → cy = bumpRadius + fabGap
+    final cy = bumpRadius + fabGap;
+    final dy = flatTop - cy;
+    final halfChord = math.sqrt(math.max(0, bumpRadius * bumpRadius - dy * dy));
+
+    final leftX = cx - halfChord;
+    final rightX = cx + halfChord;
+
+    final startAngle = math.atan2(dy, -halfChord);
+    final endAngle = math.atan2(dy, halfChord);
+    final sweep = endAngle - startAngle;
+
+    final path = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(0, flatTop + _cornerR)
+      ..quadraticBezierTo(0, flatTop, _cornerR, flatTop)
+      ..lineTo(leftX, flatTop)
+      ..arcTo(
+        Rect.fromCircle(center: Offset(cx, cy), radius: bumpRadius),
+        startAngle,
+        sweep,
+        false,
+      )
+      ..lineTo(rightX, flatTop)
+      ..lineTo(size.width - _cornerR, flatTop)
+      ..quadraticBezierTo(size.width, flatTop, size.width, flatTop + _cornerR)
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    canvas
+      ..drawShadow(path, shadowColor, 8, false)
+      ..drawPath(path, Paint()..color = color)
+      ..drawPath(
+        path,
+        Paint()
+          ..color = borderColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0,
+      );
+  }
+
+  @override
+  bool shouldRepaint(covariant _BumpBarPainter old) =>
+      old.fabLift != fabLift ||
+      old.bumpRadius != bumpRadius ||
+      old.fabGap != fabGap ||
+      old.color != color ||
+      old.shadowColor != shadowColor ||
+      old.borderColor != borderColor;
+}
+
+class _ScheduleFab extends StatelessWidget {
+  const _ScheduleFab({
+    required this.size,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final double size;
+  final bool isActive;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.paper,
-        border: Border(top: BorderSide(color: AppColors.line)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            children: List.generate(tabs.length, (i) {
-              final tab = tabs[i];
-              final selected = i == currentIndex;
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        selected ? tab.activeIcon : tab.icon,
-                        size: 22,
-                        color: selected ? AppColors.ink : AppColors.ink4,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        tab.label,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                          color: selected ? AppColors.ink : AppColors.ink4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive ? AppColors.oxblood : AppColors.ink,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isActive
+                    ? Icons.calendar_month_rounded
+                    : Icons.calendar_month_outlined,
+                size: 22,
+                color: isActive ? const Color(0xFFFFF1E6) : AppColors.cream,
+              ),
+              const SizedBox(height: 2),
+            ],
           ),
         ),
       ),
@@ -112,13 +241,51 @@ class _TutorBottomNav extends StatelessWidget {
   }
 }
 
-class _TabItem {
-  const _TabItem({
-    required this.label,
+class _NavTab extends StatelessWidget {
+  const _NavTab({
+    required this.index,
+    required this.current,
+    required this.onTap,
     required this.icon,
     required this.activeIcon,
+    required this.label,
   });
-  final String label;
+
+  final int index;
+  final int current;
+  final ValueChanged<int> onTap;
   final IconData icon;
   final IconData activeIcon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = index == current;
+    return Expanded(
+      child: InkWell(
+        onTap: () => onTap(index),
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              selected ? activeIcon : icon,
+              size: 22,
+              color: selected ? AppColors.ink : AppColors.ink4,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 9.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                color: selected ? AppColors.ink : AppColors.ink4,
+                letterSpacing: 0.04,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

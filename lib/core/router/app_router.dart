@@ -15,6 +15,7 @@ import 'package:tutora/features/student/presentation/pages/tutor_detail_page.dar
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor/presentation/pages/tutor_contribute_page.dart';
 import 'package:tutora/features/tutor/presentation/pages/tutor_home_page.dart';
+import 'package:tutora/features/tutor/presentation/pages/tutor_messages_page.dart';
 import 'package:tutora/features/tutor/presentation/pages/tutor_profile_page.dart';
 import 'package:tutora/features/tutor/presentation/pages/tutor_schedule_page.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
@@ -47,7 +48,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // ── Student shell — 5 tabs: Home(0) · Search(1) · Capture(2,center) · Lessons(3) · Profile(4)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => StudentShell(navigationShell: shell),
         branches: [
@@ -102,7 +102,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── Tutor shell — 4 tabs: Home · Schedule · Contribute · Profile
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShell(navigationShell: shell),
         branches: [
@@ -117,6 +116,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.tutorContribute,
+                builder: (context, _) => const TutorContributePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.tutorSchedule,
                 builder: (context, _) => const TutorSchedulePage(),
               ),
@@ -125,8 +132,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.tutorContribute,
-                builder: (context, _) => const TutorContributePage(),
+                path: AppRoutes.tutorMessages,
+                builder: (context, _) => const TutorMessagesPage(),
               ),
             ],
           ),
