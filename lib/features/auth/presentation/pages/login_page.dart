@@ -10,6 +10,7 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/login_controller.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -59,14 +60,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.listen(loginControllerProvider, (_, state) {
       if (state is LoginSuccess) unawaited(_navigateByRole());
       if (state is LoginError) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
+        AppToast.show(
+          context,
+          message: state.message,
+          type: AppToastType.error,
+        );
         ref.read(loginControllerProvider.notifier).resetError();
       }
     });
