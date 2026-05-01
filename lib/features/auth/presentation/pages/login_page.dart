@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
@@ -10,6 +12,8 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/login_controller.dart';
+import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
+import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -22,7 +26,6 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  bool _obscure = true;
 
   @override
   void dispose() {
@@ -34,10 +37,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     await ref
         .read(loginControllerProvider.notifier)
-        .login(
-          _emailCtrl.text,
-          _passCtrl.text,
-        );
+        .login(_emailCtrl.text, _passCtrl.text);
   }
 
   Future<void> _navigateByRole() async {
@@ -73,101 +73,202 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isLoading = state is LoginLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 56),
-
-              // Wordmark
-              Text(
-                'TUTORA.',
-                style: AppTextStyles.eyebrow(
-                  color: AppColors.oxblood,
-                ).copyWith(fontSize: 12),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              // Heading
-              Text('Chào mừng\ntrở lại.', style: AppTextStyles.h1()),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Học cùng gia sư phù hợp nhất với bạn.',
-                style: AppTextStyles.serifItalic(),
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
-
-              // Email / phone
-              TextField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                enabled: !isLoading,
-                decoration: const InputDecoration(
-                  labelText: 'Email hoặc số điện thoại',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-
-              // Password
-              TextField(
-                controller: _passCtrl,
-                obscureText: _obscure,
-                textInputAction: TextInputAction.done,
-                enabled: !isLoading,
-                onSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  labelText: 'Mật khẩu',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscure
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 18,
-                      color: AppColors.ink4,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: isLoading ? null : () {},
-                  child: Text(
-                    'Quên mật khẩu?',
-                    style: AppTextStyles.label(color: AppColors.oxblood),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: AppSpacing.lg),
-
-              // Submit
-              ElevatedButton(
-                onPressed: isLoading ? null : _submit,
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.cream,
-                        ),
-                      )
-                    : const Text('Đăng nhập'),
-              ),
-
-              const SizedBox(height: AppSpacing.xxl),
-            ],
+      body: Column(
+        children: [
+          const AuthTopDeco(
+            bgColor: AppColors.oxblood,
+            line1: 'Học tốt hơn,',
+            italicWord: 'linh hoạt',
+            line2Suffix: 'thời gian',
           ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Đăng nhập', style: AppTextStyles.h2()),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chào mừng trở lại — hãy tiếp tục học.',
+                      style: AppTextStyles.serifItalic(color: AppColors.ink3),
+                    ),
+                    const SizedBox(height: 28),
+
+                    AuthInput(
+                      label: 'Email',
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      hint: 'ten@email.com',
+                      enabled: !isLoading,
+                    ),
+                    const SizedBox(height: 14),
+
+                    AuthInput(
+                      label: 'Mật khẩu',
+                      controller: _passCtrl,
+                      obscureText: true,
+                      hint: 'Nhập mật khẩu',
+                      textInputAction: TextInputAction.done,
+                      enabled: !isLoading,
+                      onSubmitted: (_) => _submit(),
+                    ),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: isLoading
+                            ? null
+                            : () => context.push(AppRoutes.forgot),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: Text(
+                          'Quên mật khẩu?',
+                          style: AppTextStyles.serifItalic(
+                            color: AppColors.oxblood,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.ink,
+                        foregroundColor: AppColors.cream,
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: const StadiumBorder(),
+                        textStyle: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      onPressed: isLoading ? null : _submit,
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.cream,
+                              ),
+                            )
+                          : const Text('Đăng nhập'),
+                    ),
+
+                    _Divider(),
+
+                    _GoogleButton(),
+
+                    const SizedBox(height: 32),
+
+                    Center(
+                      child: Text.rich(
+                        TextSpan(
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.ink3,
+                          ),
+                          children: [
+                            const TextSpan(text: 'Chưa có tài khoản? '),
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: GestureDetector(
+                                onTap: isLoading
+                                    ? null
+                                    : () => context.push(AppRoutes.register),
+                                child: Text(
+                                  'Đăng ký ngay',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.oxblood,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Internal helpers ───────────────────────────────────────────────────────
+
+class _Divider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: AppColors.line)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              'hoặc',
+              style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink4),
+            ),
+          ),
+          const Expanded(child: Divider(color: AppColors.line)),
+        ],
+      ),
+    );
+  }
+}
+
+class _GoogleButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
         ),
+        side: const BorderSide(color: AppColors.line, width: 1.5),
+        backgroundColor: AppColors.paper,
+      ),
+      onPressed: null,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.string(
+            '''
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+</svg>''',
+            width: 18,
+            height: 18,
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Tiếp tục với Google',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
+        ],
       ),
     );
   }
