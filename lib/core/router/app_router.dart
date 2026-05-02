@@ -13,10 +13,11 @@ import 'package:tutora/features/student/presentation/pages/student_marketplace_p
 import 'package:tutora/features/student/presentation/pages/student_profile_page.dart';
 import 'package:tutora/features/student/presentation/pages/tutor_detail_page.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
-import 'package:tutora/features/tutor/presentation/pages/tutor_contribute_page.dart';
-import 'package:tutora/features/tutor/presentation/pages/tutor_home_page.dart';
-import 'package:tutora/features/tutor/presentation/pages/tutor_profile_page.dart';
-import 'package:tutora/features/tutor/presentation/pages/tutor_schedule_page.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_messages_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_profile_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -47,7 +48,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // ── Student shell — 5 tabs: Home(0) · Search(1) · Capture(2,center) · Lessons(3) · Profile(4)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => StudentShell(navigationShell: shell),
         branches: [
@@ -102,7 +102,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── Tutor shell — 4 tabs: Home · Schedule · Contribute · Profile
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShell(navigationShell: shell),
         branches: [
@@ -110,15 +109,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.tutorHome,
-                builder: (context, _) => const TutorHomePage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorSchedule,
-                builder: (context, _) => const TutorSchedulePage(),
+                builder: (context, _) => const TutorHomeScreen(),
               ),
             ],
           ),
@@ -126,7 +117,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.tutorContribute,
-                builder: (context, _) => const TutorContributePage(),
+                builder: (context, _) => const TutorContributeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.tutorSchedule,
+                builder: (context, _) => const TutorScheduleScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.tutorMessages,
+                builder: (context, _) => const TutorMessagesScreen(),
               ),
             ],
           ),
@@ -134,7 +141,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.tutorProfile,
-                builder: (context, _) => const TutorProfilePage(),
+                builder: (context, _) => const TutorProfileScreen(),
               ),
             ],
           ),

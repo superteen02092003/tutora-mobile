@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 
-class TutorHomePage extends StatelessWidget {
-  const TutorHomePage({super.key});
+class TutorMessagesScreen extends StatelessWidget {
+  const TutorMessagesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +12,7 @@ class TutorHomePage extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Text('Tutor · Trang chủ', style: AppTextStyles.h2()),
+          child: Text('Tutor · Tin nhắn', style: AppTextStyles.h2()),
         ),
       ),
     );

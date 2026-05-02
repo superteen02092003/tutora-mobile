@@ -19,8 +19,9 @@ abstract final class AppRoutes {
 
   // Tutor shell tabs
   static const tutorHome = '/tutor/home';
-  static const tutorSchedule = '/tutor/schedule';
   static const tutorContribute = '/tutor/contribute';
+  static const tutorSchedule = '/tutor/schedule';
+  static const tutorMessages = '/tutor/messages';
   static const tutorProfile = '/tutor/profile';
 
   // Shared
