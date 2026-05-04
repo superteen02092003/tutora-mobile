@@ -75,6 +75,16 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Result<void>> logout() async {
+    try {
+      await storage.clearTokens();
+      return (data: null, failure: null);
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
+  @override
   Future<Result<void>> forgotPassword({required String email}) async {
     try {
       await datasource.forgotPassword(email);

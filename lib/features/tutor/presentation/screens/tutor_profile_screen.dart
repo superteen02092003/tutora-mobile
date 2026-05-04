@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_availability_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
@@ -7,14 +9,14 @@ import 'package:tutora/features/tutor/presentation/widgets/tutor_profile_header.
 import 'package:tutora/features/tutor/presentation/widgets/wallet_card.dart';
 import 'package:tutora/mock/tutor_profile_mock.dart';
 
-class TutorProfileScreen extends StatefulWidget {
+class TutorProfileScreen extends ConsumerStatefulWidget {
   const TutorProfileScreen({super.key});
 
   @override
-  State<TutorProfileScreen> createState() => _TutorProfileScreenState();
+  ConsumerState<TutorProfileScreen> createState() => _TutorProfileScreenState();
 }
 
-class _TutorProfileScreenState extends State<TutorProfileScreen> {
+class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
   bool _notifOn = true;
 
   @override
@@ -119,7 +121,8 @@ class _TutorProfileScreenState extends State<TutorProfileScreen> {
                       icon: Icons.logout_rounded,
                       label: 'Đăng xuất',
                       danger: true,
-                      onTap: () {},
+                      onTap: () =>
+                          ref.read(authControllerProvider.notifier).logout(),
                     ),
                   ],
                 ),

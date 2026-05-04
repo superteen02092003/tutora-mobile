@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/shared/widgets/auth_listener.dart';
 
 // Tab order: Home(0) · Search(1) · Capture/AI(2, center bump) · Lessons(3) · Profile(4)
 class StudentShell extends StatelessWidget {
@@ -32,7 +33,7 @@ class StudentShell extends StatelessWidget {
 
     return Scaffold(
       extendBody: true,
-      body: navigationShell,
+      body: AuthListener(child: navigationShell),
       bottomNavigationBar: SizedBox(
         height: totalHeight,
         child: Stack(

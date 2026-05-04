@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/shared/widgets/auth_listener.dart';
 
 class TutorShell extends StatelessWidget {
   const TutorShell({required this.navigationShell, super.key});
@@ -31,7 +32,7 @@ class TutorShell extends StatelessWidget {
 
     return Scaffold(
       extendBody: true,
-      body: navigationShell,
+      body: AuthListener(child: navigationShell),
       bottomNavigationBar: SizedBox(
         height: totalHeight,
         child: Stack(
