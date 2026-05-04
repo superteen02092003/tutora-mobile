@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/mock/student_profile_mock.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 
-class StudentProfilePage extends StatefulWidget {
+class StudentProfilePage extends ConsumerStatefulWidget {
   const StudentProfilePage({super.key});
 
   @override
-  State<StudentProfilePage> createState() => _StudentProfilePageState();
+  ConsumerState<StudentProfilePage> createState() => _StudentProfilePageState();
 }
 
-class _StudentProfilePageState extends State<StudentProfilePage> {
+class _StudentProfilePageState extends ConsumerState<StudentProfilePage> {
   bool _notifOn = true;
 
   @override
@@ -102,7 +102,8 @@ class _StudentProfilePageState extends State<StudentProfilePage> {
                         icon: Icons.logout_rounded,
                         label: 'Đăng xuất',
                         danger: true,
-                        onTap: () => context.go(AppRoutes.login),
+                        onTap: () =>
+                            ref.read(authControllerProvider.notifier).logout(),
                       ),
                     ],
                   ),

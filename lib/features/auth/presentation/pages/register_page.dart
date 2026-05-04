@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/register_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
@@ -101,7 +100,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   Widget build(BuildContext context) {
     ref.listen(registerControllerProvider, (_, state) {
       if (state is RegisterSuccess) {
-        unawaited(context.push(AppRoutes.otp, extra: state.email));
+        AppToast.show(
+          context,
+          message: 'Đăng ký thành công! Vui lòng đăng nhập.',
+          type: AppToastType.success,
+        );
+        Future.delayed(const Duration(milliseconds: 1200), () {
+          if (context.mounted) context.pop();
+        });
       }
       if (state is RegisterError) {
         AppToast.show(
