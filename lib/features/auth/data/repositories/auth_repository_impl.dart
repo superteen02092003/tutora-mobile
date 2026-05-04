@@ -74,6 +74,18 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Result<void>> forgotPassword({required String email}) async {
+    try {
+      await datasource.forgotPassword(email);
+      return (data: null, failure: null);
+    } on AppException catch (e) {
+      return (data: null, failure: _mapForgotException(e));
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
   Failure _mapException(AppException e) => switch (e) {
     UnauthorizedException() => const AuthFailure(
       'Email/SĐT hoặc mật khẩu không đúng.',
@@ -81,5 +93,13 @@ class AuthRepositoryImpl implements AuthRepository {
     NetworkException() => const NetworkFailure(),
     ServerException() => ServerFailure(e.message),
     _ => const ServerFailure(),
+  };
+
+  Failure _mapForgotException(AppException e) => switch (e) {
+    NotFoundException() => const ValidationFailure(
+      'Email này chưa được đăng ký trong hệ thống.',
+    ),
+    NetworkException() => const NetworkFailure(),
+    _ => const ServerFailure('Có lỗi xảy ra. Vui lòng thử lại.'),
   };
 }
