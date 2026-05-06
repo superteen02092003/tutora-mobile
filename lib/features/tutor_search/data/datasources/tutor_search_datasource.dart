@@ -14,6 +14,7 @@ class TutorSearchDatasource {
     String? gradeLevel,
     String? teachingMode,
     String? teachingAreaCity,
+    String? budgetRange,
     double? minHourlyRate,
     double? maxHourlyRate,
     double? minRating,
@@ -26,14 +27,16 @@ class TutorSearchDatasource {
         'pageNumber': pageNumber,
         'pageSize': pageSize,
         if (searchTerm?.isNotEmpty ?? false) 'searchTerm': searchTerm,
-        'category': ?category,
-        'gradeLevel': ?gradeLevel,
-        'teachingMode': ?teachingMode,
-        'teachingAreaCity': ?teachingAreaCity,
+        if (category?.isNotEmpty ?? false) 'category': category,
+        if (gradeLevel?.isNotEmpty ?? false) 'gradeLevel': gradeLevel,
+        if (teachingMode?.isNotEmpty ?? false) 'teachingMode': teachingMode,
+        if (teachingAreaCity?.isNotEmpty ?? false)
+          'teachingAreaCity': teachingAreaCity,
+        if (budgetRange?.isNotEmpty ?? false) 'budgetRange': budgetRange,
         'minHourlyRate': ?minHourlyRate,
         'maxHourlyRate': ?maxHourlyRate,
         'minRating': ?minRating,
-        'sortBy': ?sortBy,
+        if (sortBy?.isNotEmpty ?? false) 'sortBy': sortBy,
       };
 
       final response = await _dio.get<dynamic>(
