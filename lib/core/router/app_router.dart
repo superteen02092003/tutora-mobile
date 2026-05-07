@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/router/app_routes.dart';
@@ -12,6 +13,7 @@ import 'package:tutora/features/student/presentation/screens/student_lessons_scr
 import 'package:tutora/features/student/presentation/screens/student_marketplace_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_notifications_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_solution_screen.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
@@ -52,6 +54,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.notifications,
         builder: (context, _) => const StudentNotificationsScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.studentCapture,
+        builder: (context, _) => const StudentCapturePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentSolution,
+        builder: (context, _) => const StudentSolutionPage(),
+      ),
 
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => StudentShell(navigationShell: shell),
@@ -80,11 +90,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // Branch slot kept to preserve tab indices (0-4); FAB pushes outside shell
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.studentCapture,
-                builder: (context, _) => const StudentCapturePage(),
+                path: '/student/capture-stub',
+                builder: (context, _) => const SizedBox.shrink(),
               ),
             ],
           ),

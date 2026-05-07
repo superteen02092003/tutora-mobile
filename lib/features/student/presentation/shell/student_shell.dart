@@ -97,7 +97,7 @@ class StudentShell extends StatelessWidget {
                 ],
               ),
             ),
-            // Center AI button — sits inside the upward bump
+            // Center AI button — pushes outside shell so capture has no bottom bar
             Positioned(
               top: 0,
               left: 0,
@@ -106,7 +106,7 @@ class StudentShell extends StatelessWidget {
                 child: _AiFab(
                   size: _fabSize,
                   isActive: current == 2,
-                  onTap: () => _onTap(2),
+                  onTap: () => context.push('/student/capture'),
                 ),
               ),
             ),
