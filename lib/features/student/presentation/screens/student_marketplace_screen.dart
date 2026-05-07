@@ -8,10 +8,11 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_filter_options.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/marketplace_controller.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
@@ -89,7 +90,6 @@ class _StudentMarketplacePageState
             _TopBar(
               searchController: _searchController,
               onSearch: _onSearch,
-              onBack: () => context.go(AppRoutes.studentHome),
               activeFilter: state is MarketplaceLoaded && state.hasActiveFilter,
               onFilterTap: state is MarketplaceLoaded
                   ? () => _openFilter(state)
@@ -146,13 +146,11 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.searchController,
     required this.onSearch,
-    required this.onBack,
     required this.activeFilter,
     required this.onFilterTap,
   });
   final TextEditingController searchController;
   final ValueChanged<String> onSearch;
-  final VoidCallback onBack;
   final bool activeFilter;
   final VoidCallback? onFilterTap;
 
@@ -165,8 +163,14 @@ class _TopBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Row(
             children: [
+              const AppLogo(),
+              const Spacer(),
               GestureDetector(
-                onTap: onBack,
+                onTap: () => AppToast.show(
+                  context,
+                  type: AppToastType.info,
+                  message: 'Chức năng đang được phát triển.',
+                ),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -176,16 +180,12 @@ class _TopBar extends StatelessWidget {
                     border: Border.all(color: AppColors.line),
                   ),
                   child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 14,
+                    Icons.chat_bubble_outline,
+                    size: 18,
                     color: AppColors.ink,
                   ),
                 ),
               ),
-              const Spacer(),
-              const AppLogo(size: 13),
-              const Spacer(),
-              const SizedBox(width: 36),
             ],
           ),
         ),
@@ -195,7 +195,7 @@ class _TopBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'CHỢ GIA SƯ · TUTORA MARKETPLACE',
+                'TÌM GIA SƯ · TUTORA MARKETPLACE',
                 style: AppTextStyles.eyebrow(color: AppColors.oxblood),
               ),
               const SizedBox(height: 6),
@@ -718,7 +718,7 @@ class _TutorCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push('/student/search/tutor/${tutor.tutorId}'),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
         decoration: BoxDecoration(
           color: AppColors.paper,
           borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -772,13 +772,13 @@ class _TutorCard extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.star_rounded,
-                        size: 10,
+                        size: 13,
                         color: AppColors.gold,
                       ),
                       Text(
                         (tutor.averageRating ?? 0).toStringAsFixed(2),
                         style: GoogleFonts.inter(
-                          fontSize: 11.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.ink,
                         ),
@@ -786,7 +786,7 @@ class _TutorCard extends StatelessWidget {
                       Text(
                         '· ${tutor.totalReviews ?? 0} đánh giá',
                         style: GoogleFonts.inter(
-                          fontSize: 11,
+                          fontSize: 12.5,
                           color: AppColors.ink3,
                         ),
                       ),
@@ -801,7 +801,7 @@ class _TutorCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${tutor.priceInK}k',
+                  formatPrice(tutor.hourlyRate),
                   style: GoogleFonts.bricolageGrotesque(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,

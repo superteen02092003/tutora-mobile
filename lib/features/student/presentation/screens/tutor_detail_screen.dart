@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_about_section.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_certificates_section.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_hero_section.dart';
@@ -48,7 +47,7 @@ class TutorDetailPage extends ConsumerWidget {
   }
 }
 
-// ── Loaded body ────────────────────────────────────────────────────────────
+// Loaded body
 class _DetailBody extends StatelessWidget {
   const _DetailBody({required this.tutorId, required this.profile});
   final String tutorId;
@@ -68,7 +67,6 @@ class _DetailBody extends StatelessWidget {
             _TopBar(tutorId: tutorId, profile: profile),
             TutorHeroSection(profile: profile),
             const _Divider(),
-            const _StatsGrid(),
             const _Divider(),
             TutorAboutSection(profile: profile),
             if (profile.videoIntroUrl != null) ...[
@@ -116,7 +114,7 @@ class _Divider extends StatelessWidget {
   );
 }
 
-// ── Top bar ────────────────────────────────────────────────────────────────
+// Top ba
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.tutorId, required this.profile});
   final String tutorId;
@@ -155,63 +153,7 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ── Stats grid ─────────────────────────────────────────────────────────────
-class _StatsGrid extends StatelessWidget {
-  const _StatsGrid();
-
-  static const List<({String label, String value})> _items = [
-    (label: 'Tỷ lệ điểm tăng', value: '+1.8'),
-    (label: 'Hoàn tiền', value: '0%'),
-    (label: 'Phản hồi', value: '< 1h'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-      child: Row(
-        children: [
-          for (int i = 0; i < _items.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.paper,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      _items[i].value,
-                      style: GoogleFonts.bricolageGrotesque(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _items[i].label,
-                      style: AppTextStyles.eyebrow(),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Video section ──────────────────────────────────────────────────────────
+// Video section
 class _VideoSection extends StatelessWidget {
   const _VideoSection({required this.videoUrl});
   final String videoUrl;
@@ -321,7 +263,7 @@ class _VideoSection extends StatelessWidget {
   }
 }
 
-// ── Video player screen ────────────────────────────────────────────────────
+// Video player screen
 class _VideoPlayerScreen extends StatefulWidget {
   const _VideoPlayerScreen({required this.videoUrl});
   final String videoUrl;
@@ -438,7 +380,7 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
   }
 }
 
-// ── Sticky booking bar ─────────────────────────────────────────────────────
+// Sticky booking
 class _StickyBookingBar extends StatelessWidget {
   const _StickyBookingBar({
     required this.tutorId,
@@ -519,7 +461,7 @@ class _StickyBookingBar extends StatelessWidget {
   }
 }
 
-// ── Error view ─────────────────────────────────────────────────────────────
+// Error view
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.message, required this.onRetry});
   final String message;
