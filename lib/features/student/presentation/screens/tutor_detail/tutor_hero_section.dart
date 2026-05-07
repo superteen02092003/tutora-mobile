@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_filter_options.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
@@ -36,19 +37,6 @@ class TutorHeroSection extends StatelessWidget {
               const VerifyPip(),
             ],
           ),
-          if (profile.headline != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              '"${profile.headline}"',
-              style: GoogleFonts.ibmPlexSerif(
-                fontStyle: FontStyle.italic,
-                fontSize: 14,
-                color: AppColors.ink2,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -73,12 +61,13 @@ class TutorHeroSection extends StatelessWidget {
                   style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
                 ),
                 Text(
-                  profile.teachingAreaCity!,
+                  filterLabel(cityOptions, profile.teachingAreaCity),
                   style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
                 ),
               ],
             ],
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );

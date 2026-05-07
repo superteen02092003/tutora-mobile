@@ -47,7 +47,7 @@ abstract final class AppTextStyles {
 
   // Eyebrow (uppercase caption)
   static TextStyle eyebrow({Color color = AppColors.ink4}) => GoogleFonts.inter(
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: FontWeight.w700,
     letterSpacing: 0.18,
     color: color,

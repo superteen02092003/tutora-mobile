@@ -1,13 +1,13 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/router/app_routes.dart';
 
 const _kBg = Color(0xFF0B0E18);
-// Height of StudentShell bottom nav bar (barFlatHeight + fabLift = 64 + 18)
-const _kBarH = 82.0;
 
 class StudentCapturePage extends StatefulWidget {
   const StudentCapturePage({super.key});
@@ -20,7 +20,7 @@ class _StudentCapturePageState extends State<StudentCapturePage>
     with SingleTickerProviderStateMixin {
   bool _flash = false;
   bool _aligning = true;
-  int _modeIndex = 1; // 0=CÔNG THỨC  1=CẢ TRANG  2=HÌNH VẼ
+  bool _thinking = false;
 
   late final AnimationController _scanCtrl;
   late final Animation<double> _scanAnim;
@@ -41,6 +41,14 @@ class _StudentCapturePageState extends State<StudentCapturePage>
     });
   }
 
+  Future<void> _onShutter() async {
+    setState(() => _thinking = true);
+    await Future<void>.delayed(const Duration(milliseconds: 2200));
+    if (!mounted) return;
+    await context.push(AppRoutes.studentSolution);
+    if (mounted) setState(() => _thinking = false);
+  }
+
   @override
   void dispose() {
     _scanCtrl.dispose();
@@ -53,7 +61,11 @@ class _StudentCapturePageState extends State<StudentCapturePage>
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
     final botPad = MediaQuery.of(context).padding.bottom;
-    final bottomOffset = _kBarH + botPad + 16;
+    // Frame spans from below top chrome to above bottom controls
+    const frameTop = 100.0;
+    const frameBottom = 160.0; // space for shutter row
+    final frameTopAbs = topPad + frameTop;
+    final frameBottomAbs = frameBottom + botPad;
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -73,8 +85,13 @@ class _StudentCapturePageState extends State<StudentCapturePage>
             ),
           ),
 
-          // Simulated paper document
-          _DocumentSim(topOffset: topPad + 60),
+          // Simulated paper document — vertically centered in the frame area
+          _DocumentSim(
+            topPad: topPad,
+            frameTop: frameTop,
+            frameBottom: frameBottom,
+            botPad: botPad,
+          ),
 
           // Dim overlay with frame hole
           Positioned.fill(
@@ -82,24 +99,24 @@ class _StudentCapturePageState extends State<StudentCapturePage>
               child: CustomPaint(
                 painter: _DimOverlayPainter(
                   frameLeft: 24,
-                  frameTop: topPad + 100,
+                  frameTop: frameTopAbs,
                   frameRight: 24,
-                  frameBottom: bottomOffset + 120,
+                  frameBottom: frameBottomAbs,
                 ),
               ),
             ),
           ),
 
-          // Frame overlay (border + corner brackets + scan line + status pill)
+          // Frame overlay
           Positioned(
             left: 24,
             right: 24,
-            top: topPad + 100,
-            bottom: bottomOffset + 120,
+            top: frameTopAbs,
+            bottom: frameBottomAbs,
             child: _FrameOverlay(aligning: _aligning, scanAnim: _scanAnim),
           ),
 
-          // Top chrome
+          // Top chrome — X · QUÉT BÀI TẬP · flash
           Positioned(
             top: topPad + 12,
             left: 16,
@@ -111,31 +128,17 @@ class _StudentCapturePageState extends State<StudentCapturePage>
             ),
           ),
 
-          // Mode toggle
-          Positioned(
-            bottom: bottomOffset + 52,
-            left: 0,
-            right: 0,
-            child: _ModeToggle(
-              modeIndex: _modeIndex,
-              onTap: (i) => setState(() => _modeIndex = i),
-            ),
-          ),
+          // AI thinking overlay
+          if (_thinking) const Positioned.fill(child: _ThinkingOverlay()),
 
-          // Shutter row
+          // Bottom controls — gallery left · shutter center
           Positioned(
-            bottom: bottomOffset - 16,
+            bottom: botPad + 24,
             left: 0,
             right: 0,
-            child: _ShutterRow(
-              onShutter: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đang xử lý bài tập…'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
+            child: _BottomControls(
+              onShutter: _thinking ? null : () => unawaited(_onShutter()),
+              onGallery: () {},
             ),
           ),
         ],
@@ -144,15 +147,27 @@ class _StudentCapturePageState extends State<StudentCapturePage>
   }
 }
 
-// ── Simulated paper document ───────────────────────────────────────────────
+// Simulated paper document — centered in the scan frame area
 class _DocumentSim extends StatelessWidget {
-  const _DocumentSim({required this.topOffset});
-  final double topOffset;
+  const _DocumentSim({
+    required this.topPad,
+    required this.frameTop,
+    required this.frameBottom,
+    required this.botPad,
+  });
+  final double topPad;
+  final double frameTop;
+  final double frameBottom;
+  final double botPad;
 
   @override
   Widget build(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
+    final frameTopAbs = topPad + frameTop;
+    final frameBottomAbs = screenH - (frameBottom + botPad);
+    final frameMid = (frameTopAbs + frameBottomAbs) / 2;
     return Positioned(
-      top: topOffset,
+      top: frameMid - 165, // half of paper height (330)
       left: 0,
       right: 0,
       child: Center(
@@ -237,7 +252,7 @@ class _DocumentSim extends StatelessWidget {
   }
 }
 
-// ── Dim overlay with rectangular hole ─────────────────────────────────────
+// Dim overlay with rectangular hole
 class _DimOverlayPainter extends CustomPainter {
   const _DimOverlayPainter({
     required this.frameLeft,
@@ -276,7 +291,7 @@ class _DimOverlayPainter extends CustomPainter {
       old.frameBottom != frameBottom;
 }
 
-// ── Frame overlay ──────────────────────────────────────────────────────────
+// Frame overlay
 class _FrameOverlay extends StatelessWidget {
   const _FrameOverlay({required this.aligning, required this.scanAnim});
 
@@ -347,7 +362,7 @@ class _FrameOverlay extends StatelessWidget {
   }
 }
 
-// ── Corner brackets painter ────────────────────────────────────────────────
+// Corner brackets painter
 class _CornerBracketPainter extends CustomPainter {
   const _CornerBracketPainter({required this.color});
   final Color color;
@@ -407,7 +422,7 @@ class _CornerBracketPainter extends CustomPainter {
   bool shouldRepaint(_CornerBracketPainter old) => old.color != color;
 }
 
-// ── Status pill ────────────────────────────────────────────────────────────
+// Status pill
 class _StatusPill extends StatelessWidget {
   const _StatusPill({required this.aligning});
   final bool aligning;
@@ -447,7 +462,7 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-// ── Top chrome ─────────────────────────────────────────────────────────────
+// Top chrome
 class _TopChrome extends StatelessWidget {
   const _TopChrome({
     required this.flash,
@@ -524,114 +539,54 @@ class _ChromeButton extends StatelessWidget {
   }
 }
 
-// ── Mode toggle ────────────────────────────────────────────────────────────
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.modeIndex, required this.onTap});
-
-  final int modeIndex;
-  final ValueChanged<int> onTap;
-
-  static const _modes = ['CÔNG THỨC', 'CẢ TRANG', 'HÌNH VẼ'];
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (int i = 0; i < _modes.length; i++) ...[
-          if (i > 0) const SizedBox(width: 18),
-          GestureDetector(
-            onTap: () => onTap(i),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _modes[i],
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                    color: i == modeIndex
-                        ? AppColors.gold
-                        : Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (i == modeIndex)
-                  Container(
-                    height: 1.5,
-                    width: _modes[i].length * 7.0,
-                    color: AppColors.gold,
-                  )
-                else
-                  const SizedBox(height: 1.5),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-// ── Shutter row ────────────────────────────────────────────────────────────
-class _ShutterRow extends StatelessWidget {
-  const _ShutterRow({required this.onShutter});
-  final VoidCallback onShutter;
+// Bottom controls — gallery left · shutter center
+class _BottomControls extends StatelessWidget {
+  const _BottomControls({required this.onShutter, required this.onGallery});
+  final VoidCallback? onShutter;
+  final VoidCallback onGallery;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 36),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const _SideButton(
-            child: Icon(
-              Icons.photo_library_outlined,
-              size: 18,
-              color: Colors.white,
-            ),
-          ),
-          _ShutterButton(onTap: onShutter),
-          _SideButton(
-            child: Text(
-              'AUTO',
-              style: GoogleFonts.ibmPlexMono(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+          // Gallery button — left
+          GestureDetector(
+            onTap: onGallery,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.white.withValues(alpha: 0.1),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.photo_library_outlined,
+                  size: 18,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
+          const Spacer(),
+          // Shutter center
+          _ShutterButton(onTap: onShutter),
+          const Spacer(),
+          // Placeholder to balance layout
+          const SizedBox(width: 44),
         ],
       ),
     );
   }
 }
 
-class _SideButton extends StatelessWidget {
-  const _SideButton({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.1),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-      ),
-      child: Center(child: child),
-    );
-  }
-}
-
 class _ShutterButton extends StatelessWidget {
   const _ShutterButton({required this.onTap});
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -666,7 +621,133 @@ class _ShutterButton extends StatelessWidget {
   }
 }
 
-// ── Pulsing dot helper ─────────────────────────────────────────────────────
+// AI thinking overlay
+class _ThinkingOverlay extends StatefulWidget {
+  const _ThinkingOverlay();
+
+  @override
+  State<_ThinkingOverlay> createState() => _ThinkingOverlayState();
+}
+
+class _ThinkingOverlayState extends State<_ThinkingOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  static const _dots = [
+    'Đang nhận diện bài tập',
+    'Đang phân tích',
+    'Đang tạo lời giải',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    unawaited(_ctrl.repeat(reverse: true));
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xCC0B0E18),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Pulsing gold ring
+            AnimatedBuilder(
+              animation: _anim,
+              builder: (_, w) => Container(
+                width: 64 + _anim.value * 8,
+                height: 64 + _anim.value * 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.gold.withValues(
+                      alpha: 0.3 + _anim.value * 0.5,
+                    ),
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold,
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 22,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Cycling label
+            const _CyclingLabel(labels: _dots),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CyclingLabel extends StatefulWidget {
+  const _CyclingLabel({required this.labels});
+  final List<String> labels;
+
+  @override
+  State<_CyclingLabel> createState() => _CyclingLabelState();
+}
+
+class _CyclingLabelState extends State<_CyclingLabel> {
+  int _idx = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 700), (_) {
+      if (mounted) setState(() => _idx = (_idx + 1) % widget.labels.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      widget.labels[_idx],
+      style: GoogleFonts.inter(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Colors.white.withValues(alpha: 0.85),
+        letterSpacing: 0.3,
+      ),
+    );
+  }
+}
+
+// Pulsing dot helper
 class _PulseDot extends StatefulWidget {
   const _PulseDot({required this.color});
   final Color color;

@@ -1,3 +1,5 @@
+import 'package:tutora/core/constants/app_filter_options.dart';
+
 class TutorSearchResult {
   const TutorSearchResult({
     required this.tutorId,
@@ -90,14 +92,11 @@ class TutorSearchResult {
   }
 
   String get locationSummary {
-    final parts = [
-      teachingAreaCity,
-      teachingAreaDistrict,
-    ].whereType<String>().toList();
-    return parts.isEmpty ? '' : parts.first;
+    if (teachingAreaCity == null) return '';
+    return filterLabel(cityOptions, teachingAreaCity);
   }
 
-  int get priceInK => ((hourlyRate ?? 0) / 1000).round();
+  int get displayPrice => ((hourlyRate ?? 0) * 1.05).round();
 }
 
 class TutorSubjectInfo {
