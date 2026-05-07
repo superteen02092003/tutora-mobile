@@ -10,7 +10,7 @@ class BookingDatasource {
   Future<CreateBookingResponse> createBooking(CreateBookingRequest req) async {
     try {
       final response = await _dio.post<dynamic>(
-        '/Booking',
+        '/bookings',
         data: req.toJson(),
       );
       return CreateBookingResponse.fromJson(
@@ -18,6 +18,20 @@ class BookingDatasource {
       );
     } on DioException catch (e) {
       throw _mapError(e);
+    }
+  }
+
+  Future<String?> getMyStudentProfileId() async {
+    try {
+      final response = await _dio.get<dynamic>(
+        '/parent/students/my-link-status',
+      );
+      final data = response.data as Map<String, dynamic>;
+      final content = data['content'] as Map<String, dynamic>?;
+      final profile = content?['studentProfile'] as Map<String, dynamic>?;
+      return profile?['studentId'] as String?;
+    } on DioException {
+      return null;
     }
   }
 

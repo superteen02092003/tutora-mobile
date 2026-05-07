@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
@@ -55,11 +57,78 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
   int? _successBookingId;
   String _userRole = 'Student';
 
+  String get _draftKey => 'booking_draft_${widget.tutorId}';
+
+  Future<void> _saveDraft() async {
+    if (_success) return;
+    final prefs = await SharedPreferences.getInstance();
+    final scheduleJson = jsonEncode(
+      _form.schedule.map((s) => s.toJson()).toList(),
+    );
+    await prefs.setString(
+      _draftKey,
+      jsonEncode({
+        'step': _step,
+        'studentId': _form.studentId,
+        'subjectId': _form.subjectId,
+        'teachingMode': _form.teachingMode,
+        'startDate': _form.startDate,
+        'schedule': scheduleJson,
+        'locationCity': _form.locationCity,
+        'locationDistrict': _form.locationDistrict,
+        'locationWard': _form.locationWard,
+        'locationDetail': _form.locationDetail,
+        'slotDurationHours': _form.slotDurationHours,
+      }),
+    );
+  }
+
+  Future<void> _loadDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_draftKey);
+    if (raw == null) return;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      final scheduleRaw =
+          jsonDecode(map['schedule'] as String) as List<dynamic>;
+      final schedule = scheduleRaw
+          .map((e) => ScheduleSlotDto.fromJson(e as Map<String, dynamic>))
+          .toList();
+      setState(() {
+        _step = (map['step'] as int).clamp(0, 2); // max step 2, not 3
+        _form = BookingForm(
+          studentId: map['studentId'] as String,
+          subjectId: map['subjectId'] as int,
+          teachingMode: map['teachingMode'] as String,
+          startDate: map['startDate'] as String,
+          schedule: schedule,
+          locationCity: map['locationCity'] as String,
+          locationDistrict: map['locationDistrict'] as String,
+          locationWard: map['locationWard'] as String,
+          locationDetail: map['locationDetail'] as String,
+          slotDurationHours: (map['slotDurationHours'] as num).toDouble(),
+        );
+      });
+    } catch (_) {
+      await _clearDraft();
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_draftKey);
+  }
+
   @override
   void initState() {
     super.initState();
     _form = BookingForm();
-    unawaited(_resolveRole());
+    unawaited(_initSheet());
+  }
+
+  Future<void> _initSheet() async {
+    await _loadDraft();
+    await _resolveRole();
   }
 
   Future<void> _resolveRole() async {
@@ -74,12 +143,19 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       UserRole.tutor => 'Tutor',
       _ => 'Student',
     };
-    setState(() {
-      _userRole = roleName;
-      _form = _form.copyWith(studentId: claims.userId);
-    });
+    setState(() => _userRole = roleName);
 
-    if (roleName == 'Parent') await _loadStudents();
+    if (roleName == 'Student') {
+      // Users.Id != Studentprofile.Studentid — must fetch the real profile ID
+      final profileId = await ref
+          .read(bookingDatasourceProvider)
+          .getMyStudentProfileId();
+      setState(
+        () => _form = _form.copyWith(studentId: profileId ?? claims.userId),
+      );
+    } else if (roleName == 'Parent') {
+      await _loadStudents();
+    }
   }
 
   Future<void> _loadStudents() async {
@@ -94,6 +170,13 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
     }
   }
 
+  bool get _startDateValid {
+    final d = DateTime.tryParse(_form.startDate);
+    if (d == null) return false;
+    final today = DateTime.now();
+    return !d.isBefore(DateTime(today.year, today.month, today.day));
+  }
+
   bool get _canNext => switch (_step) {
     0 =>
       _userRole == 'Student'
@@ -102,7 +185,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
     1 =>
       !_form.needsLocation ||
           (_form.locationCity.isNotEmpty && _form.locationDistrict.isNotEmpty),
-    2 => _form.schedule.isNotEmpty,
+    2 => _form.schedule.isNotEmpty && _startDateValid,
     _ => true,
   };
 
@@ -112,6 +195,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       return;
     }
     setState(() => _step++);
+    unawaited(_saveDraft());
   }
 
   void _showValidationError() {
@@ -123,7 +207,10 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
             ? 'Vui lòng chọn học sinh.'
             : 'Vui lòng chọn môn học.',
       1 => 'Vui lòng nhập Thành phố và Quận/Huyện.',
-      2 => 'Vui lòng chọn ít nhất 1 khung giờ.',
+      2 =>
+        !_startDateValid
+            ? 'Ngày bắt đầu không hợp lệ. Vui lòng chọn ngày từ hôm nay trở đi.'
+            : 'Vui lòng chọn ít nhất 1 khung giờ.',
       _ => '',
     };
     AppToast.show(context, message: msg, type: AppToastType.error);
@@ -159,6 +246,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
                   : _form.locationDetail,
             ),
           );
+      await _clearDraft();
       setState(() {
         _success = true;
         _successBookingId = res.bookingId;
@@ -213,16 +301,25 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
                         students: _students,
                         loadingStudents: _loadingStudents,
                         userRole: _userRole,
-                        onChanged: (v) => setState(() => _form = v),
+                        onChanged: (v) {
+                          setState(() => _form = v);
+                          unawaited(_saveDraft());
+                        },
                       ),
                       1 => BookingStep2(
                         form: _form,
-                        onChanged: (v) => setState(() => _form = v),
+                        onChanged: (v) {
+                          setState(() => _form = v);
+                          unawaited(_saveDraft());
+                        },
                       ),
                       2 => BookingStep3(
                         form: _form,
                         profile: widget.profile,
-                        onChanged: (v) => setState(() => _form = v),
+                        onChanged: (v) {
+                          setState(() => _form = v);
+                          unawaited(_saveDraft());
+                        },
                       ),
                       _ => BookingStep4(
                         form: _form,
