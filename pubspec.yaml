@@ -55,4 +55,5 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/common/
     - assets/icons/

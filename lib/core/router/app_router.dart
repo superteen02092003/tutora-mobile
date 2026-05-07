@@ -6,12 +6,13 @@ import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
-import 'package:tutora/features/student/presentation/pages/student_capture_page.dart';
-import 'package:tutora/features/student/presentation/pages/student_home_page.dart';
-import 'package:tutora/features/student/presentation/pages/student_lessons_page.dart';
-import 'package:tutora/features/student/presentation/pages/student_marketplace_page.dart';
-import 'package:tutora/features/student/presentation/pages/student_profile_page.dart';
-import 'package:tutora/features/student/presentation/pages/tutor_detail_page.dart';
+import 'package:tutora/features/student/presentation/screens/student_capture_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_home_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_lessons_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_marketplace_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_notifications_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
+import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
@@ -46,6 +47,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => OtpPage(
           email: state.extra as String? ?? '',
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, _) => const StudentNotificationsScreen(),
       ),
 
       StatefulShellRoute.indexedStack(
