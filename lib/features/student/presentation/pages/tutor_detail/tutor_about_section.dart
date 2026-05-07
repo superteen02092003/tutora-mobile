@@ -5,13 +5,27 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 
-class TutorAboutSection extends StatelessWidget {
+class TutorAboutSection extends StatefulWidget {
   const TutorAboutSection({required this.profile, super.key});
   final TutorFullProfileDto profile;
 
   @override
+  State<TutorAboutSection> createState() => _TutorAboutSectionState();
+}
+
+class _TutorAboutSectionState extends State<TutorAboutSection> {
+  static const int _collapsedLines = 4;
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final profile = widget.profile;
     final firstName = profile.displayName.split(' ').last;
+    final fullText = [
+      if (profile.bio != null) profile.bio!,
+      if (profile.experience != null) profile.experience!,
+    ].join('\n\n');
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
       child: Column(
@@ -25,25 +39,32 @@ class TutorAboutSection extends StatelessWidget {
               color: AppColors.ink,
             ),
           ),
-          if (profile.bio != null) ...[
+          if (fullText.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              profile.bio!,
+              fullText,
+              maxLines: _expanded ? null : _collapsedLines,
+              overflow: _expanded
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.ink2,
                 height: 1.6,
               ),
             ),
-          ],
-          if (profile.experience != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              profile.experience!,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.ink3,
-                height: 1.5,
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Text(
+                _expanded ? 'Thu gọn ▲' : 'Xem thêm ▼',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink,
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.ink,
+                ),
               ),
             ),
           ],

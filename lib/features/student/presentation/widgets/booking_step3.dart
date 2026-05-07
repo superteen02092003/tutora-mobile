@@ -93,8 +93,9 @@ class _BookingStep3State extends State<BookingStep3> {
     final eMins = sMins + (_form.slotDurationHours * 60).round();
     return _form.schedule.any((s) {
       if (s.dayOfWeek != day) return false;
-      if (s.startTime == startTime)
+      if (s.startTime == startTime) {
         return false; // same slot = selected, not overlap
+      }
       final sStart = toMins(s.startTime);
       final sEnd = toMins(s.endTime);
       return sMins < sEnd && eMins > sStart;
