@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +10,9 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
+import 'package:tutora/features/student/presentation/providers/dashboard_provider.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
-import 'package:tutora/shared/widgets/user_avatar.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 class StudentHomePage extends ConsumerWidget {
   const StudentHomePage({super.key});
@@ -29,16 +32,20 @@ class StudentHomePage extends ConsumerWidget {
   String _firstName(String fullName) {
     if (fullName.isEmpty) return 'bạn';
     final parts = fullName.trim().split(' ');
-    return parts.last;
+    return parts.first;
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends ConsumerStatefulWidget {
   const _HomeContent({required this.firstName});
 
   final String firstName;
 
-  // Placeholder recent AI solutions
+  @override
+  ConsumerState<_HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends ConsumerState<_HomeContent> {
   static const List<({String book, String sub, String time, String topic})>
   _recents = [
     (
@@ -62,21 +69,32 @@ class _HomeContent extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    unawaited(Future.microtask(ref.read(dashboardProvider.notifier).load));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final dash = ref.watch(dashboardProvider);
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            _TopBar(name: firstName),
-            _Greeting(firstName: firstName),
+            _TopBar(name: widget.firstName),
+            _Greeting(firstName: widget.firstName),
             const SizedBox(height: AppSpacing.sm),
             const _HeroCapture(),
             const SizedBox(height: AppSpacing.xs),
-            _ShortcutGrid(
+            _QuickActions(
               onFindTutor: () => context.go(AppRoutes.studentSearch),
+              onLessons: () => context.go(AppRoutes.studentLessons),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            _StatRow(state: dash),
             _SectionHeader(
               title: 'Gần đây',
               onSeeAll: () {},
@@ -98,8 +116,7 @@ class _HomeContent extends StatelessWidget {
   }
 }
 
-// ── Top bar ────────────────────────────────────────────────────────────
-
+// Top bar
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.name});
 
@@ -114,47 +131,73 @@ class _TopBar extends StatelessWidget {
           const AppLogo(),
           const Spacer(),
           // Bell icon
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.paper,
-              border: Border.all(color: AppColors.line),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Icon(
-                  Icons.notifications_outlined,
-                  size: 18,
-                  color: AppColors.ink,
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.oxblood,
+          GestureDetector(
+            onTap: () => context.push(AppRoutes.notifications),
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.paper,
+                border: Border.all(color: AppColors.line),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(
+                    Icons.notifications_outlined,
+                    size: 18,
+                    color: AppColors.ink,
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.oxblood,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 10),
-          UserAvatar(name: name),
+          // Chat icon
+          GestureDetector(
+            onTap: () {
+              // add page later
+              AppToast.show(
+                context,
+                type: AppToastType.info,
+                message: 'Chức năng đang được phát triển.',
+              );
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.paper,
+                border: Border.all(color: AppColors.line),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline,
+                size: 18,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Greeting ───────────────────────────────────────────────────────────
-
+// Greeting
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.firstName});
 
@@ -204,8 +247,7 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-// ── Hero AI capture card ────────────────────────────────────────────────
-
+// Hero AI capture card
 class _HeroCapture extends StatelessWidget {
   const _HeroCapture();
 
@@ -247,7 +289,7 @@ class _HeroCapture extends StatelessWidget {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: 'Chụp một bài toán.\n',
+                        text: 'Chụp bài toán.\n',
                         style: GoogleFonts.bricolageGrotesque(
                           fontWeight: FontWeight.w800,
                           fontSize: 22,
@@ -256,7 +298,7 @@ class _HeroCapture extends StatelessWidget {
                         ),
                       ),
                       TextSpan(
-                        text: 'Hiểu trong 8 giây.',
+                        text: 'Nhận lời giải nhanh chóng.',
                         style: GoogleFonts.ibmPlexSerif(
                           fontStyle: FontStyle.italic,
                           fontWeight: FontWeight.w400,
@@ -315,7 +357,7 @@ class _CameraButton extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              'Mở camera quét',
+              'Mở camera',
               style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -329,34 +371,36 @@ class _CameraButton extends StatelessWidget {
   }
 }
 
-// ── Shortcut grid ───────────────────────────────────────────────────────
-
-class _ShortcutGrid extends StatelessWidget {
-  const _ShortcutGrid({required this.onFindTutor});
+// Quick actions
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({required this.onFindTutor, required this.onLessons});
 
   final VoidCallback onFindTutor;
+  final VoidCallback onLessons;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Row(
         children: [
           Expanded(
-            child: _ShortcutCard(
-              title: 'Lịch sử AI',
-              subtitle: '12 bài tuần này',
-              isGold: false,
-              onTap: () {},
+            child: _ActionCard(
+              icon: Icons.search_rounded,
+              label: 'Tìm gia sư',
+              color: AppColors.oxblood,
+              bg: const Color(0xFFF5E9E9),
+              onTap: onFindTutor,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: _ShortcutCard(
-              title: 'Tìm gia sư',
-              subtitle: '4 phù hợp mới',
-              isGold: true,
-              onTap: onFindTutor,
+            child: _ActionCard(
+              icon: Icons.calendar_month_outlined,
+              label: 'Xem lịch học',
+              color: const Color(0xFF3D6EEA),
+              bg: const Color(0xFFE8F0FE),
+              onTap: onLessons,
             ),
           ),
         ],
@@ -365,17 +409,19 @@ class _ShortcutGrid extends StatelessWidget {
   }
 }
 
-class _ShortcutCard extends StatelessWidget {
-  const _ShortcutCard({
-    required this.title,
-    required this.subtitle,
-    required this.isGold,
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.bg,
     required this.onTap,
   });
 
-  final String title;
-  final String subtitle;
-  final bool isGold;
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color bg;
   final VoidCallback onTap;
 
   @override
@@ -383,25 +429,32 @@ class _ShortcutCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: isGold ? const Color(0xFFF0E3CA) : AppColors.paper,
+          color: AppColors.paper,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.line),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: bg,
+              ),
+              child: Icon(icon, size: 17, color: color),
+            ),
+            const SizedBox(width: 10),
             Text(
-              title,
+              label,
               style: GoogleFonts.bricolageGrotesque(
                 fontWeight: FontWeight.w700,
-                fontSize: 15,
+                fontSize: 14,
                 color: AppColors.ink,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(subtitle, style: AppTextStyles.bodySmall()),
           ],
         ),
       ),
@@ -409,8 +462,113 @@ class _ShortcutCard extends StatelessWidget {
   }
 }
 
-// ── Section header ──────────────────────────────────────────────────────
+// Stat row
+class _StatRow extends StatelessWidget {
+  const _StatRow({required this.state});
 
+  final DashboardState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = state.stats;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Row(
+        children: [
+          _StatCard(
+            label: 'Booking',
+            value: s?.totalBookings,
+            icon: Icons.bookmark_border_rounded,
+            isLoading: state.isLoading,
+          ),
+          const SizedBox(width: 8),
+          _StatCard(
+            label: 'Buổi học',
+            value: s?.totalLessons,
+            icon: Icons.school_outlined,
+            isLoading: state.isLoading,
+          ),
+          const SizedBox(width: 8),
+          _StatCard(
+            label: 'Chờ xác nhận',
+            value: s?.pendingCount,
+            icon: Icons.hourglass_empty_rounded,
+            isLoading: state.isLoading,
+          ),
+          const SizedBox(width: 8),
+          _StatCard(
+            label: 'Hoàn thành',
+            value: s?.completedCount,
+            icon: Icons.check_circle_outline_rounded,
+            isLoading: state.isLoading,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.isLoading,
+  });
+
+  final String label;
+  final int? value;
+  final IconData icon;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppColors.paper,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Column(
+          children: [
+            // Icon(icon, size: 18, color: AppColors.ink3),
+            const SizedBox(height: 6),
+            if (isLoading)
+              Container(
+                width: 24,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: AppColors.cream2,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              )
+            else
+              Text(
+                '${value ?? 0}',
+                style: GoogleFonts.bricolageGrotesque(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  color: AppColors.ink,
+                ),
+              ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: AppTextStyles.eyebrow(),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Section header
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, required this.onSeeAll});
 
@@ -420,20 +578,27 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Text(title, style: AppTextStyles.eyebrow()),
+          Text(
+            title,
+            style: GoogleFonts.bricolageGrotesque(
+              fontWeight: FontWeight.w500,
+              fontSize: 16,
+              color: AppColors.ink,
+            ),
+          ),
           GestureDetector(
             onTap: onSeeAll,
             child: Text(
               'Xem tất cả',
               style: GoogleFonts.ibmPlexSerif(
                 fontStyle: FontStyle.italic,
-                fontSize: 12,
+                fontSize: 16,
                 color: AppColors.ink3,
               ),
             ),
@@ -444,8 +609,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ── Recent item ─────────────────────────────────────────────────────────
-
+// Recent item
 class _RecentItem extends StatelessWidget {
   const _RecentItem({
     required this.subject,

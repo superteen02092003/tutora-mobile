@@ -5,6 +5,12 @@ class ScheduleSlotDto {
     required this.endTime,
   });
 
+  factory ScheduleSlotDto.fromJson(Map<String, dynamic> j) => ScheduleSlotDto(
+    dayOfWeek: j['dayOfWeek'] as int,
+    startTime: j['startTime'] as String,
+    endTime: j['endTime'] as String,
+  );
+
   final int dayOfWeek;
   final String startTime;
   final String endTime;

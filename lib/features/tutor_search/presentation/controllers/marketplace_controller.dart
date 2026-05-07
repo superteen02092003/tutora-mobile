@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/tutor_search/data/datasources/tutor_search_datasource.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 
-// ── State ──────────────────────────────────────────────────────────────
-
 sealed class MarketplaceState {}
 
 final class MarketplaceIdle extends MarketplaceState {}
@@ -22,6 +20,7 @@ final class MarketplaceLoaded extends MarketplaceState {
     this.selectedMode,
     this.selectedSortBy,
     this.minRating,
+    this.selectedBudget,
   });
 
   final List<TutorSearchResult> tutors;
@@ -32,12 +31,14 @@ final class MarketplaceLoaded extends MarketplaceState {
   final String? selectedMode;
   final String? selectedSortBy;
   final double? minRating;
+  final String? selectedBudget; // e.g. 'under_50', '50_100', etc.
 
   bool get hasActiveFilter =>
       selectedCity != null ||
       selectedMode != null ||
       selectedSortBy != null ||
-      minRating != null;
+      minRating != null ||
+      selectedBudget != null;
 
   MarketplaceLoaded copyWith({
     List<TutorSearchResult>? tutors,
@@ -48,6 +49,7 @@ final class MarketplaceLoaded extends MarketplaceState {
     Object? selectedMode = _sentinel,
     Object? selectedSortBy = _sentinel,
     Object? minRating = _sentinel,
+    Object? selectedBudget = _sentinel,
   }) {
     return MarketplaceLoaded(
       tutors: tutors ?? this.tutors,
@@ -64,6 +66,9 @@ final class MarketplaceLoaded extends MarketplaceState {
           ? this.selectedSortBy
           : selectedSortBy as String?,
       minRating: minRating == _sentinel ? this.minRating : minRating as double?,
+      selectedBudget: selectedBudget == _sentinel
+          ? this.selectedBudget
+          : selectedBudget as String?,
     );
   }
 
@@ -75,7 +80,14 @@ final class MarketplaceError extends MarketplaceState {
   final String message;
 }
 
-// ── Controller ─────────────────────────────────────────────────────────
+({double? min, double? max}) _budgetToRate(String? budget) => switch (budget) {
+  'under_50' => (min: null, max: 50000),
+  '50_100' => (min: 50000, max: 100000),
+  '100_200' => (min: 100000, max: 200000),
+  '200_500' => (min: 200000, max: 500000),
+  'over_500' => (min: 500000, max: null),
+  _ => (min: null, max: null),
+};
 
 class MarketplaceController extends StateNotifier<MarketplaceState> {
   MarketplaceController(this._datasource) : super(MarketplaceIdle()) {
@@ -92,6 +104,7 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
   Future<void> load({bool reset = false}) async {
     if (reset) _page = 1;
     final current = _currentOrEmpty;
+    final rate = _budgetToRate(current.selectedBudget);
     state = MarketplaceLoading();
     try {
       final result = await _datasource.search(
@@ -100,6 +113,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         teachingAreaCity: current.selectedCity,
         sortBy: current.selectedSortBy,
         minRating: current.minRating,
+        minHourlyRate: rate.min,
+        maxHourlyRate: rate.max,
         pageNumber: _page,
       );
       state = current.copyWith(
@@ -115,6 +130,7 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
   Future<void> search(String term) async {
     _page = 1;
     final current = _currentOrEmpty;
+    final rate = _budgetToRate(current.selectedBudget);
     state = MarketplaceLoading();
     try {
       final result = await _datasource.search(
@@ -123,6 +139,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         teachingAreaCity: current.selectedCity,
         sortBy: current.selectedSortBy,
         minRating: current.minRating,
+        minHourlyRate: rate.min,
+        maxHourlyRate: rate.max,
         pageNumber: _page,
       );
       state = current.copyWith(
@@ -141,6 +159,7 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     Object? city = _MarketplaceSentinel.value,
     Object? sortBy = _MarketplaceSentinel.value,
     Object? minRating = _MarketplaceSentinel.value,
+    Object? budget = _MarketplaceSentinel.value,
   }) async {
     _page = 1;
     final current = _currentOrEmpty;
@@ -156,6 +175,10 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     final newRating = minRating == _MarketplaceSentinel.value
         ? current.minRating
         : minRating as double?;
+    final newBudget = budget == _MarketplaceSentinel.value
+        ? current.selectedBudget
+        : budget as String?;
+    final rate = _budgetToRate(newBudget);
 
     state = MarketplaceLoading();
     try {
@@ -165,6 +188,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         teachingAreaCity: newCity,
         sortBy: newSort,
         minRating: newRating,
+        minHourlyRate: rate.min,
+        maxHourlyRate: rate.max,
         pageNumber: _page,
       );
       state = MarketplaceLoaded(
@@ -176,6 +201,7 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         selectedCity: newCity,
         selectedSortBy: newSort,
         minRating: newRating,
+        selectedBudget: newBudget,
       );
     } catch (e) {
       state = MarketplaceError('Không tải được danh sách gia sư.');
@@ -187,12 +213,14 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     city: null,
     sortBy: null,
     minRating: null,
+    budget: null,
   );
 
   Future<void> loadMore() async {
     final current = state;
     if (current is! MarketplaceLoaded || !current.hasNext) return;
     _page++;
+    final rate = _budgetToRate(current.selectedBudget);
     try {
       final result = await _datasource.search(
         searchTerm: current.searchTerm,
@@ -200,6 +228,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         teachingAreaCity: current.selectedCity,
         sortBy: current.selectedSortBy,
         minRating: current.minRating,
+        minHourlyRate: rate.min,
+        maxHourlyRate: rate.max,
         pageNumber: _page,
       );
       state = current.copyWith(

@@ -1,18 +1,23 @@
+import 'dart:async';
+
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/features/student/presentation/pages/tutor_detail/tutor_about_section.dart';
-import 'package:tutora/features/student/presentation/pages/tutor_detail/tutor_certificates_section.dart';
-import 'package:tutora/features/student/presentation/pages/tutor_detail/tutor_hero_section.dart';
-import 'package:tutora/features/student/presentation/pages/tutor_detail/tutor_reviews_section.dart';
+import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_about_section.dart';
+import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_certificates_section.dart';
+import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_hero_section.dart';
+import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_reviews_section.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_bottom_sheet.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/tutor_detail_controller.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
+import 'package:video_player/video_player.dart';
 
 class TutorDetailPage extends ConsumerWidget {
   const TutorDetailPage({required this.tutorId, super.key});
@@ -52,33 +57,48 @@ class _DetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    return ListView(
-      padding: EdgeInsets.zero,
+    // Height of sticky bar: 72 + safe area
+    final stickyBarHeight = 72.0 + bottomPad;
+
+    return Stack(
       children: [
-        _TopBar(tutorId: tutorId, profile: profile),
-        TutorHeroSection(profile: profile),
-        const _Divider(),
-        const _StatsGrid(),
-        const _Divider(),
-        TutorAboutSection(profile: profile),
-        if (profile.videoIntroUrl != null) ...[
-          const _Divider(),
-          _VideoSection(videoUrl: profile.videoIntroUrl!),
-        ],
-        if (profile.certificates != null &&
-            profile.certificates!.isNotEmpty) ...[
-          const _Divider(),
-          TutorCertificatesSection(certificates: profile.certificates!),
-        ],
-        const _Divider(),
-        TutorReviewsSection(
-          feedbacks: profile.feedbacks ?? [],
-          averageRating: profile.averageRating,
-          totalFeedbacks: profile.totalFeedbacks,
+        ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            _TopBar(tutorId: tutorId, profile: profile),
+            TutorHeroSection(profile: profile),
+            const _Divider(),
+            const _StatsGrid(),
+            const _Divider(),
+            TutorAboutSection(profile: profile),
+            if (profile.videoIntroUrl != null) ...[
+              const _Divider(),
+              _VideoSection(videoUrl: profile.videoIntroUrl!),
+            ],
+            if (profile.certificates != null &&
+                profile.certificates!.isNotEmpty) ...[
+              const _Divider(),
+              TutorCertificatesSection(certificates: profile.certificates!),
+            ],
+            const _Divider(),
+            TutorReviewsSection(
+              feedbacks: profile.feedbacks ?? [],
+              averageRating: profile.averageRating,
+              totalFeedbacks: profile.totalFeedbacks,
+            ),
+            SizedBox(height: stickyBarHeight + 16),
+          ],
         ),
-        const _Divider(),
-        _BookingCard(tutorId: tutorId, profile: profile),
-        SizedBox(height: AppSpacing.xxl + bottomPad + 40),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _StickyBookingBar(
+            tutorId: tutorId,
+            profile: profile,
+            bottomPad: bottomPad,
+          ),
+        ),
       ],
     );
   }
@@ -233,9 +253,9 @@ class _VideoSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           GestureDetector(
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Tính năng xem video đang phát triển…'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _VideoPlayerScreen(videoUrl: videoUrl),
               ),
             ),
             child: Container(
@@ -243,13 +263,6 @@ class _VideoSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.ink,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800',
-                  ),
-                  fit: BoxFit.cover,
-                  opacity: 0.55,
-                ),
               ),
               child: Stack(
                 children: [
@@ -257,33 +270,32 @@ class _VideoSection extends StatelessWidget {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
-                        gradient: LinearGradient(
+                        gradient: const LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
-                          ],
+                          colors: [Colors.black26, Colors.black54],
                         ),
                       ),
                     ),
                   ),
                   Center(
                     child: Container(
-                      width: 52,
-                      height: 52,
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: AppColors.gold,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          width: 2,
-                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.gold.withValues(alpha: 0.4),
+                            blurRadius: 16,
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 28,
+                        color: AppColors.ink,
+                        size: 30,
                       ),
                     ),
                   ),
@@ -291,7 +303,7 @@ class _VideoSection extends StatelessWidget {
                     left: 14,
                     bottom: 14,
                     child: Text(
-                      'Click để xem phỏng vấn học thuật',
+                      'Bấm để xem video giới thiệu',
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
@@ -309,110 +321,194 @@ class _VideoSection extends StatelessWidget {
   }
 }
 
-// ── Booking card ───────────────────────────────────────────────────────────
-class _BookingCard extends StatelessWidget {
-  const _BookingCard({required this.tutorId, required this.profile});
+// ── Video player screen ────────────────────────────────────────────────────
+class _VideoPlayerScreen extends StatefulWidget {
+  const _VideoPlayerScreen({required this.videoUrl});
+  final String videoUrl;
+
+  @override
+  State<_VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
+  late VideoPlayerController _vpc;
+  ChewieController? _chewieController;
+  bool _error = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+        DeviceOrientation.portraitUp,
+      ]),
+    );
+    unawaited(_init());
+  }
+
+  Future<void> _init() async {
+    _vpc = VideoPlayerController.networkUrl(
+      Uri.parse(widget.videoUrl),
+      httpHeaders: const {'Accept': '*/*'},
+    );
+    try {
+      await _vpc.initialize();
+      if (!mounted) return;
+      setState(() {
+        _chewieController = ChewieController(
+          videoPlayerController: _vpc,
+          autoPlay: true,
+          placeholder: Container(color: Colors.black),
+          errorBuilder: (_, msg) => Center(
+            child: Text(msg, style: const TextStyle(color: Colors.white)),
+          ),
+        );
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+    );
+    _chewieController?.dispose();
+    unawaited(_vpc.dispose());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          'Video giới thiệu',
+          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        elevation: 0,
+      ),
+      body: Center(
+        child: _error
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.white54,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Không thể tải video. Vui lòng thử lại.',
+                    style: GoogleFonts.inter(
+                      color: Colors.white54,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _errorMessage!,
+                      style: GoogleFonts.inter(
+                        color: Colors.white30,
+                        fontSize: 11,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              )
+            : _chewieController == null
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Chewie(controller: _chewieController!),
+      ),
+    );
+  }
+}
+
+// ── Sticky booking bar ─────────────────────────────────────────────────────
+class _StickyBookingBar extends StatelessWidget {
+  const _StickyBookingBar({
+    required this.tutorId,
+    required this.profile,
+    required this.bottomPad,
+  });
   final String tutorId;
   final TutorFullProfileDto profile;
+  final double bottomPad;
 
   String get _priceText {
     final rate = profile.hourlyRate;
     if (rate == null || rate == 0) return 'Thương lượng';
-    if (rate >= 1000) {
-      final k = (rate / 1000).round();
-      return '$k.000đ / giờ';
-    }
-    return '${rate.toStringAsFixed(0)}đ / giờ';
+    if (rate >= 1000) return '${(rate / 1000).round()}.000đ/giờ';
+    return '${rate.toStringAsFixed(0)}đ/giờ';
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
       decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        color: AppColors.cream,
+        border: const Border(top: BorderSide(color: AppColors.line)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'ĐẶT BUỔI HỌC',
-            style: AppTextStyles.eyebrow(color: AppColors.gold),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _priceText,
-                        style: GoogleFonts.bricolageGrotesque(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.gold,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Thanh toán qua Tutora Escrow',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (profile.teachingMode != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      profile.teachingMode!,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.cream,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => showBookingSheet(context, profile, tutorId),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              decoration: BoxDecoration(
-                color: AppColors.gold,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'Đặt lịch học ngay',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _priceText,
+                style: GoogleFonts.bricolageGrotesque(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.ink,
+                ),
+              ),
+              Text(
+                'qua Tutora Escrow',
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink3),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => showBookingSheet(context, profile, tutorId),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: AppColors.gold,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Text(
+                  'Đặt lịch học ngay',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
                 ),
               ),
             ),
