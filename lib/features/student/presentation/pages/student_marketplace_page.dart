@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_filter_options.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
@@ -59,7 +60,7 @@ class _StudentMarketplacePageState
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterSheet(
         current: current,
-        onApply: (mode, city, sort, rating) {
+        onApply: (mode, city, sort, rating, budget) {
           unawaited(
             ref
                 .read(marketplaceControllerProvider.notifier)
@@ -68,6 +69,7 @@ class _StudentMarketplacePageState
                   city: city,
                   sortBy: sort,
                   minRating: rating,
+                  budget: budget,
                 ),
           );
         },
@@ -111,6 +113,9 @@ class _StudentMarketplacePageState
                 onRemoveRating: () => ref
                     .read(marketplaceControllerProvider.notifier)
                     .applyFilter(minRating: null),
+                onRemoveBudget: () => ref
+                    .read(marketplaceControllerProvider.notifier)
+                    .applyFilter(budget: null),
               ),
             Expanded(
               child: switch (state) {
@@ -136,8 +141,6 @@ class _StudentMarketplacePageState
     );
   }
 }
-
-// ── Top bar ────────────────────────────────────────────────────────────────
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
@@ -308,8 +311,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// ── Active filter chips ────────────────────────────────────────────────────
-
 class _ActiveFilterChips extends StatelessWidget {
   const _ActiveFilterChips({
     required this.state,
@@ -318,6 +319,7 @@ class _ActiveFilterChips extends StatelessWidget {
     required this.onRemoveCity,
     required this.onRemoveSort,
     required this.onRemoveRating,
+    required this.onRemoveBudget,
   });
   final MarketplaceLoaded state;
   final VoidCallback onClearAll;
@@ -325,12 +327,7 @@ class _ActiveFilterChips extends StatelessWidget {
   final VoidCallback onRemoveCity;
   final VoidCallback onRemoveSort;
   final VoidCallback onRemoveRating;
-
-  static const _modeLabels = {
-    'online': 'Online',
-    'offline': 'Tại nhà',
-    'hybrid': 'Kết hợp',
-  };
+  final VoidCallback onRemoveBudget;
 
   @override
   Widget build(BuildContext context) {
@@ -341,14 +338,22 @@ class _ActiveFilterChips extends StatelessWidget {
         children: [
           if (state.selectedMode != null)
             _Chip(
-              label: _modeLabels[state.selectedMode] ?? state.selectedMode!,
+              label: filterLabel(teachingModeOptions, state.selectedMode),
               onRemove: onRemoveMode,
             ),
+          if (state.selectedBudget != null)
+            _Chip(
+              label: filterLabel(budgetOptions, state.selectedBudget),
+              onRemove: onRemoveBudget,
+            ),
           if (state.selectedCity != null)
-            _Chip(label: state.selectedCity!, onRemove: onRemoveCity),
+            _Chip(
+              label: filterLabel(cityOptions, state.selectedCity),
+              onRemove: onRemoveCity,
+            ),
           if (state.selectedSortBy != null)
             _Chip(
-              label: _sortLabel(state.selectedSortBy!),
+              label: filterLabel(sortByOptions, state.selectedSortBy),
               onRemove: onRemoveSort,
             ),
           if (state.minRating != null)
@@ -374,14 +379,6 @@ class _ActiveFilterChips extends StatelessWidget {
       ),
     );
   }
-
-  String _sortLabel(String key) => switch (key) {
-    'rating_desc' => 'Đánh giá cao',
-    'price_asc' => 'Giá thấp',
-    'price_desc' => 'Giá cao',
-    'experience_desc' => 'Nhiều kinh nghiệm',
-    _ => key,
-  };
 }
 
 class _Chip extends StatelessWidget {
@@ -422,8 +419,6 @@ class _Chip extends StatelessWidget {
   );
 }
 
-// ── Filter bottom sheet ────────────────────────────────────────────────────
-
 class _FilterSheet extends StatefulWidget {
   const _FilterSheet({required this.current, required this.onApply});
   final MarketplaceLoaded current;
@@ -432,6 +427,7 @@ class _FilterSheet extends StatefulWidget {
     String? city,
     String? sort,
     double? rating,
+    String? budget,
   )
   onApply;
 
@@ -444,6 +440,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   String? _city;
   String? _sort;
   double? _rating;
+  String? _budget;
 
   @override
   void initState() {
@@ -452,30 +449,8 @@ class _FilterSheetState extends State<_FilterSheet> {
     _city = widget.current.selectedCity;
     _sort = widget.current.selectedSortBy;
     _rating = widget.current.minRating;
+    _budget = widget.current.selectedBudget;
   }
-
-  static const List<({String key, String label})> _modes = [
-    (key: 'online', label: 'Online'),
-    (key: 'offline', label: 'Tại nhà'),
-    (key: 'hybrid', label: 'Kết hợp'),
-  ];
-
-  static const List<({String key, String label})> _sorts = [
-    (key: 'rating_desc', label: 'Đánh giá cao nhất'),
-    (key: 'price_asc', label: 'Giá thấp nhất'),
-    (key: 'price_desc', label: 'Giá cao nhất'),
-    (key: 'experience_desc', label: 'Nhiều kinh nghiệm'),
-  ];
-
-  static const _ratings = <double>[4, 4.5, 4.8];
-
-  static const _cities = [
-    'Hà Nội',
-    'Hồ Chí Minh',
-    'Đà Nẵng',
-    'Cần Thơ',
-    'Hải Phòng',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -519,6 +494,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     _city = null;
                     _sort = null;
                     _rating = null;
+                    _budget = null;
                   });
                 },
                 child: Text(
@@ -534,11 +510,25 @@ class _FilterSheetState extends State<_FilterSheet> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _modes.map((m) {
+            children: teachingModeOptions.map((m) {
               final sel = _mode == m.key;
               return GestureDetector(
                 onTap: () => setState(() => _mode = sel ? null : m.key),
                 child: _FilterOption(label: m.label, selected: sel),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          const _FilterLabel('Ngân sách'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: budgetOptions.map((b) {
+              final sel = _budget == b.key;
+              return GestureDetector(
+                onTap: () => setState(() => _budget = sel ? null : b.key),
+                child: _FilterOption(label: b.label, selected: sel),
               );
             }).toList(),
           ),
@@ -548,11 +538,11 @@ class _FilterSheetState extends State<_FilterSheet> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _cities.map((c) {
-              final sel = _city == c;
+            children: cityOptions.map((c) {
+              final sel = _city == c.key;
               return GestureDetector(
-                onTap: () => setState(() => _city = sel ? null : c),
-                child: _FilterOption(label: c, selected: sel),
+                onTap: () => setState(() => _city = sel ? null : c.key),
+                child: _FilterOption(label: c.label, selected: sel),
               );
             }).toList(),
           ),
@@ -562,7 +552,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _ratings.map((r) {
+            children: minRatingOptions.map((r) {
               final sel = _rating == r;
               return GestureDetector(
                 onTap: () => setState(() => _rating = sel ? null : r),
@@ -579,7 +569,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _sorts.map((s) {
+            children: sortByOptions.map((s) {
               final sel = _sort == s.key;
               return GestureDetector(
                 onTap: () => setState(() => _sort = sel ? null : s.key),
@@ -591,7 +581,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           GestureDetector(
             onTap: () {
               Navigator.pop(context);
-              widget.onApply(_mode, _city, _sort, _rating);
+              widget.onApply(_mode, _city, _sort, _rating, _budget);
             },
             child: Container(
               width: double.infinity,
@@ -649,8 +639,6 @@ class _FilterOption extends StatelessWidget {
     ),
   );
 }
-
-// ── Loaded state ────────────────────────────────────────────────────────────
 
 class _LoadedView extends StatelessWidget {
   const _LoadedView({required this.state, required this.scrollController});
@@ -711,8 +699,6 @@ class _LoadedView extends StatelessWidget {
     );
   }
 }
-
-// ── Tutor card ──────────────────────────────────────────────────────────────
 
 class _TutorCard extends StatelessWidget {
   const _TutorCard({required this.tutor});
@@ -834,8 +820,6 @@ class _TutorCard extends StatelessWidget {
     );
   }
 }
-
-// ── Error view ──────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.message, required this.onRetry});
