@@ -1,44 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
-import 'package:tutora/mock/tutor_schedule_mock.dart';
 import 'package:tutora/shared/widgets/app_calendar.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 
-class TutorScheduleScreen extends StatefulWidget {
+class TutorScheduleScreen extends ConsumerStatefulWidget {
   const TutorScheduleScreen({super.key});
 
   @override
-  State<TutorScheduleScreen> createState() => _TutorScheduleScreenState();
+  ConsumerState<TutorScheduleScreen> createState() =>
+      _TutorScheduleScreenState();
 }
 
 enum _ViewMode { calendar, list }
 
-class _TutorScheduleScreenState extends State<TutorScheduleScreen> {
+class _TutorScheduleScreenState extends ConsumerState<TutorScheduleScreen> {
   _ViewMode _viewMode = _ViewMode.calendar;
   DateTime? _selectedDate;
-  TutorBookingStatus? _filterStatus; // null = all
 
-  List<TutorBookingMock> get _dayBookings {
+  List<TutorLessonDto> _dayLessons(List<TutorLessonDto> all) {
     final d = _selectedDate;
     if (d == null) return [];
-    return kTutorBookings
-        .where((b) => b.day == d.day && b.month == d.month && b.year == d.year)
-        .toList();
-  }
-
-  List<TutorBookingMock> get _filteredBookings {
-    final f = _filterStatus;
-    if (f == null) return kTutorBookings;
-    return kTutorBookings.where((b) => b.status == f).toList();
+    return all.where((b) => b.isSameDay(d)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final schedState = ref.watch(tutorScheduleProvider);
+    final lessons = schedState.lessons;
     final bottomPad = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -51,21 +48,31 @@ class _TutorScheduleScreenState extends State<TutorScheduleScreen> {
                 _selectedDate = null;
               }),
             ),
-            Expanded(
-              child: _viewMode == _ViewMode.calendar
-                  ? _CalendarView(
-                      selectedDate: _selectedDate,
-                      onSelectDate: (d) => setState(() => _selectedDate = d),
-                      dayBookings: _dayBookings,
-                      bottomPad: bottomPad,
-                    )
-                  : _ListView(
-                      filterStatus: _filterStatus,
-                      onFilterChange: (s) => setState(() => _filterStatus = s),
-                      bookings: _filteredBookings,
-                      bottomPad: bottomPad,
-                    ),
-            ),
+            if (schedState.isLoading && lessons.isEmpty)
+              const Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => ref
+                      .read(tutorScheduleProvider.notifier)
+                      .loadCurrentMonth(),
+                  child: _viewMode == _ViewMode.calendar
+                      ? _CalendarView(
+                          lessons: lessons,
+                          selectedDate: _selectedDate,
+                          onSelectDate: (d) =>
+                              setState(() => _selectedDate = d),
+                          dayLessons: _dayLessons(lessons),
+                          bottomPad: bottomPad,
+                        )
+                      : _LessonListView(
+                          lessons: lessons,
+                          bottomPad: bottomPad,
+                        ),
+                ),
+              ),
           ],
         ),
       ),
@@ -73,7 +80,7 @@ class _TutorScheduleScreenState extends State<TutorScheduleScreen> {
   }
 }
 
-// Header
+// ── Header ─────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
   const _Header({required this.viewMode, required this.onViewChange});
@@ -89,9 +96,7 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Text('Lịch dạy', style: AppTextStyles.h2()),
-          ),
+          Expanded(child: Text('Lịch dạy', style: AppTextStyles.h2())),
           Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
@@ -152,44 +157,43 @@ class _IconToggleBtn extends StatelessWidget {
   }
 }
 
-// Calendar View
+// ── Calendar View ───────────────────────────────────────────────────────────
 
 class _CalendarView extends StatelessWidget {
   const _CalendarView({
+    required this.lessons,
     required this.selectedDate,
     required this.onSelectDate,
-    required this.dayBookings,
+    required this.dayLessons,
     required this.bottomPad,
   });
 
+  final List<TutorLessonDto> lessons;
   final DateTime? selectedDate;
   final ValueChanged<DateTime> onSelectDate;
-  final List<TutorBookingMock> dayBookings;
+  final List<TutorLessonDto> dayLessons;
   final double bottomPad;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     return ListView(
       padding: EdgeInsets.only(bottom: bottomPad + AppSpacing.xxl),
       children: [
         const SizedBox(height: 12),
         AppCalendar(
           selectedDate: selectedDate,
-          sessionCountForDay: (y, m, d) {
-            if (y == 2026 && m == 5) {
-              return kTutorBookings
-                  .where((b) => b.year == y && b.month == m && b.day == d)
-                  .length;
-            }
-            return 0;
-          },
+          sessionCountForDay: (y, m, d) => lessons.where((b) {
+            final dt = b.startDt;
+            return dt != null && dt.year == y && dt.month == m && dt.day == d;
+          }).length,
           onSelectDate: onSelectDate,
         ),
-        if (selectedDate != null && dayBookings.isNotEmpty) ...[
+        if (selectedDate != null && dayLessons.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _DayStrip(date: selectedDate!, bookings: dayBookings),
+          _DayStrip(date: selectedDate!, lessons: dayLessons),
         ],
-        if (selectedDate != null && dayBookings.isEmpty)
+        if (selectedDate != null && dayLessons.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
             child: Text(
@@ -199,153 +203,184 @@ class _CalendarView extends StatelessWidget {
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Text('BUỔI DẠY THÁNG 5', style: AppTextStyles.eyebrow()),
+          child: Text(
+            'BUỔI DẠY THÁNG ${now.month}',
+            style: AppTextStyles.eyebrow(),
+          ),
         ),
-        ...kTutorBookings.map(
+        ...lessons.map(
           (b) => Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: _TeachingCard(
-              booking: b,
+              lesson: b,
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => TutorBookingDetailScreen(booking: b),
+                  builder: (_) => TutorBookingDetailScreen(lesson: b),
                 ),
               ),
             ),
           ),
         ),
-        const _MonthlySummary(),
+        _MonthlySummary(lessons: lessons),
       ],
     );
   }
 }
 
-// List View
+// ── List View (swipeable tabs) ──────────────────────────────────────────────
 
-const _kFilters = <(String, TutorBookingStatus?)>[
+const _kTabs = <(String, String?)>[
   ('Tất cả', null),
-  ('Chờ', TutorBookingStatus.pending),
-  ('Chấp nhận', TutorBookingStatus.accepted),
-  ('Đã trả', TutorBookingStatus.paid),
-  ('Đã huỷ', TutorBookingStatus.cancelled),
+  ('Chờ', 'scheduled'),
+  ('Đang dạy', 'inprogress'),
+  ('Hoàn thành', 'completed'),
+  ('Đã huỷ', 'cancelled'),
 ];
 
-class _ListView extends StatelessWidget {
-  const _ListView({
-    required this.filterStatus,
-    required this.onFilterChange,
-    required this.bookings,
+class _LessonListView extends StatefulWidget {
+  const _LessonListView({
+    required this.lessons,
     required this.bottomPad,
   });
 
-  final TutorBookingStatus? filterStatus;
-  final ValueChanged<TutorBookingStatus?> onFilterChange;
-  final List<TutorBookingMock> bookings;
+  final List<TutorLessonDto> lessons;
   final double bottomPad;
+
+  @override
+  State<_LessonListView> createState() => _LessonListViewState();
+}
+
+class _LessonListViewState extends State<_LessonListView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: _kTabs.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  List<TutorLessonDto> _forTab(int i) {
+    final status = _kTabs[i].$2;
+    if (status == null) return widget.lessons;
+    return widget.lessons
+        .where((l) => l.status.toLowerCase() == status)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Filter chips
-        SizedBox(
-          height: 44,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            scrollDirection: Axis.horizontal,
-            itemCount: _kFilters.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 6),
-            itemBuilder: (_, i) {
-              final (label, status) = _kFilters[i];
-              final active = filterStatus == status;
-              return GestureDetector(
-                onTap: () => onFilterChange(status),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
+        // Tab bar
+        Container(
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppColors.line, width: 0.8),
+            ),
+          ),
+          child: TabBar(
+            controller: _tab,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 14),
+            indicatorColor: AppColors.ink,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelStyle: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+            unselectedLabelStyle: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: AppColors.ink3,
+            ),
+            dividerColor: Colors.transparent,
+            tabs: _kTabs.map((t) => Tab(text: t.$1, height: 40)).toList(),
+          ),
+        ),
+        // Swipeable pages
+        Expanded(
+          child: TabBarView(
+            controller: _tab,
+            children: List.generate(_kTabs.length, (i) {
+              final items = _forTab(i);
+              if (items.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/common/empty_calendar.png',
+                        width: 220,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Không có buổi dạy nào',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.ink4,
+                        ),
+                      ),
+                    ],
                   ),
-                  decoration: BoxDecoration(
-                    color: active ? AppColors.ink : AppColors.cream2,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: active ? AppColors.cream : AppColors.ink3,
+                );
+              }
+              return ListView.separated(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  12,
+                  16,
+                  widget.bottomPad + AppSpacing.xxl,
+                ),
+                itemCount: items.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (ctx, j) => _TeachingCard(
+                  lesson: items[j],
+                  onTap: () => Navigator.of(ctx).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          TutorBookingDetailScreen(lesson: items[j]),
                     ),
                   ),
                 ),
               );
-            },
+            }),
           ),
-        ),
-        Expanded(
-          child: bookings.isEmpty
-              ? Center(
-                  child: Text(
-                    'Không có buổi dạy nào',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.ink4,
-                    ),
-                  ),
-                )
-              : ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    4,
-                    16,
-                    bottomPad + AppSpacing.xxl,
-                  ),
-                  children: [
-                    ...bookings.map(
-                      (b) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _TeachingCard(
-                          booking: b,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  TutorBookingDetailScreen(booking: b),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const _MonthlySummary(),
-                  ],
-                ),
         ),
       ],
     );
   }
 }
 
-// Shared widgets
+// ── Shared helpers ──────────────────────────────────────────────────────────
 
-(String, ChipTone) _bookingChip(TutorBookingStatus s) => switch (s) {
-  TutorBookingStatus.pending => ('Chờ xác nhận', ChipTone.gold),
-  TutorBookingStatus.accepted => ('Đã chấp nhận', ChipTone.moss),
-  TutorBookingStatus.paid => ('Đã thanh toán', ChipTone.ink),
-  TutorBookingStatus.cancelled => ('Đã huỷ', ChipTone.ox),
+(String, ChipTone) lessonChip(String status) => switch (status.toLowerCase()) {
+  'scheduled' || 'confirmed' => ('Sắp diễn ra', ChipTone.gold),
+  'inprogress' => ('Đang dạy', ChipTone.moss),
+  'completed' => ('Hoàn thành', ChipTone.ink),
+  _ => ('Đã huỷ', ChipTone.ox),
 };
 
-Color _bookingBarColor(TutorBookingStatus s) => switch (s) {
-  TutorBookingStatus.pending => const Color(0xFF7A5900),
-  TutorBookingStatus.accepted => AppColors.moss,
-  TutorBookingStatus.paid => const Color(0xFF0D3F6B),
-  TutorBookingStatus.cancelled => AppColors.oxblood,
+Color _lessonBarColor(String status) => switch (status.toLowerCase()) {
+  'scheduled' || 'confirmed' => const Color(0xFF7A5900),
+  'inprogress' => AppColors.moss,
+  'completed' => const Color(0xFF0D3F6B),
+  _ => AppColors.oxblood,
 };
 
 class _DayStrip extends StatelessWidget {
-  const _DayStrip({required this.date, required this.bookings});
+  const _DayStrip({required this.date, required this.lessons});
   final DateTime date;
-  final List<TutorBookingMock> bookings;
+  final List<TutorLessonDto> lessons;
 
   @override
   Widget build(BuildContext context) {
@@ -365,8 +400,8 @@ class _DayStrip extends StatelessWidget {
             style: AppTextStyles.eyebrow(),
           ),
           const SizedBox(height: 10),
-          ...bookings.map((b) {
-            final (label, tone) = _bookingChip(b.status);
+          ...lessons.map((b) {
+            final (label, tone) = lessonChip(b.status);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -375,7 +410,7 @@ class _DayStrip extends StatelessWidget {
                     width: 3,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: _bookingBarColor(b.status),
+                      color: _lessonBarColor(b.status),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -385,7 +420,7 @@ class _DayStrip extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          b.subject,
+                          b.subjectName,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -414,13 +449,14 @@ class _DayStrip extends StatelessWidget {
 }
 
 class _TeachingCard extends StatelessWidget {
-  const _TeachingCard({required this.booking, this.onTap});
-  final TutorBookingMock booking;
+  const _TeachingCard({required this.lesson, this.onTap});
+  final TutorLessonDto lesson;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final (label, tone) = _bookingChip(booking.status);
+    final (label, tone) = lessonChip(lesson.status);
+    final dt = lesson.startDt;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -443,7 +479,7 @@ class _TeachingCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${booking.day}',
+                    dt != null ? '${dt.day}' : '—',
                     style: GoogleFonts.bricolageGrotesque(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
@@ -452,7 +488,7 @@ class _TeachingCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Thg${booking.month}',
+                    dt != null ? 'Thg${dt.month}' : '',
                     style: GoogleFonts.inter(
                       fontSize: 8.5,
                       color: AppColors.ink4,
@@ -468,7 +504,7 @@ class _TeachingCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    booking.studentName,
+                    lesson.studentName,
                     style: GoogleFonts.inter(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
@@ -477,7 +513,7 @@ class _TeachingCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${booking.subject} · ${booking.timeStart}–${booking.timeEnd}',
+                    '${lesson.subjectName} · ${lesson.timeStart}–${lesson.timeEnd}',
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       color: AppColors.ink4,
@@ -495,12 +531,26 @@ class _TeachingCard extends StatelessWidget {
 }
 
 class _MonthlySummary extends StatelessWidget {
-  const _MonthlySummary();
+  const _MonthlySummary({required this.lessons});
+  final List<TutorLessonDto> lessons;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final completed = lessons
+        .where((l) => l.status.toLowerCase() == 'completed')
+        .length;
+    final students = lessons.map((l) => l.studentName).toSet().length;
+    final totalMinutes = lessons.fold<int>(0, (acc, l) {
+      final s = l.startDt;
+      final e = l.endDt;
+      if (s == null || e == null) return acc;
+      return acc + e.difference(s).inMinutes;
+    });
+    final hours = totalMinutes ~/ 60;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.ink,
@@ -527,27 +577,39 @@ class _MonthlySummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'TỔNG KẾT THÁNG 5',
+                'TỔNG KẾT THÁNG ${now.month}',
                 style: AppTextStyles.eyebrow(color: AppColors.gold),
               ),
               const SizedBox(height: 12),
-              const Row(
+              Row(
                 children: [
                   Expanded(
-                    child: _StatItem(value: '5', label: 'Số buổi'),
+                    child: _StatItem(
+                      value: '${lessons.length}',
+                      label: 'Số buổi',
+                    ),
                   ),
                   Expanded(
-                    child: _StatItem(value: '10h', label: 'Tổng giờ'),
+                    child: _StatItem(
+                      value: '${hours}h',
+                      label: 'Tổng giờ',
+                    ),
                   ),
                 ],
               ),
-              const Row(
+              Row(
                 children: [
                   Expanded(
-                    child: _StatItem(value: '1.2M ₫', label: 'Doanh thu'),
+                    child: _StatItem(
+                      value: '$completed',
+                      label: 'Hoàn thành',
+                    ),
                   ),
                   Expanded(
-                    child: _StatItem(value: '4', label: 'Học sinh'),
+                    child: _StatItem(
+                      value: '$students',
+                      label: 'Học sinh',
+                    ),
                   ),
                 ],
               ),
