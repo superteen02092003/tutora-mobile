@@ -1,90 +1,72 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/tutor/data/models/chat_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_chat_page.dart';
 import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
-import 'package:tutora/mock/tutor_inbox_mock.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-class TutorMessagesScreen extends StatefulWidget {
+class TutorMessagesScreen extends ConsumerStatefulWidget {
   const TutorMessagesScreen({super.key});
 
   @override
-  State<TutorMessagesScreen> createState() => _TutorMessagesScreenState();
+  ConsumerState<TutorMessagesScreen> createState() =>
+      _TutorMessagesScreenState();
 }
 
-class _TutorMessagesScreenState extends State<TutorMessagesScreen> {
+class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen> {
   String _search = '';
-  late List<MockConversation> _convos;
 
-  @override
-  void initState() {
-    super.initState();
-    _convos = List.from(kTutorConversations);
-  }
-
-  List<MockConversation> get _filtered {
-    if (_search.isEmpty) return _convos;
-    final q = _search.toLowerCase();
-    return _convos
-        .where(
-          (c) =>
-              c.name.toLowerCase().contains(q) ||
-              c.subject.toLowerCase().contains(q),
-        )
-        .toList();
-  }
-
-  void _openChat(MockConversation convo) {
+  void _openChat(ChatChannelDto channel) {
     unawaited(
       Navigator.of(context, rootNavigator: true).push(
-        MaterialPageRoute<void>(builder: (_) => TutorChatPage(convo: convo)),
+        MaterialPageRoute<void>(
+          builder: (_) => TutorChatPage(channel: channel),
+        ),
       ),
     );
   }
 
-  void _hideConvo(MockConversation convo) {
-    setState(() => _convos.removeWhere((c) => c.id == convo.id));
+  void _deleteChannel(ChatChannelDto channel) {
     AppToast.show(
       context,
-      message: 'Đã ẩn cuộc trò chuyện với ${convo.name}',
-      actionLabel: 'Hoàn tác',
-      onAction: () => setState(() {
-        final idx = kTutorConversations.indexWhere((c) => c.id == convo.id);
-        _convos.insert(idx.clamp(0, _convos.length), convo);
-      }),
-    );
-  }
-
-  void _deleteConvo(MockConversation convo) {
-    setState(() => _convos.removeWhere((c) => c.id == convo.id));
-    AppToast.show(
-      context,
-      message: 'Đã xoá cuộc trò chuyện với ${convo.name}',
+      message: 'Đã xoá cuộc trò chuyện với ${channel.otherUserName}',
       type: AppToastType.error,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(channelListProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    final filtered = state.channels.where((c) {
+      if (_search.isEmpty) return true;
+      final q = _search.toLowerCase();
+      return c.otherUserName.toLowerCase().contains(q) ||
+          c.lastMessagePreview.toLowerCase().contains(q);
+    }).toList();
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
                   Expanded(child: Text('Tin nhắn', style: AppTextStyles.h2())),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => ref.read(channelListProvider.notifier).load(),
                     child: Container(
                       width: 36,
                       height: 36,
@@ -94,7 +76,7 @@ class _TutorMessagesScreenState extends State<TutorMessagesScreen> {
                         border: Border.all(color: AppColors.line),
                       ),
                       child: const Icon(
-                        Icons.edit_outlined,
+                        Icons.refresh_rounded,
                         size: 16,
                         color: AppColors.ink,
                       ),
@@ -104,6 +86,8 @@ class _TutorMessagesScreenState extends State<TutorMessagesScreen> {
               ),
             ),
             const SizedBox(height: 12),
+
+            // Search bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
@@ -149,6 +133,7 @@ class _TutorMessagesScreenState extends State<TutorMessagesScreen> {
               ),
             ),
             const SizedBox(height: 12),
+
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
               child: Row(
@@ -161,32 +146,75 @@ class _TutorMessagesScreenState extends State<TutorMessagesScreen> {
                 ],
               ),
             ),
+
+            // Body
             Expanded(
-              child: _filtered.isEmpty
+              child: state.isLoading && state.channels.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : state.error != null && state.channels.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            size: 40,
+                            color: AppColors.ink4,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Không tải được tin nhắn',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.ink3,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () =>
+                                ref.read(channelListProvider.notifier).load(),
+                            child: Text(
+                              'Thử lại',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.oxblood,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : filtered.isEmpty
                   ? Center(
                       child: Text(
-                        'Không tìm thấy hội thoại nào.',
+                        _search.isEmpty
+                            ? 'Chưa có cuộc trò chuyện nào'
+                            : 'Không tìm thấy kết quả',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.ink3,
                         ),
                       ),
                     )
-                  : ListView.builder(
-                      padding: EdgeInsets.only(
-                        bottom: bottomPad + AppSpacing.xxl,
+                  : RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(channelListProvider.notifier).load(),
+                      child: ListView.builder(
+                        padding: EdgeInsets.only(
+                          bottom: bottomPad + AppSpacing.xxl,
+                        ),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final channel = filtered[i];
+                          return SwipeableConvoItem(
+                            key: ValueKey(channel.channelId),
+                            channel: channel,
+                            onTap: () => _openChat(channel),
+                            onDelete: () => _deleteChannel(channel),
+                          );
+                        },
                       ),
-                      itemCount: _filtered.length,
-                      itemBuilder: (_, i) {
-                        final convo = _filtered[i];
-                        return SwipeableConvoItem(
-                          key: ValueKey(convo.id),
-                          convo: convo,
-                          onTap: () => _openChat(convo),
-                          onHide: () => _hideConvo(convo),
-                          onDelete: () => _deleteConvo(convo),
-                        );
-                      },
                     ),
             ),
           ],
