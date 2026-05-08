@@ -11,7 +11,6 @@ import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
-import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class TutorHomeScreen extends ConsumerWidget {
   const TutorHomeScreen({super.key});
@@ -74,10 +73,6 @@ class TutorHomeScreen extends ConsumerWidget {
                       ),
                     ],
                     const SizedBox(height: AppSpacing.sm),
-                    _CopilotCard(
-                      onContribute: () => context.go(AppRoutes.tutorContribute),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
                     _QuestionBankStrip(
                       onContribute: () => context.go(AppRoutes.tutorContribute),
                     ),
@@ -103,38 +98,39 @@ class _TopBar extends StatelessWidget {
         children: [
           const AppLogo(),
           const Spacer(),
-          Stack(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.paper,
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  size: 18,
-                  color: AppColors.ink,
-                ),
-              ),
-              Positioned(
-                top: 7,
-                right: 7,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
+          GestureDetector(
+            onTap: () => context.push(AppRoutes.tutorNotifications),
+            child: Stack(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.oxblood,
+                    color: AppColors.paper,
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_outlined,
+                    size: 18,
+                    color: AppColors.ink,
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.oxblood,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 10),
-          UserAvatar(name: name),
         ],
       ),
     );
@@ -461,119 +457,6 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CopilotCard extends StatelessWidget {
-  const _CopilotCard({required this.onContribute});
-
-  final VoidCallback onContribute;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const RadialGradient(
-                    center: Alignment(1.1, -1),
-                    radius: 1.2,
-                    colors: [Color(0x2ED4B483), Colors.transparent],
-                    stops: [0.0, 0.55],
-                  ),
-                ),
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'CO-PILOT · TRƯỚC BUỔI HỌC',
-                  style: AppTextStyles.eyebrow(color: AppColors.gold),
-                ),
-                const SizedBox(height: 8),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Linh đã quét 3 bài về Vi-ét\n',
-                        style: GoogleFonts.bricolageGrotesque(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          height: 1.15,
-                          color: AppColors.cream,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '— sai cùng một bước.',
-                        style: GoogleFonts.ibmPlexSerif(
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w400,
-                          fontSize: 17,
-                          color: AppColors.gold,
-                          height: 1.15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Text(
-                    'Đề xuất: bắt đầu bằng việc ôn dấu của b trong công thức Vi-ét trước khi vào bài mới.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.cream.withValues(alpha: 0.85),
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: onContribute,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.gold,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Text(
-                      'Đóng góp lời giải · +50k',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
