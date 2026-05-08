@@ -57,34 +57,28 @@ class TutorAvailabilityDto {
     required this.dayOfWeek,
     required this.startTime,
     required this.endTime,
-    required this.isRecurring,
-    this.specificDate,
   });
 
-  factory TutorAvailabilityDto.fromJson(Map<String, dynamic> j) =>
-      TutorAvailabilityDto(
-        availabilityId: j['availabilityId'] as int? ?? 0,
-        dayOfWeek: j['dayOfWeek'] as int? ?? 0,
-        startTime: j['startTime'] as String? ?? '',
-        endTime: j['endTime'] as String? ?? '',
-        isRecurring: j['isRecurring'] as bool? ?? false,
-        specificDate: j['specificDate'] as String?,
-      );
-
-  Map<String, dynamic> toJson() => {
-    'dayOfWeek': dayOfWeek,
-    'startTime': startTime,
-    'endTime': endTime,
-    'isRecurring': isRecurring,
-    if (specificDate != null) 'specificDate': specificDate,
-  };
+  factory TutorAvailabilityDto.fromJson(Map<String, dynamic> j) {
+    // Backend: 0=Sun,1=Mon…6=Sat → Flutter: 1=Mon…7=Sun
+    final raw = j['dayofweek'] as int? ?? j['dayOfWeek'] as int? ?? 0;
+    final flutterDay = raw == 0 ? 7 : raw; // 0→7(Sun), 1–6 stay as 1–6
+    return TutorAvailabilityDto(
+      availabilityId:
+          j['availabilityid'] as int? ?? j['availabilityId'] as int? ?? 0,
+      dayOfWeek: flutterDay,
+      startTime: j['starttime'] as String? ?? j['startTime'] as String? ?? '',
+      endTime: j['endtime'] as String? ?? j['endTime'] as String? ?? '',
+    );
+  }
 
   final int availabilityId;
+  // 1=Mon … 6=Sat, 7=Sun  (Flutter/UI convention)
   final int dayOfWeek;
-  final String startTime;
-  final String endTime;
-  final bool isRecurring;
-  final String? specificDate;
+  final String startTime; // "HH:mm"
+  final String endTime; // "HH:mm"
+
+  bool get isRecurring => true;
 }
 
 class CreateAvailabilityRequest {
@@ -92,21 +86,17 @@ class CreateAvailabilityRequest {
     required this.dayOfWeek,
     required this.startTime,
     required this.endTime,
-    required this.isRecurring,
-    this.specificDate,
   });
 
+  // Flutter 1=Mon…7=Sun → Backend 0=Sun,1=Mon…6=Sat
   Map<String, dynamic> toJson() => {
-    'dayOfWeek': dayOfWeek,
-    'startTime': startTime,
-    'endTime': endTime,
-    'isRecurring': isRecurring,
-    if (specificDate != null) 'specificDate': specificDate,
+    'dayofweek': dayOfWeek == 7 ? 0 : dayOfWeek,
+    'starttime': startTime,
+    'endtime': endTime,
   };
 
+  // dayOfWeek in Flutter convention (1=Mon…7=Sun)
   final int dayOfWeek;
-  final String startTime;
-  final String endTime;
-  final bool isRecurring;
-  final String? specificDate;
+  final String startTime; // "HH:mm"
+  final String endTime; // "HH:mm"
 }

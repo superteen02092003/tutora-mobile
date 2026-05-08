@@ -16,9 +16,9 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_e
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_pricing_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_verification_progress_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_availability_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
+import 'package:tutora/shared/widgets/web_only_banner.dart';
 
 class TutorProfileScreen extends ConsumerWidget {
   const TutorProfileScreen({super.key});
@@ -63,7 +63,8 @@ class TutorProfileScreen extends ConsumerWidget {
                 _WalletBanner(
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const TutorWalletScreen(),
+                      builder: (_) =>
+                          const WebOnlyScreen(title: 'Ví & tài chính'),
                     ),
                   ),
                 ),
@@ -133,6 +134,40 @@ class TutorProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
 
+                // Booking & đánh giá (web-only)
+                const SectionLabel('Yêu cầu & đánh giá'),
+                SectionCard(
+                  children: [
+                    SettingRow(
+                      icon: Icons.event_available_outlined,
+                      label: 'Yêu cầu đặt lịch',
+                      sub: 'Xem trên web để chấp nhận hoặc từ chối',
+                      trailing: const _WebBadge(),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const WebOnlyScreen(
+                            title: 'Yêu cầu đặt lịch',
+                          ),
+                        ),
+                      ),
+                    ),
+                    SettingRow(
+                      icon: Icons.star_outline_rounded,
+                      label: 'Đánh giá từ phụ huynh',
+                      sub: 'Xem trên web để xem và trả lời đánh giá',
+                      trailing: const _WebBadge(),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const WebOnlyScreen(
+                            title: 'Đánh giá của tôi',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
                 // Lịch dạy
                 const SectionLabel('Lịch dạy'),
                 SectionCard(
@@ -166,9 +201,12 @@ class TutorProfileScreen extends ConsumerWidget {
                     SettingRow(
                       icon: Icons.south_rounded,
                       label: 'Lịch sử rút tiền',
+                      trailing: const _WebBadge(),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const TutorWalletScreen(),
+                          builder: (_) => const WebOnlyScreen(
+                            title: 'Lịch sử rút tiền',
+                          ),
                         ),
                       ),
                     ),
@@ -600,6 +638,36 @@ class _WalletBanner extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _WebBadge extends StatelessWidget {
+  const _WebBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.cream2,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.laptop_rounded, size: 11, color: AppColors.ink3),
+          const SizedBox(width: 3),
+          Text(
+            'Web',
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink3,
+            ),
+          ),
+        ],
       ),
     );
   }
