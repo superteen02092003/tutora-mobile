@@ -1,3 +1,12 @@
+String fmtVnd(int n) {
+  if (n >= 1000000) {
+    final m = n ~/ 1000;
+    return '${m ~/ 1000}.${(m % 1000).toString().padLeft(3, '0')}';
+  }
+  if (n >= 1000) return '${n ~/ 1000}.000';
+  return '$n';
+}
+
 /// Format giá tiền VNĐ có cộng phí dịch vụ 5%.
 String formatPrice(double? price) {
   if (price == null || price == 0) return 'Thương lượng';

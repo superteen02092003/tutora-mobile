@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_booking_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
 import 'package:tutora/mock/tutor_schedule_mock.dart';
 import 'package:tutora/shared/widgets/app_calendar.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
