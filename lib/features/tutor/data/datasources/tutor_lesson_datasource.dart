@@ -90,18 +90,16 @@ class TutorLessonDatasource {
 
   // POST /api/tutor/availability/{tutorId}
   Future<void> createAvailability(CreateAvailabilityRequest request) async {
-    final tutorId = await _getTutorId();
     await _dio.post<void>(
-      '/tutor/availability/$tutorId',
+      '/tutor/availability',
       data: request.toJson(),
     );
   }
 
-  // DELETE /api/tutor/availability/{tutorId}/{availabilityId}
+  // DELETE /api/tutor/availability/{availabilityId}  (tutorId taken from JWT by backend)
   Future<void> deleteAvailability(int availabilityId) async {
-    final tutorId = await _getTutorId();
     await _dio.delete<void>(
-      '/tutor/availability/$tutorId/$availabilityId',
+      '/tutor/availability/$availabilityId',
     );
   }
 }
