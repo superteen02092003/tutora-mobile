@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/mock/tutor_inbox_mock.dart';
+import 'package:tutora/features/tutor/data/models/chat_models.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class ChatHeader extends StatelessWidget {
-  const ChatHeader({required this.convo, required this.onMoreTap, super.key});
+  const ChatHeader({
+    required this.channel,
+    required this.onMoreTap,
+    super.key,
+  });
 
-  final MockConversation convo;
+  final ChatChannelDto channel;
   final VoidCallback onMoreTap;
 
   @override
@@ -38,46 +42,16 @@ class ChatHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Stack(
-            children: [
-              UserAvatar(name: convo.name, size: 38),
-              if (convo.online)
-                Positioned(
-                  bottom: 1,
-                  right: 1,
-                  child: Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.green,
-                      border: Border.all(color: AppColors.cream, width: 2),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          UserAvatar(name: channel.otherUserName, size: 38),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  convo.name,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                Text(
-                  convo.online ? 'Đang hoạt động' : convo.subject,
-                  style: GoogleFonts.inter(
-                    fontSize: 10.5,
-                    color: convo.online ? AppColors.green : AppColors.ink4,
-                  ),
-                ),
-              ],
+            child: Text(
+              channel.otherUserName,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
             ),
           ),
           GestureDetector(

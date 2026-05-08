@@ -1,42 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
-class TutorAvailabilityScreen extends StatefulWidget {
+class TutorAvailabilityScreen extends ConsumerStatefulWidget {
   const TutorAvailabilityScreen({super.key});
 
   @override
-  State<TutorAvailabilityScreen> createState() =>
+  ConsumerState<TutorAvailabilityScreen> createState() =>
       _TutorAvailabilityScreenState();
 }
 
-class _TutorAvailabilityScreenState extends State<TutorAvailabilityScreen> {
-  int _year = 2026;
-  int _month = 5;
-  final Set<int> _availDays = {
-    1,
-    3,
-    4,
-    6,
-    8,
-    10,
-    11,
-    13,
-    15,
-    17,
-    18,
-    19,
-    22,
-    24,
-    25,
-    26,
-    29,
-    31,
-  };
-  final Set<String> _slots = {'09:00', '10:00', '14:00', '15:00', '16:00'};
-  bool _repeat = true;
+class _TutorAvailabilityScreenState
+    extends ConsumerState<TutorAvailabilityScreen> {
+  int _year = DateTime.now().year;
+  int _month = DateTime.now().month;
+
+  // Selected day for slot override (null = default/recurring)
   int? _selDay;
+
+  // Pending changes: slot label → on/off  (not yet saved)
+  // We derive available days from the provider slots.
+  // For toggling a day: tap → call addSlot / deleteSlot for all slots on that day.
 
   static const _wd = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
   static const _allSlots = [
@@ -74,8 +63,142 @@ class _TutorAvailabilityScreenState extends State<TutorAvailabilityScreen> {
   int get _days => DateTime(_year, _month + 1, 0).day;
   int get _offset => DateTime(_year, _month).weekday - 1;
 
+  // Derive available days from provider (recurring slots cover all days)
+  Set<int> _availDaysFromSlots(List<TutorAvailabilityDto> slots) {
+    // A day is "available" if it has a specific-date slot OR if there's a
+    // recurring slot for that weekday.
+    final result = <int>{};
+    for (var d = 1; d <= _days; d++) {
+      final date = DateTime(_year, _month, d);
+      final wd = date.weekday; // 1=Mon … 7=Sun
+      for (final s in slots) {
+        if (s.isRecurring && s.dayOfWeek == wd) {
+          result.add(d);
+          break;
+        }
+        if (!s.isRecurring && s.specificDate != null) {
+          final sd = DateTime.tryParse(s.specificDate!);
+          if (sd != null &&
+              sd.year == _year &&
+              sd.month == _month &&
+              sd.day == d) {
+            result.add(d);
+            break;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  // Active slots for selected day (or recurring defaults)
+  Set<String> _activeSlotsFor(List<TutorAvailabilityDto> slots) {
+    final day = _selDay;
+    if (day == null) {
+      // Show recurring slots (all)
+      return slots.where((s) => s.isRecurring).map((s) => s.startTime).toSet();
+    }
+    final date = DateTime(_year, _month, day);
+    final wd = date.weekday;
+    // specific-date overrides, else fall back to recurring
+    final specific = slots
+        .where((s) {
+          if (s.specificDate == null) return false;
+          final sd = DateTime.tryParse(s.specificDate!);
+          return sd != null &&
+              sd.year == date.year &&
+              sd.month == date.month &&
+              sd.day == date.day;
+        })
+        .map((s) => s.startTime)
+        .toSet();
+    if (specific.isNotEmpty) return specific;
+    return slots
+        .where((s) => s.isRecurring && s.dayOfWeek == wd)
+        .map((s) => s.startTime)
+        .toSet();
+  }
+
+  Future<void> _toggleSlot(
+    String slotTime, {
+    required bool isActive,
+    required List<TutorAvailabilityDto> slots,
+    required bool isRecurring,
+  }) async {
+    final notifier = ref.read(tutorAvailabilityProvider.notifier);
+
+    if (isActive) {
+      // Remove matching slot
+      final day = _selDay;
+      for (final s in slots) {
+        if (s.startTime != slotTime) continue;
+        if (isRecurring && s.isRecurring) {
+          await notifier.removeSlot(s.availabilityId);
+          return;
+        }
+        if (!isRecurring && !s.isRecurring && day != null) {
+          final sd = s.specificDate != null
+              ? DateTime.tryParse(s.specificDate!)
+              : null;
+          if (sd != null &&
+              sd.year == _year &&
+              sd.month == _month &&
+              sd.day == day) {
+            await notifier.removeSlot(s.availabilityId);
+            return;
+          }
+        }
+      }
+    } else {
+      // Add slot
+      final day = _selDay;
+      if (isRecurring || day == null) {
+        // recurring — use today's weekday or Mon as placeholder
+        final wd = day != null
+            ? DateTime(_year, _month, day).weekday
+            : DateTime.now().weekday;
+        await notifier.addSlot(
+          CreateAvailabilityRequest(
+            dayOfWeek: wd,
+            startTime: slotTime,
+            endTime: _nextHour(slotTime),
+            isRecurring: true,
+          ),
+        );
+      } else {
+        final date = DateTime(_year, _month, day);
+        await notifier.addSlot(
+          CreateAvailabilityRequest(
+            dayOfWeek: date.weekday,
+            startTime: slotTime,
+            endTime: _nextHour(slotTime),
+            isRecurring: false,
+            specificDate: date.toIso8601String().substring(0, 10),
+          ),
+        );
+      }
+    }
+  }
+
+  static String _nextHour(String time) {
+    final parts = time.split(':');
+    final h = int.parse(parts[0]);
+    return '${(h + 1).toString().padLeft(2, '0')}:00';
+  }
+
+  Future<void> _save(List<TutorAvailabilityDto> slots) async {
+    // Nothing queued locally — all toggles are applied immediately.
+    // This button just refreshes to confirm.
+    await ref.read(tutorAvailabilityProvider.notifier).load();
+    if (mounted) AppToast.show(context, message: 'Đã lưu lịch rảnh');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final avState = ref.watch(tutorAvailabilityProvider);
+    final slots = avState.slots;
+    final availDays = _availDaysFromSlots(slots);
+    final activeSlots = _activeSlotsFor(slots);
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -84,100 +207,115 @@ class _TutorAvailabilityScreenState extends State<TutorAvailabilityScreen> {
         child: Column(
           children: [
             _AppBar(),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.only(bottom: bottomPad + 24),
-                children: [
-                  _MonthNav(
-                    year: _year,
-                    month: _month,
-                    monthName: _mn[_month],
-                    onPrev: () => setState(() {
-                      if (_month == 1) {
-                        _year--;
-                        _month = 12;
-                      } else {
-                        _month--;
-                      }
-                    }),
-                    onNext: () => setState(() {
-                      if (_month == 12) {
-                        _year++;
-                        _month = 1;
-                      } else {
-                        _month++;
-                      }
-                    }),
-                  ),
-                  _CalendarGrid(
-                    days: _days,
-                    offset: _offset,
-                    availDays: _availDays,
-                    selDay: _selDay,
-                    weekdays: _wd,
-                    onDayTap: (day, {required isAvail}) => setState(() {
-                      isAvail ? _availDays.remove(day) : _availDays.add(day);
-                      _selDay = day;
-                    }),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(18, 0, 18, 14),
-                    child: Row(
-                      children: [
-                        _LegendDot(
-                          color: Color(0xFF2F6B3D),
-                          label: 'Ngày rảnh',
-                        ),
-                        SizedBox(width: 16),
-                        _LegendDot(color: AppColors.ink4, label: 'Không rảnh'),
-                      ],
+            if (avState.isLoading && slots.isEmpty)
+              const Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.only(bottom: bottomPad + 24),
+                  children: [
+                    _MonthNav(
+                      year: _year,
+                      month: _month,
+                      monthName: _mn[_month],
+                      onPrev: () => setState(() {
+                        if (_month == 1) {
+                          _year--;
+                          _month = 12;
+                        } else {
+                          _month--;
+                        }
+                        _selDay = null;
+                      }),
+                      onNext: () => setState(() {
+                        if (_month == 12) {
+                          _year++;
+                          _month = 1;
+                        } else {
+                          _month++;
+                        }
+                        _selDay = null;
+                      }),
                     ),
-                  ),
-                  _SlotPicker(
-                    selDay: _selDay,
-                    month: _month,
-                    allSlots: _allSlots,
-                    activeSlots: _slots,
-                    onToggle: (s, {required isActive}) => setState(
-                      () => isActive ? _slots.remove(s) : _slots.add(s),
+                    _CalendarGrid(
+                      days: _days,
+                      offset: _offset,
+                      availDays: availDays,
+                      selDay: _selDay,
+                      weekdays: _wd,
+                      onDayTap: (day, {required isAvail}) =>
+                          setState(() => _selDay = day),
                     ),
-                  ),
-                  _RepeatToggle(
-                    value: _repeat,
-                    onChanged: (v) => setState(() => _repeat = v),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.ink,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Lưu lịch rảnh',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.cream,
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(18, 0, 18, 14),
+                      child: Row(
+                        children: [
+                          _LegendDot(
+                            color: Color(0xFF2F6B3D),
+                            label: 'Ngày rảnh',
+                          ),
+                          SizedBox(width: 16),
+                          _LegendDot(
+                            color: AppColors.ink4,
+                            label: 'Không rảnh',
+                          ),
+                        ],
+                      ),
+                    ),
+                    _SlotPicker(
+                      selDay: _selDay,
+                      month: _month,
+                      allSlots: _allSlots,
+                      activeSlots: activeSlots,
+                      isSaving: avState.isSaving,
+                      onToggle: (slot, {required isActive}) async {
+                        await _toggleSlot(
+                          slot,
+                          isActive: isActive,
+                          slots: slots,
+                          isRecurring: _selDay == null,
+                        );
+                      },
+                    ),
+                    _RepeatInfo(selDay: _selDay),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                      child: GestureDetector(
+                        onTap: avState.isSaving ? null : () => _save(slots),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: avState.isSaving
+                                ? AppColors.ink3
+                                : AppColors.ink,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            avState.isSaving ? 'Đang lưu…' : 'Lưu lịch rảnh',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.cream,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 }
+
+// ── Sub-widgets ─────────────────────────────────────────────────────────────
 
 class _AppBar extends StatelessWidget {
   @override
@@ -419,13 +557,15 @@ class _SlotPicker extends StatelessWidget {
     required this.month,
     required this.allSlots,
     required this.activeSlots,
+    required this.isSaving,
     required this.onToggle,
   });
   final int? selDay;
   final int month;
   final List<String> allSlots;
   final Set<String> activeSlots;
-  final void Function(String slot, {required bool isActive}) onToggle;
+  final bool isSaving;
+  final Future<void> Function(String slot, {required bool isActive}) onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +583,7 @@ class _SlotPicker extends StatelessWidget {
           Text(
             selDay != null
                 ? 'KHUNG GIỜ TRỐNG — NGÀY $selDay/$month'
-                : 'KHUNG GIỜ TRỐNG — MẶC ĐỊNH',
+                : 'KHUNG GIỜ TRỐNG — MẶC ĐỊNH (LẶP LẠI)',
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -458,7 +598,7 @@ class _SlotPicker extends StatelessWidget {
             children: allSlots.map((s) {
               final on = activeSlots.contains(s);
               return GestureDetector(
-                onTap: () => onToggle(s, isActive: on),
+                onTap: isSaving ? null : () => onToggle(s, isActive: on),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 140),
                   padding: const EdgeInsets.symmetric(
@@ -487,10 +627,9 @@ class _SlotPicker extends StatelessWidget {
   }
 }
 
-class _RepeatToggle extends StatelessWidget {
-  const _RepeatToggle({required this.value, required this.onChanged});
-  final bool value;
-  final ValueChanged<bool> onChanged;
+class _RepeatInfo extends StatelessWidget {
+  const _RepeatInfo({required this.selDay});
+  final int? selDay;
 
   @override
   Widget build(BuildContext context) {
@@ -504,35 +643,23 @@ class _RepeatToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Lặp lại hàng tuần',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Áp dụng khung giờ cho cùng thứ trong tuần',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppColors.ink4,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: AppColors.ink3,
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.ink,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              selDay == null
+                  ? 'Các khung giờ mặc định lặp lại mỗi tuần theo thứ tương ứng.'
+                  : 'Chọn khung giờ riêng cho ngày $selDay. Nếu để trống sẽ dùng lịch lặp lại.',
+              style: GoogleFonts.inter(
+                fontSize: 11.5,
+                color: AppColors.ink3,
+                height: 1.4,
+              ),
+            ),
           ),
         ],
       ),

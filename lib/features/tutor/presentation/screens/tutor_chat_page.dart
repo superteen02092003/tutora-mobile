@@ -1,27 +1,28 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/features/tutor/data/models/chat_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/chat_header.dart';
 import 'package:tutora/features/tutor/presentation/widgets/chat_more_menu.dart';
 import 'package:tutora/features/tutor/presentation/widgets/message_bubble.dart';
-import 'package:tutora/mock/tutor_inbox_mock.dart';
 
-class TutorChatPage extends StatefulWidget {
-  const TutorChatPage({required this.convo, super.key});
+class TutorChatPage extends ConsumerStatefulWidget {
+  const TutorChatPage({required this.channel, super.key});
 
-  final MockConversation convo;
+  final ChatChannelDto channel;
 
   @override
-  State<TutorChatPage> createState() => _TutorChatPageState();
+  ConsumerState<TutorChatPage> createState() => _TutorChatPageState();
 }
 
-class _TutorChatPageState extends State<TutorChatPage> {
+class _TutorChatPageState extends ConsumerState<TutorChatPage> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollCtrl = ScrollController();
-  final List<MockChatMessage> _msgs = List.from(kTutorChatMessages);
   bool _canSend = false;
 
   static const _quickReplies = [
@@ -37,7 +38,6 @@ class _TutorChatPageState extends State<TutorChatPage> {
       final can = _controller.text.trim().isNotEmpty;
       if (can != _canSend) setState(() => _canSend = can);
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
   @override
@@ -49,32 +49,27 @@ class _TutorChatPageState extends State<TutorChatPage> {
   }
 
   void _scrollToBottom() {
-    if (_scrollCtrl.hasClients) {
-      unawaited(
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        ),
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        unawaited(
+          _scrollCtrl.animateTo(
+            _scrollCtrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          ),
+        );
+      }
+    });
   }
 
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _msgs.add(
-        MockChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch,
-          sender: MessageSender.me,
-          text: text,
-          time: 'Vừa xong',
-        ),
-      );
-    });
     _controller.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    unawaited(
+      ref.read(chatRoomProvider(widget.channel.channelId).notifier).send(text),
+    );
+    _scrollToBottom();
   }
 
   void _quickReply(String text) {
@@ -90,15 +85,24 @@ class _TutorChatPageState extends State<TutorChatPage> {
       showModalBottomSheet<void>(
         context: context,
         backgroundColor: Colors.transparent,
-        builder: (_) => ChatMoreMenu(convoName: widget.convo.name),
+        builder: (_) => ChatMoreMenu(convoName: widget.channel.otherUserName),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final roomState = ref.watch(chatRoomProvider(widget.channel.channelId));
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    // Scroll to bottom when new messages arrive
+    ref.listen(chatRoomProvider(widget.channel.channelId), (prev, next) {
+      if ((prev?.messages.length ?? 0) < next.messages.length) {
+        _scrollToBottom();
+      }
+    });
+
     return GestureDetector(
       onTap: _focusNode.unfocus,
       child: Scaffold(
@@ -108,45 +112,49 @@ class _TutorChatPageState extends State<TutorChatPage> {
           bottom: false,
           child: Column(
             children: [
-              ChatHeader(convo: widget.convo, onMoreTap: _showMoreMenu),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Divider(color: AppColors.line, height: 1),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        'Hôm nay, 02/05',
+              ChatHeader(
+                channel: widget.channel,
+                onMoreTap: _showMoreMenu,
+              ),
+
+              // Typing indicator
+              if (roomState.isTyping)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${widget.channel.otherUserName} đang nhắn...',
                         style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
                           color: AppColors.ink4,
-                          letterSpacing: 0.06,
                         ),
                       ),
-                    ),
-                    const Expanded(
-                      child: Divider(color: AppColors.line, height: 1),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+
+              // Messages
               Expanded(
-                child: ListView.builder(
-                  controller: _scrollCtrl,
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-                  itemCount: _msgs.length,
-                  itemBuilder: (_, i) =>
-                      MessageBubble(msg: _msgs[i], convo: widget.convo),
-                ),
+                child: roomState.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+                        itemCount: roomState.messages.length,
+                        itemBuilder: (_, i) => MessageBubble(
+                          msg: roomState.messages[i],
+                          otherUserName: widget.channel.otherUserName,
+                          currentUserId: roomState.currentUserId,
+                        ),
+                      ),
               ),
-              // ── Quick replies ──
+
+              // Quick replies
               SizedBox(
                 height: 42,
                 child: ListView.separated(
@@ -179,7 +187,8 @@ class _TutorChatPageState extends State<TutorChatPage> {
                 ),
               ),
               const SizedBox(height: 6),
-              // ── Input bar ──
+
+              // Input bar
               AnimatedPadding(
                 duration: const Duration(milliseconds: 150),
                 curve: Curves.easeOut,
@@ -200,15 +209,12 @@ class _TutorChatPageState extends State<TutorChatPage> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      GestureDetector(
-                        onTap: () {},
-                        child: const Padding(
-                          padding: EdgeInsets.only(bottom: 9),
-                          child: Icon(
-                            Icons.add_circle_outline_rounded,
-                            size: 24,
-                            color: AppColors.ink4,
-                          ),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 9),
+                        child: Icon(
+                          Icons.add_circle_outline_rounded,
+                          size: 24,
+                          color: AppColors.ink4,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -230,6 +236,13 @@ class _TutorChatPageState extends State<TutorChatPage> {
                             textInputAction: TextInputAction.newline,
                             minLines: 1,
                             maxLines: 5,
+                            onChanged: (_) => ref
+                                .read(
+                                  chatRoomProvider(
+                                    widget.channel.channelId,
+                                  ).notifier,
+                                )
+                                .notifyTyping(),
                             style: GoogleFonts.inter(
                               fontSize: 13.5,
                               color: AppColors.ink,

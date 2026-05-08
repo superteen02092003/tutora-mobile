@@ -19,8 +19,9 @@ import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_messages_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_profile_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_schedule_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -116,6 +117,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+
+      GoRoute(
+        path: AppRoutes.tutorNotifications,
+        builder: (context, _) => const TutorNotificationsScreen(),
       ),
 
       StatefulShellRoute.indexedStack(

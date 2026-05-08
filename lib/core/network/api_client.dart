@@ -10,16 +10,17 @@ const String _configuredBaseUrl = String.fromEnvironment(
 );
 const String _debugDefaultBaseUrl = 'http://10.0.2.2:5166';
 
-String get _baseUrl {
+String get appBaseUrl {
   if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
   if (kReleaseMode) {
     throw StateError(
       'Missing BASE_URL. Provide --dart-define=BASE_URL=<your-api-host>',
     );
   }
-  // Safe fallback in debug.
   return _debugDefaultBaseUrl;
 }
+
+String get _baseUrl => appBaseUrl;
 
 final apiClientProvider = Provider<Dio>((ref) {
   final dio = Dio(

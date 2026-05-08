@@ -3,21 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/mock/tutor_inbox_mock.dart';
+import 'package:tutora/features/tutor/data/models/chat_models.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class SwipeableConvoItem extends StatefulWidget {
   const SwipeableConvoItem({
-    required this.convo,
+    required this.channel,
     required this.onTap,
-    required this.onHide,
     required this.onDelete,
     super.key,
   });
 
-  final MockConversation convo;
+  final ChatChannelDto channel;
   final VoidCallback onTap;
-  final VoidCallback onHide;
   final VoidCallback onDelete;
 
   @override
@@ -28,7 +26,7 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<Offset> _slide;
-  static const _revealWidth = 140.0;
+  static const double _revealWidth = 70;
   bool _revealed = false;
 
   @override
@@ -38,13 +36,10 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
       vsync: this,
       duration: const Duration(milliseconds: 220),
     );
-    _slide =
-        Tween<Offset>(
-          begin: Offset.zero,
-          end: const Offset(-_revealWidth, 0),
-        ).animate(
-          CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-        );
+    _slide = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-_revealWidth, 0),
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -81,39 +76,10 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
                 GestureDetector(
                   onTap: () {
                     _close();
-                    widget.onHide();
-                  },
-                  child: Container(
-                    width: 70,
-                    color: AppColors.ink3,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.visibility_off_outlined,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Ẩn',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    _close();
                     widget.onDelete();
                   },
                   child: Container(
-                    width: 70,
+                    width: _revealWidth,
                     color: AppColors.oxblood,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -144,7 +110,7 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
             builder: (_, child) =>
                 Transform.translate(offset: _slide.value, child: child),
             child: _ConvoItem(
-              convo: widget.convo,
+              channel: widget.channel,
               onTap: _revealed ? _close : widget.onTap,
             ),
           ),
@@ -155,45 +121,26 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
 }
 
 class _ConvoItem extends StatelessWidget {
-  const _ConvoItem({required this.convo, required this.onTap});
+  const _ConvoItem({required this.channel, required this.onTap});
 
-  final MockConversation convo;
+  final ChatChannelDto channel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final hasUnread = convo.unread > 0;
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: hasUnread ? const Color(0xFFFDFCF8) : AppColors.cream,
-          border: const Border(
+        decoration: const BoxDecoration(
+          color: AppColors.cream,
+          border: Border(
             bottom: BorderSide(color: AppColors.line, width: 0.8),
           ),
         ),
         child: Row(
           children: [
-            Stack(
-              children: [
-                UserAvatar(name: convo.name, size: 46),
-                if (convo.online)
-                  Positioned(
-                    bottom: 1,
-                    right: 1,
-                    child: Container(
-                      width: 11,
-                      height: 11,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.green,
-                        border: Border.all(color: AppColors.cream, width: 2),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            UserAvatar(name: channel.otherUserName, size: 46),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -203,72 +150,31 @@ class _ConvoItem extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          convo.name,
+                          channel.otherUserName,
                           style: GoogleFonts.inter(
                             fontSize: 14,
-                            fontWeight: hasUnread
-                                ? FontWeight.w700
-                                : FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.ink,
                           ),
                         ),
                       ),
                       Text(
-                        convo.time,
+                        channel.formattedTime,
                         style: GoogleFonts.ibmPlexMono(
                           fontSize: 10,
-                          color: hasUnread ? AppColors.oxblood : AppColors.ink4,
+                          color: AppColors.ink4,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
-                    convo.subject,
+                    channel.displayPreview,
                     style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink3,
+                      fontSize: 12.5,
+                      color: AppColors.ink4,
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          convo.preview,
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5,
-                            color: hasUnread ? AppColors.ink2 : AppColors.ink4,
-                            fontWeight: hasUnread
-                                ? FontWeight.w500
-                                : FontWeight.w400,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (hasUnread) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.oxblood,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            '${convo.unread}',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

@@ -28,6 +28,7 @@ abstract final class AppRoutes {
 
   // Tutor sub-routes
   static const tutorBookingDetail = '/tutor/schedule/booking/:id';
+  static const tutorNotifications = '/tutor/notifications';
 
   // Shared
   static const chat = '/chat/:roomId';

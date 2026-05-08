@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
-import 'package:tutora/mock/tutor_home_mock.dart';
+import 'package:tutora/core/utils/format_utils.dart';
+import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
-import 'package:tutora/shared/widgets/user_avatar.dart';
 
-class TutorHomeScreen extends StatelessWidget {
+class TutorHomeScreen extends ConsumerWidget {
   const TutorHomeScreen({super.key});
 
   static String _firstName(String name) {
@@ -18,34 +21,65 @@ class TutorHomeScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileState = ref.watch(tutorProfileProvider);
+    final dashState = ref.watch(tutorDashboardProvider);
+    final name = profileState.user?.fullName ?? '';
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const _TopBar(name: kMockTutorName),
-            _Greeting(firstName: _firstName(kMockTutorName)),
-            const SizedBox(height: AppSpacing.sm),
-            const _StatGrid(),
-            _SectionHeader(
-              title: 'Hôm nay · ${kMockTutorSessions.length} buổi',
-              action: 'Xem cả tuần',
-              onAction: () {},
-            ),
-            ...kMockTutorSessions.map((s) => _SessionCard(session: s)),
-            const SizedBox(height: AppSpacing.sm),
-            _CopilotCard(
-              onContribute: () => context.go(AppRoutes.tutorContribute),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _QuestionBankStrip(
-              onContribute: () => context.go(AppRoutes.tutorContribute),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-          ],
-        ),
+        child: dashState.isLoading && dashState.data == null
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(tutorDashboardProvider.notifier).load(),
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _TopBar(name: name),
+                    _Greeting(
+                      firstName: name.isNotEmpty ? _firstName(name) : 'bạn',
+                      sessionCount: dashState.data?.todaySessions.length ?? 0,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _StatGrid(data: dashState.data),
+                    if (dashState.data != null &&
+                        dashState.data!.todaySessions.isNotEmpty) ...[
+                      _SectionHeader(
+                        title:
+                            'Hôm nay · ${dashState.data!.todaySessions.length} buổi',
+                        action: 'Xem cả tuần',
+                        onAction: () => context.go(AppRoutes.tutorSchedule),
+                      ),
+                      ...dashState.data!.todaySessions.map(
+                        (s) => _SessionCard(session: s),
+                      ),
+                    ] else if (dashState.data != null) ...[
+                      _SectionHeader(
+                        title: 'Hôm nay · 0 buổi',
+                        action: 'Xem lịch',
+                        onAction: () => context.go(AppRoutes.tutorSchedule),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                        child: Text(
+                          'Không có buổi học nào hôm nay.',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.ink4,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    _QuestionBankStrip(
+                      onContribute: () => context.go(AppRoutes.tutorContribute),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -64,39 +98,39 @@ class _TopBar extends StatelessWidget {
         children: [
           const AppLogo(),
           const Spacer(),
-          // Bell with notification dot
-          Stack(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.paper,
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  size: 18,
-                  color: AppColors.ink,
-                ),
-              ),
-              Positioned(
-                top: 7,
-                right: 7,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
+          GestureDetector(
+            onTap: () => context.push(AppRoutes.tutorNotifications),
+            child: Stack(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.oxblood,
+                    color: AppColors.paper,
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_outlined,
+                    size: 18,
+                    color: AppColors.ink,
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.oxblood,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 10),
-          UserAvatar(name: name),
         ],
       ),
     );
@@ -104,9 +138,10 @@ class _TopBar extends StatelessWidget {
 }
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.firstName});
+  const _Greeting({required this.firstName, required this.sessionCount});
 
   final String firstName;
+  final int sessionCount;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +169,9 @@ class _Greeting extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: '3 buổi học hôm nay.',
+                  text: sessionCount > 0
+                      ? '$sessionCount buổi học hôm nay.'
+                      : 'Không có buổi học hôm nay.',
                   style: GoogleFonts.ibmPlexSerif(
                     fontStyle: FontStyle.italic,
                     fontWeight: FontWeight.w400,
@@ -153,10 +190,47 @@ class _Greeting extends StatelessWidget {
 }
 
 class _StatGrid extends StatelessWidget {
-  const _StatGrid();
+  const _StatGrid({this.data});
+
+  final TutorDashboardDto? data;
+
+  String _fmtEarnings(double v) {
+    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}tr';
+    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)}k';
+    return fmtVnd(v.toInt());
+  }
 
   @override
   Widget build(BuildContext context) {
+    final stats = data == null
+        ? _loadingStats
+        : [
+            (
+              label: 'Doanh thu tháng',
+              value: _fmtEarnings(data!.monthlyEarnings),
+              sub: '${data!.completedSessions} buổi hoàn thành',
+              tone: 'ink',
+            ),
+            (
+              label: 'Buổi sắp tới',
+              value: '${data!.upcomingSessions}',
+              sub: 'Chưa diễn ra',
+              tone: 'cream',
+            ),
+            (
+              label: 'Đánh giá',
+              value: data!.averageRating.toStringAsFixed(2),
+              sub: '${data!.totalReviews} đánh giá',
+              tone: 'cream',
+            ),
+            (
+              label: 'Đang giữ tạm',
+              value: _fmtEarnings(data!.escrowBalance),
+              sub: '${data!.escrowSessions} buổi · escrow',
+              tone: 'gold',
+            ),
+          ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: GridView.count(
@@ -166,7 +240,7 @@ class _StatGrid extends StatelessWidget {
         childAspectRatio: 1.45,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        children: kMockTutorStats
+        children: stats
             .map(
               (s) => _StatCard(
                 label: s.label,
@@ -181,6 +255,13 @@ class _StatGrid extends StatelessWidget {
   }
 }
 
+const _loadingStats = <({String label, String value, String sub, String tone})>[
+  (label: 'Doanh thu tháng', value: '—', sub: '—', tone: 'ink'),
+  (label: 'Buổi sắp tới', value: '—', sub: '—', tone: 'cream'),
+  (label: 'Đánh giá', value: '—', sub: '—', tone: 'cream'),
+  (label: 'Đang giữ tạm', value: '—', sub: '—', tone: 'gold'),
+];
+
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.label,
@@ -192,7 +273,7 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final String sub;
-  final String tone; // 'ink' | 'gold' | 'cream'
+  final String tone;
 
   bool get _isDark => tone == 'ink';
   bool get _isGold => tone == 'gold';
@@ -294,11 +375,12 @@ class _SectionHeader extends StatelessWidget {
 class _SessionCard extends StatelessWidget {
   const _SessionCard({required this.session});
 
-  final MockTutorSession session;
+  final TutorTodaySessionDto session;
 
   @override
   Widget build(BuildContext context) {
-    final isNext = session.isNext;
+    final isNext = session.isUpcoming;
+    final timeLabel = session.timeStart.isNotEmpty ? session.timeStart : '—';
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Container(
@@ -318,11 +400,10 @@ class _SessionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Time block
             SizedBox(
               width: 50,
               child: Text(
-                session.time,
+                timeLabel,
                 style: GoogleFonts.ibmPlexMono(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -330,7 +411,6 @@ class _SessionCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,7 +425,7 @@ class _SessionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    session.subject,
+                    session.subjectName,
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       color: AppColors.ink3,
@@ -356,7 +436,6 @@ class _SessionCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            // CTA button
             GestureDetector(
               onTap: () {},
               child: Container(
@@ -370,7 +449,7 @@ class _SessionCard extends StatelessWidget {
                   border: isNext ? null : Border.all(color: AppColors.line),
                 ),
                 child: Text(
-                  session.ctaLabel,
+                  isNext ? 'Vào lớp' : 'Xem',
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
@@ -378,119 +457,6 @@ class _SessionCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CopilotCard extends StatelessWidget {
-  const _CopilotCard({required this.onContribute});
-
-  final VoidCallback onContribute;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  gradient: const RadialGradient(
-                    center: Alignment(1.1, -1),
-                    radius: 1.2,
-                    colors: [Color(0x2ED4B483), Colors.transparent],
-                    stops: [0.0, 0.55],
-                  ),
-                ),
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'CO-PILOT · TRƯỚC BUỔI HỌC',
-                  style: AppTextStyles.eyebrow(color: AppColors.gold),
-                ),
-                const SizedBox(height: 8),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Linh đã quét 3 bài về Vi-ét\n',
-                        style: GoogleFonts.bricolageGrotesque(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          height: 1.15,
-                          color: AppColors.cream,
-                        ),
-                      ),
-                      TextSpan(
-                        text: '— sai cùng một bước.',
-                        style: GoogleFonts.ibmPlexSerif(
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w400,
-                          fontSize: 17,
-                          color: AppColors.gold,
-                          height: 1.15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Text(
-                    'Đề xuất: bắt đầu bằng việc ôn dấu của b trong công thức Vi-ét trước khi vào bài mới.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.cream.withValues(alpha: 0.85),
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: onContribute,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 9,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.gold,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Text(
-                      'Đóng góp lời giải · +50k',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -553,7 +519,7 @@ class _QuestionBankStrip extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '3 bài đang chờ duyệt · 142 bài đã đăng',
+                          'Chia sẻ kiến thức · nhận thưởng',
                           style: GoogleFonts.inter(
                             fontSize: 11.5,
                             color: AppColors.ink3,

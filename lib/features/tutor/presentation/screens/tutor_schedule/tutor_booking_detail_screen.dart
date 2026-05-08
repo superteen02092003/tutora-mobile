@@ -2,43 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/mock/tutor_schedule_mock.dart';
+import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 
 class TutorBookingDetailScreen extends StatelessWidget {
-  const TutorBookingDetailScreen({required this.booking, super.key});
+  const TutorBookingDetailScreen({required this.lesson, super.key});
 
-  final TutorBookingMock booking;
+  final TutorLessonDto lesson;
 
-  (String, ChipTone) get _chip => switch (booking.status) {
-    TutorBookingStatus.pending => ('Chờ xác nhận', ChipTone.gold),
-    TutorBookingStatus.accepted => ('Đã chấp nhận', ChipTone.moss),
-    TutorBookingStatus.paid => ('Đã thanh toán', ChipTone.ink),
-    TutorBookingStatus.cancelled => ('Đã huỷ', ChipTone.ox),
+  (String, ChipTone) get _chip => lessonChip(lesson.status);
+
+  Color get _heroColor => switch (lesson.status.toLowerCase()) {
+    'scheduled' || 'confirmed' => const Color(0xFFFFF3CD),
+    'inprogress' => const Color(0xFFD5EDD9),
+    'completed' => const Color(0xFFD5E8F5),
+    _ => const Color(0xFFFFDEDE),
   };
 
-  Color get _heroColor => switch (booking.status) {
-    TutorBookingStatus.pending => const Color(0xFFFFF3CD),
-    TutorBookingStatus.accepted => const Color(0xFFD5EDD9),
-    TutorBookingStatus.paid => const Color(0xFFD5E8F5),
-    TutorBookingStatus.cancelled => const Color(0xFFFFDEDE),
-  };
-
-  Color get _heroBorder => switch (booking.status) {
-    TutorBookingStatus.pending => const Color(0xFF7A5900),
-    TutorBookingStatus.accepted => AppColors.moss,
-    TutorBookingStatus.paid => const Color(0xFF0D3F6B),
-    TutorBookingStatus.cancelled => AppColors.oxblood,
+  Color get _heroBorder => switch (lesson.status.toLowerCase()) {
+    'scheduled' || 'confirmed' => const Color(0xFF7A5900),
+    'inprogress' => AppColors.moss,
+    'completed' => const Color(0xFF0D3F6B),
+    _ => AppColors.oxblood,
   };
 
   bool get _isDone =>
-      booking.status == TutorBookingStatus.paid ||
-      booking.status == TutorBookingStatus.cancelled;
+      lesson.status.toLowerCase() == 'completed' ||
+      lesson.status.toLowerCase() == 'cancelled';
 
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final (chipLabel, chipTone) = _chip;
+    final dt = lesson.startDt;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -81,7 +78,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                 children: [
                   // Hero card
                   _HeroCard(
-                    booking: booking,
+                    lesson: lesson,
                     chipLabel: chipLabel,
                     chipTone: chipTone,
                     heroColor: _heroColor,
@@ -93,14 +90,14 @@ class TutorBookingDetailScreen extends StatelessWidget {
                   _InfoCard(
                     child: Row(
                       children: [
-                        _Avatar(name: booking.studentName),
+                        _Avatar(name: lesson.studentName),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                booking.studentName,
+                                lesson.studentName,
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -109,7 +106,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Học sinh · ${booking.subject}',
+                                'Học sinh · ${lesson.subjectName}',
                                 style: GoogleFonts.inter(
                                   fontSize: 11.5,
                                   color: AppColors.ink4,
@@ -118,10 +115,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        _OutlineBtn(
-                          label: 'Nhắn tin',
-                          onTap: () {},
-                        ),
+                        _OutlineBtn(label: 'Nhắn tin', onTap: () {}),
                       ],
                     ),
                   ),
@@ -135,22 +129,20 @@ class TutorBookingDetailScreen extends StatelessWidget {
                         Text('TIẾN TRÌNH', style: AppTextStyles.eyebrow()),
                         const SizedBox(height: 14),
                         const _TimelineStep(
-                          label: 'Chờ xác nhận',
+                          label: 'Đã xếp lịch',
                           done: true,
                           isLast: false,
                         ),
                         _TimelineStep(
-                          label: 'Đã chấp nhận',
-                          done: [
-                            TutorBookingStatus.accepted,
-                            TutorBookingStatus.paid,
-                            TutorBookingStatus.cancelled,
-                          ].contains(booking.status),
+                          label: 'Đang diễn ra',
+                          done: ['inprogress', 'completed'].contains(
+                            lesson.status.toLowerCase(),
+                          ),
                           isLast: false,
                         ),
                         _TimelineStep(
-                          label: 'Đã thanh toán',
-                          done: booking.status == TutorBookingStatus.paid,
+                          label: 'Hoàn thành',
+                          done: lesson.status.toLowerCase() == 'completed',
                           isLast: true,
                         ),
                       ],
@@ -158,21 +150,37 @@ class TutorBookingDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Fee breakdown
-                  const _InfoCard(
+                  // Date / time info
+                  _InfoCard(
                     child: Column(
                       children: [
-                        _FeeRow(label: 'Phí buổi học', value: '200.000 ₫'),
-                        SizedBox(height: 8),
-                        _FeeRow(label: 'Phí dịch vụ', value: '20.000 ₫'),
-                        Divider(height: 20, color: AppColors.line),
-                        _FeeRow(label: 'Tổng', value: '220.000 ₫', bold: true),
+                        _InfoRow(
+                          icon: Icons.calendar_today_rounded,
+                          label: 'Ngày',
+                          value: dt != null
+                              ? '${dt.day} tháng ${dt.month}, ${dt.year}'
+                              : '—',
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoRow(
+                          icon: Icons.access_time_rounded,
+                          label: 'Giờ',
+                          value: '${lesson.timeStart} – ${lesson.timeEnd}',
+                        ),
+                        if (lesson.teachingMode != null) ...[
+                          const SizedBox(height: 10),
+                          _InfoRow(
+                            icon: Icons.cast_for_education_rounded,
+                            label: 'Hình thức',
+                            value: lesson.teachingMode!,
+                          ),
+                        ],
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Status note / action
+                  // Status note
                   if (!_isDone)
                     _InfoCard(
                       color: AppColors.cream2,
@@ -198,7 +206,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  if (booking.status == TutorBookingStatus.paid)
+                  if (lesson.status.toLowerCase() == 'completed')
                     _InfoCard(
                       color: const Color(0xFFD5E8F5),
                       child: Row(
@@ -210,7 +218,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Buổi học đã được xác nhận & thanh toán',
+                            'Buổi học đã hoàn thành',
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -220,7 +228,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  if (booking.status == TutorBookingStatus.cancelled)
+                  if (lesson.status.toLowerCase() == 'cancelled')
                     _InfoCard(
                       color: const Color(0xFFFFDEDE),
                       child: Row(
@@ -232,7 +240,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Lịch học đã bị huỷ',
+                            'Buổi học đã bị huỷ',
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -252,18 +260,18 @@ class TutorBookingDetailScreen extends StatelessWidget {
   }
 }
 
-// Sub-widgets
+// ── Sub-widgets ─────────────────────────────────────────────────────────────
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
-    required this.booking,
+    required this.lesson,
     required this.chipLabel,
     required this.chipTone,
     required this.heroColor,
     required this.heroBorder,
   });
 
-  final TutorBookingMock booking;
+  final TutorLessonDto lesson;
   final String chipLabel;
   final ChipTone chipTone;
   final Color heroColor;
@@ -271,6 +279,7 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dt = lesson.startDt;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -284,7 +293,7 @@ class _HeroCard extends StatelessWidget {
           StatusChip(label: chipLabel, tone: chipTone),
           const SizedBox(height: 10),
           Text(
-            booking.subject,
+            lesson.subjectName,
             style: GoogleFonts.bricolageGrotesque(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -292,11 +301,13 @@ class _HeroCard extends StatelessWidget {
               letterSpacing: -0.01,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${booking.day} tháng ${booking.month}, ${booking.year}',
-            style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
-          ),
+          if (dt != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${dt.day} tháng ${dt.month}, ${dt.year}',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+            ),
+          ],
           const SizedBox(height: 4),
           Row(
             children: [
@@ -307,7 +318,7 @@ class _HeroCard extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                '${booking.timeStart} – ${booking.timeEnd}',
+                '${lesson.timeStart} – ${lesson.timeEnd}',
                 style: GoogleFonts.ibmPlexMono(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -338,6 +349,41 @@ class _InfoCard extends StatelessWidget {
         border: color == null ? Border.all(color: AppColors.line) : null,
       ),
       child: child,
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.ink3),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -448,38 +494,6 @@ class _TimelineStep extends StatelessWidget {
               fontWeight: done ? FontWeight.w600 : FontWeight.w400,
               color: done ? AppColors.ink : AppColors.ink4,
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeeRow extends StatelessWidget {
-  const _FeeRow({required this.label, required this.value, this.bold = false});
-  final String label;
-  final String value;
-  final bool bold;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-            color: bold ? AppColors.ink : AppColors.ink3,
-          ),
-        ),
-        Text(
-          value,
-          style: GoogleFonts.ibmPlexMono(
-            fontSize: bold ? 16 : 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.ink,
           ),
         ),
       ],

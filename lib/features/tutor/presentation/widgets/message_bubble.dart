@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/mock/tutor_inbox_mock.dart';
+import 'package:tutora/features/tutor/data/models/chat_models.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({required this.msg, required this.convo, super.key});
+  const MessageBubble({
+    required this.msg,
+    required this.otherUserName,
+    required this.currentUserId,
+    super.key,
+  });
 
-  final MockChatMessage msg;
-  final MockConversation convo;
+  final ChatMessageDto msg;
+  final String otherUserName;
+  final String currentUserId;
 
-  bool get _isMe => msg.sender == MessageSender.me;
+  bool get _isMe => msg.senderId == currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +31,7 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!_isMe) ...[
-            UserAvatar(name: convo.name, size: 26),
+            UserAvatar(name: otherUserName, size: 26),
             const SizedBox(width: 8),
           ],
           ConstrainedBox(
@@ -35,42 +41,56 @@ class MessageBubble extends StatelessWidget {
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _isMe ? AppColors.ink : AppColors.paper,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(_isMe ? 16 : 4),
-                      bottomRight: Radius.circular(_isMe ? 4 : 16),
+                if (msg.isImage)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      msg.content,
+                      width: 200,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.broken_image_outlined,
+                        color: AppColors.ink4,
+                      ),
                     ),
-                    border: _isMe ? null : Border.all(color: AppColors.line),
-                    boxShadow: _isMe
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                  ),
-                  child: Text(
-                    msg.text,
-                    style: GoogleFonts.inter(
-                      fontSize: 13.5,
-                      color: _isMe ? AppColors.cream : AppColors.ink,
-                      height: 1.5,
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _isMe ? AppColors.ink : AppColors.paper,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(_isMe ? 16 : 4),
+                        bottomRight: Radius.circular(_isMe ? 4 : 16),
+                      ),
+                      border: _isMe ? null : Border.all(color: AppColors.line),
+                      boxShadow: _isMe
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                    ),
+                    child: Text(
+                      msg.content,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        color: _isMe ? AppColors.cream : AppColors.ink,
+                        height: 1.5,
+                      ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 3),
                 Text(
-                  msg.time,
+                  msg.formattedTime,
                   style: GoogleFonts.ibmPlexMono(
                     fontSize: 9.5,
                     color: AppColors.ink4,
