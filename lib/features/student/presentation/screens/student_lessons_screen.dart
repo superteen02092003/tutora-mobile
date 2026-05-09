@@ -1,41 +1,68 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/student/data/models/lesson_models.dart';
+import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
-import 'package:tutora/mock/student_lessons_mock.dart';
+import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/shared/widgets/app_calendar.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 
-class StudentLessonsPage extends StatefulWidget {
+class StudentLessonsPage extends ConsumerStatefulWidget {
   const StudentLessonsPage({super.key});
 
   @override
-  State<StudentLessonsPage> createState() => _StudentLessonsPageState();
+  ConsumerState<StudentLessonsPage> createState() => _StudentLessonsPageState();
 }
 
-class _StudentLessonsPageState extends State<StudentLessonsPage>
-    with SingleTickerProviderStateMixin {
+class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
+    with SingleTickerProviderStateMixin, ScrollToTopMixin {
   late final TabController _tabs;
+  final _scrollController = ScrollController();
   bool _showCalendar = false;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
-    // Keep segmented control in sync when user swipes
     _tabs.addListener(() => setState(() {}));
+    unawaited(
+      Future.microtask(
+        () => ref.read(lessonListProvider.notifier).load(reset: true),
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 3, _scrollController);
+    });
   }
 
   @override
   void dispose() {
     _tabs.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(lessonListProvider);
+    final todayLessons = state.items.where((l) => l.isToday).toList();
+    final upcomingLessons = state.items
+        .where(
+          (l) =>
+              l.statusType != LessonStatusType.done &&
+              l.statusType != LessonStatusType.cancelled,
+        )
+        .toList();
+    final doneLessons = state.items
+        .where((l) => l.statusType == LessonStatusType.done)
+        .toList();
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -44,12 +71,16 @@ class _StudentLessonsPageState extends State<StudentLessonsPage>
           children: [
             _TopBar(
               showCalendar: _showCalendar,
-              onToggle: () => setState(() => _showCalendar = !_showCalendar),
+              onToggle: () {
+                setState(() => _showCalendar = !_showCalendar);
+              },
             ),
             if (_showCalendar) ...[
-              const Expanded(child: _CalendarView()),
+              Expanded(
+                child: _CalendarView(allLessons: state.items),
+              ),
             ] else ...[
-              _TodayCard(lessons: kTodayLessons),
+              _TodayCard(lessons: todayLessons),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _SegmentedTabs(
@@ -59,13 +90,32 @@ class _StudentLessonsPageState extends State<StudentLessonsPage>
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: TabBarView(
-                  controller: _tabs,
-                  children: [
-                    _SessionListView(lessons: kUpcomingLessons),
-                    _SessionListView(lessons: kDoneLessons),
-                  ],
-                ),
+                child: state.isLoading && state.items.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.oxblood,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : state.error != null && state.items.isEmpty
+                    ? _ErrorView(
+                        message: state.error!,
+                        onRetry: () =>
+                            ref.read(lessonListProvider.notifier).refresh(),
+                      )
+                    : TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _SessionListView(
+                            lessons: upcomingLessons,
+                            scrollController: _scrollController,
+                          ),
+                          _SessionListView(
+                            lessons: doneLessons,
+                            scrollController: _scrollController,
+                          ),
+                        ],
+                      ),
               ),
             ],
           ],
@@ -74,6 +124,8 @@ class _StudentLessonsPageState extends State<StudentLessonsPage>
     );
   }
 }
+
+// Top bar
 
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.showCalendar, required this.onToggle});
@@ -123,13 +175,16 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+// Today card
+
 class _TodayCard extends StatelessWidget {
   const _TodayCard({required this.lessons});
-  final List<MockLesson> lessons;
+  final List<StudentLessonDto> lessons;
 
   @override
   Widget build(BuildContext context) {
     if (lessons.isEmpty) return const SizedBox(height: 4);
+    final now = DateTime.now();
     final times = lessons.map((l) => l.timeStart).join(' · ');
 
     return Container(
@@ -163,7 +218,7 @@ class _TodayCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hôm nay · 30 tháng 4',
+                      'Hôm nay · ${now.day} tháng ${now.month}',
                       style: AppTextStyles.eyebrow(color: AppColors.gold),
                     ),
                     const SizedBox(height: 6),
@@ -201,7 +256,7 @@ class _TodayCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      '30',
+                      '${now.day}',
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w800,
                         fontSize: 22,
@@ -211,7 +266,7 @@ class _TodayCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'T4',
+                      _weekdayLabel(now.weekday),
                       style: GoogleFonts.ibmPlexMono(
                         fontSize: 8,
                         color: AppColors.cream.withValues(alpha: 0.6),
@@ -227,7 +282,19 @@ class _TodayCard extends StatelessWidget {
       ),
     );
   }
+
+  String _weekdayLabel(int weekday) => const [
+    'T2',
+    'T3',
+    'T4',
+    'T5',
+    'T6',
+    'T7',
+    'CN',
+  ][weekday - 1];
 }
+
+//Segmented tabs
 
 class _SegmentedTabs extends StatelessWidget {
   const _SegmentedTabs({required this.selected, required this.onSelect});
@@ -276,21 +343,34 @@ class _SegmentedTabs extends StatelessWidget {
   }
 }
 
+// Session list
+
 class _SessionListView extends StatelessWidget {
-  const _SessionListView({required this.lessons});
-  final List<MockLesson> lessons;
+  const _SessionListView({required this.lessons, this.scrollController});
+  final List<StudentLessonDto> lessons;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
     if (lessons.isEmpty) {
       return Center(
-        child: Text(
-          'Không có buổi học nào.',
-          style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/common/empty_calendar.png',
+              width: 200,
+            ),
+            Text(
+              'Không có buổi học nào.',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+            ),
+          ],
         ),
       );
     }
     return ListView.separated(
+      controller: scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, AppSpacing.xxl),
       itemCount: lessons.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -299,51 +379,53 @@ class _SessionListView extends StatelessWidget {
   }
 }
 
-// ── Session card ───────────────────────────────────────────────────────────
+// Session card
+
 class _SessionCard extends StatelessWidget {
   const _SessionCard({required this.lesson});
-  final MockLesson lesson;
+  final StudentLessonDto lesson;
 
-  Color get _dividerColor => switch (lesson.status) {
-    LessonStatus.upcoming => AppColors.oxblood,
-    LessonStatus.confirmed => AppColors.moss,
-    _ => AppColors.line,
+  Color get _dividerColor => switch (lesson.statusType) {
+    LessonStatusType.scheduled => AppColors.moss,
+    LessonStatusType.pending => const Color(0xFFF0E3CA),
+    LessonStatusType.done => AppColors.line,
+    LessonStatusType.cancelled => AppColors.line,
   };
 
-  _ChipStyle get _chipStyle => switch (lesson.status) {
-    LessonStatus.upcoming => (
-      bg: AppColors.oxblood,
-      fg: const Color(0xFFFFF1E6),
-      label: 'Sắp diễn ra',
-    ),
-    LessonStatus.confirmed => (
+  _ChipStyle get _chipStyle => switch (lesson.statusType) {
+    LessonStatusType.scheduled => (
       bg: AppColors.moss,
       fg: const Color(0xFFE0E7DF),
       label: 'Đã xác nhận',
     ),
-    LessonStatus.pending => (
+    LessonStatusType.pending => (
       bg: const Color(0xFFF0E3CA),
       fg: const Color(0xFF5C3A1A),
       label: 'Chờ xác nhận',
     ),
-    LessonStatus.done => (
+    LessonStatusType.done => (
       bg: AppColors.cream2,
       fg: AppColors.ink3,
       label: 'Hoàn thành',
+    ),
+    LessonStatusType.cancelled => (
+      bg: AppColors.cream2,
+      fg: AppColors.ink3,
+      label: 'Đã hủy',
     ),
   };
 
   @override
   Widget build(BuildContext context) {
     final chip = _chipStyle;
-    final isDone = lesson.status == LessonStatus.done;
+    final isDone = lesson.statusType == LessonStatusType.done;
 
     return Opacity(
       opacity: isDone ? 0.75 : 1.0,
       child: GestureDetector(
         onTap: () => Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute<void>(
-            builder: (_) => StudentSessionDetailPage(lesson: lesson),
+            builder: (_) => StudentSessionDetailPage(lessonId: lesson.lessonId),
           ),
         ),
         child: Container(
@@ -370,7 +452,7 @@ class _SessionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      lesson.date,
+                      lesson.dateLabel,
                       style: GoogleFonts.inter(
                         fontSize: 9,
                         color: AppColors.ink3,
@@ -379,7 +461,6 @@ class _SessionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Colored vertical divider
               Container(
                 width: 2,
                 height: 52,
@@ -389,13 +470,12 @@ class _SessionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      lesson.topic,
+                      lesson.subjectName ?? 'Buổi học #${lesson.lessonId}',
                       style: GoogleFonts.ibmPlexSerif(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -404,7 +484,7 @@ class _SessionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${lesson.tutorName} · ${lesson.subject}',
+                      lesson.tutorName ?? 'Gia sư',
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
                         color: AppColors.ink3,
@@ -433,14 +513,16 @@ class _SessionCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${lesson.priceK}k',
-                          style: GoogleFonts.ibmPlexMono(
-                            fontSize: 11,
-                            color: AppColors.ink3,
+                        if (lesson.priceK > 0) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '${lesson.priceK}k',
+                            style: GoogleFonts.ibmPlexMono(
+                              fontSize: 11,
+                              color: AppColors.ink3,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
@@ -462,15 +544,70 @@ class _SessionCard extends StatelessWidget {
 
 typedef _ChipStyle = ({Color bg, Color fg, String label});
 
-class _CalendarView extends StatefulWidget {
-  const _CalendarView();
+// Error view
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
 
   @override
-  State<_CalendarView> createState() => _CalendarViewState();
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Không tải được lịch học',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: onRetry,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.ink,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Thử lại',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.cream,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _CalendarViewState extends State<_CalendarView> {
-  DateTime _selected = DateTime(2026, 4, 30);
+// Calendar view
+
+class _CalendarView extends ConsumerStatefulWidget {
+  const _CalendarView({required this.allLessons});
+  final List<StudentLessonDto> allLessons;
+
+  @override
+  ConsumerState<_CalendarView> createState() => _CalendarViewState();
+}
+
+class _CalendarViewState extends ConsumerState<_CalendarView> {
+  DateTime _selected = DateTime.now();
 
   String get _dayHeader {
     final today = DateTime.now();
@@ -482,11 +619,20 @@ class _CalendarViewState extends State<_CalendarView> {
     return 'Ngày ${_selected.day} tháng ${_selected.month}';
   }
 
-  List<MockLesson> get _selectedSessions {
-    if (_selected.year == 2026 && _selected.month == 4) {
-      return kMockAprilSessions[_selected.day] ?? [];
-    }
-    return [];
+  List<StudentLessonDto> get _selectedSessions {
+    return widget.allLessons.where((l) {
+      final d = l.startDt;
+      return d.year == _selected.year &&
+          d.month == _selected.month &&
+          d.day == _selected.day;
+    }).toList();
+  }
+
+  int _sessionCountForDay(int year, int month, int day) {
+    return widget.allLessons.where((l) {
+      final d = l.startDt;
+      return d.year == year && d.month == month && d.day == day;
+    }).length;
   }
 
   @override
@@ -497,10 +643,7 @@ class _CalendarViewState extends State<_CalendarView> {
         const SizedBox(height: 4),
         AppCalendar(
           selectedDate: _selected,
-          sessionCountForDay: (y, m, d) {
-            if (y == 2026 && m == 4) return kMockSessionDaysApril[d] ?? 0;
-            return 0;
-          },
+          sessionCountForDay: _sessionCountForDay,
           onSelectDate: (date) => setState(() => _selected = date),
         ),
         Padding(
@@ -511,12 +654,11 @@ class _CalendarViewState extends State<_CalendarView> {
           ),
         ),
         if (_selectedSessions.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 28),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 28),
             child: Center(
               child: Text(
                 'Không có buổi học nào ngày này.',
-                style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
               ),
             ),
           )

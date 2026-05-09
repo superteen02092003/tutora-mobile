@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,114 +7,189 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
 
+// Scroll-to-top notifier
+class ShellScrollNotifier extends InheritedNotifier<ValueNotifier<int>> {
+  const ShellScrollNotifier({
+    required ValueNotifier<int> notifier,
+    required super.child,
+    super.key,
+  }) : super(notifier: notifier);
+
+  static ValueNotifier<int>? of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<ShellScrollNotifier>()
+      ?.notifier;
+}
+
 // Tab order: Home(0) · Search(1) · Capture/AI(2, center bump) · Lessons(3) · Profile(4)
-class StudentShell extends StatelessWidget {
+class StudentShell extends StatefulWidget {
   const StudentShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
+  @override
+  State<StudentShell> createState() => _StudentShellState();
+}
+
+class _StudentShellState extends State<StudentShell> {
   static const double _fabSize = 60;
   static const double _bumpRadius = 40;
   static const double _barFlatHeight = 64;
   static const double _fabLift = 18;
   static const double _fabGap = -6;
 
+  final _scrollNotifier = ValueNotifier<int>(-1);
+
+  @override
+  void dispose() {
+    _scrollNotifier.dispose();
+    super.dispose();
+  }
+
   void _onTap(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    final current = widget.navigationShell.currentIndex;
+    if (index == current) {
+      _scrollNotifier.value = index;
+      _scrollNotifier.value = -1; // reset so next tap on same tab fires again
+      widget.navigationShell.goBranch(index, initialLocation: true);
+    } else {
+      widget.navigationShell.goBranch(index);
+    }
+  }
+
+  // System back: if not on home tab, go home instead of exiting.
+  bool _onPopInvoked() {
+    if (widget.navigationShell.currentIndex != 0) {
+      widget.navigationShell.goBranch(0);
+      return false; // handled — don't let system pop
+    }
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    final current = navigationShell.currentIndex;
+    final current = widget.navigationShell.currentIndex;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final totalHeight = _barFlatHeight + _fabLift + bottomPad;
 
-    return Scaffold(
-      extendBody: true,
-      body: AuthListener(child: navigationShell),
-      bottomNavigationBar: SizedBox(
-        height: totalHeight,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Painted bar with convex bump
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _BumpBarPainter(
-                  fabLift: _fabLift,
-                  bumpRadius: _bumpRadius,
-                  fabGap: _fabGap,
-                  color: AppColors.paper,
-                  shadowColor: Colors.black.withValues(alpha: 0.8),
-                  borderColor: Colors.black.withValues(alpha: 0.18),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final canExit = _onPopInvoked();
+        if (canExit) {
+          // Nothing left to pop inside GoRouter — exit app.
+          unawaited(Navigator.of(context).maybePop());
+        }
+      },
+      child: ShellScrollNotifier(
+        notifier: _scrollNotifier,
+        child: Scaffold(
+          extendBody: true,
+          body: AuthListener(child: widget.navigationShell),
+          bottomNavigationBar: SizedBox(
+            height: totalHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Painted bar with convex bump
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _BumpBarPainter(
+                      fabLift: _fabLift,
+                      bumpRadius: _bumpRadius,
+                      fabGap: _fabGap,
+                      color: AppColors.paper,
+                      shadowColor: Colors.black.withValues(alpha: 0.8),
+                      borderColor: Colors.black.withValues(alpha: 0.18),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            // Tab row sits on the flat portion of the bar
-            Positioned(
-              left: 0,
-              right: 0,
-              top: _fabLift,
-              height: _barFlatHeight,
-              child: Row(
-                children: [
-                  _NavTab(
-                    index: 0,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
-                    label: 'Trang chủ',
+                // Tab row sits on the flat portion of the bar
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: _fabLift,
+                  height: _barFlatHeight,
+                  child: Row(
+                    children: [
+                      _NavTab(
+                        index: 0,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Trang chủ',
+                      ),
+                      _NavTab(
+                        index: 1,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.search_outlined,
+                        activeIcon: Icons.search_rounded,
+                        label: 'Gia sư',
+                      ),
+                      // Spacer reserves room for the center bump
+                      const Expanded(child: SizedBox()),
+                      _NavTab(
+                        index: 3,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.calendar_today_outlined,
+                        activeIcon: Icons.calendar_today_rounded,
+                        label: 'Lịch học',
+                      ),
+                      _NavTab(
+                        index: 4,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.person_outline_rounded,
+                        activeIcon: Icons.person_rounded,
+                        label: 'Hồ sơ',
+                      ),
+                    ],
                   ),
-                  _NavTab(
-                    index: 1,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.search_outlined,
-                    activeIcon: Icons.search_rounded,
-                    label: 'Gia sư',
-                  ),
-                  // Spacer reserves room for the center bump
-                  const Expanded(child: SizedBox()),
-                  _NavTab(
-                    index: 3,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.calendar_today_outlined,
-                    activeIcon: Icons.calendar_today_rounded,
-                    label: 'Lịch học',
-                  ),
-                  _NavTab(
-                    index: 4,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.person_outline_rounded,
-                    activeIcon: Icons.person_rounded,
-                    label: 'Hồ sơ',
-                  ),
-                ],
-              ),
-            ),
-            // Center AI button — pushes outside shell so capture has no bottom bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _AiFab(
-                  size: _fabSize,
-                  isActive: current == 2,
-                  onTap: () => context.push('/student/capture'),
                 ),
-              ),
+                // Center AI button — pushes outside shell so capture has no bottom bar
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _AiFab(
+                      size: _fabSize,
+                      isActive: current == 2,
+                      onTap: () => context.push('/student/capture'),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
+  }
+}
+
+mixin ScrollToTopMixin<T extends StatefulWidget> on State<T> {
+  void listenScrollToTop(
+    BuildContext context,
+    int branchIndex,
+    ScrollController controller,
+  ) {
+    final notifier = ShellScrollNotifier.of(context);
+    if (notifier == null) return;
+    notifier.addListener(() {
+      if (notifier.value == branchIndex && controller.hasClients) {
+        unawaited(
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          ),
+        );
+      }
+    });
   }
 }
 
@@ -129,7 +205,7 @@ class _BumpBarPainter extends CustomPainter {
 
   final double fabLift;
   final double bumpRadius;
-  final double fabGap; // gap between arc apex and FAB top
+  final double fabGap;
   final Color color;
   final Color shadowColor;
   final Color borderColor;
@@ -141,7 +217,6 @@ class _BumpBarPainter extends CustomPainter {
     final cx = size.width / 2;
     final flatTop = fabLift;
 
-    // Arc center: apex = cy - bumpRadius = fabGap → cy = bumpRadius + fabGap
     final cy = bumpRadius + fabGap;
     final dy = flatTop - cy;
     final halfChord = math.sqrt(math.max(0, bumpRadius * bumpRadius - dy * dy));
@@ -164,12 +239,9 @@ class _BumpBarPainter extends CustomPainter {
         sweep,
         false,
       )
-      // flat right section
       ..lineTo(rightX, flatTop)
       ..lineTo(size.width - _cornerR, flatTop)
-      // rounded top-right corner
       ..quadraticBezierTo(size.width, flatTop, size.width, flatTop + _cornerR)
-      // right side down
       ..lineTo(size.width, size.height)
       ..close();
 
@@ -245,8 +317,6 @@ class _AiFab extends StatelessWidget {
     );
   }
 }
-
-// ── Normal nav tab ───────────────────────────────────────────────────────
 
 class _NavTab extends StatelessWidget {
   const _NavTab({

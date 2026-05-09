@@ -11,6 +11,7 @@ import 'package:tutora/features/student/presentation/screens/student_capture_scr
 import 'package:tutora/features/student/presentation/screens/student_home_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_lessons_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_marketplace_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_messages_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_notifications_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_solution_screen.dart';
@@ -54,6 +55,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, _) => const StudentNotificationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentMessages,
+        builder: (context, _) => const StudentMessagesScreen(),
       ),
       GoRoute(
         path: AppRoutes.studentCapture,

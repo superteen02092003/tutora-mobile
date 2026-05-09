@@ -11,8 +11,8 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/student/presentation/providers/dashboard_provider.dart';
+import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
-import 'package:tutora/shared/widgets/app_toast.dart';
 
 class StudentHomePage extends ConsumerWidget {
   const StudentHomePage({super.key});
@@ -45,7 +45,9 @@ class _HomeContent extends ConsumerStatefulWidget {
   ConsumerState<_HomeContent> createState() => _HomeContentState();
 }
 
-class _HomeContentState extends ConsumerState<_HomeContent> {
+class _HomeContentState extends ConsumerState<_HomeContent>
+    with ScrollToTopMixin {
+  final _scrollController = ScrollController();
   static const List<({String book, String sub, String time, String topic})>
   _recents = [
     (
@@ -72,6 +74,15 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
   void initState() {
     super.initState();
     unawaited(Future.microtask(ref.read(dashboardProvider.notifier).load));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 0, _scrollController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -82,6 +93,7 @@ class _HomeContentState extends ConsumerState<_HomeContent> {
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: ListView(
+          controller: _scrollController,
           padding: EdgeInsets.zero,
           children: [
             _TopBar(name: widget.firstName),
@@ -168,14 +180,7 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 10),
           // Chat icon
           GestureDetector(
-            onTap: () {
-              // add page later
-              AppToast.show(
-                context,
-                type: AppToastType.info,
-                message: 'Chức năng đang được phát triển.',
-              );
-            },
+            onTap: () => context.push(AppRoutes.studentMessages),
             child: Container(
               width: 36,
               height: 36,

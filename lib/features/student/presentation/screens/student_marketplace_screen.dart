@@ -8,11 +8,12 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_filter_options.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/utils/format_utils.dart';
+import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/marketplace_controller.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
-import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
@@ -25,8 +26,8 @@ class StudentMarketplacePage extends ConsumerStatefulWidget {
       _StudentMarketplacePageState();
 }
 
-class _StudentMarketplacePageState
-    extends ConsumerState<StudentMarketplacePage> {
+class _StudentMarketplacePageState extends ConsumerState<StudentMarketplacePage>
+    with ScrollToTopMixin {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -34,6 +35,9 @@ class _StudentMarketplacePageState
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 1, _scrollController);
+    });
   }
 
   @override
@@ -58,6 +62,7 @@ class _StudentMarketplacePageState
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterSheet(
         current: current,
@@ -86,6 +91,7 @@ class _StudentMarketplacePageState
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _TopBar(
               searchController: _searchController,
@@ -166,11 +172,7 @@ class _TopBar extends StatelessWidget {
               const AppLogo(),
               const Spacer(),
               GestureDetector(
-                onTap: () => AppToast.show(
-                  context,
-                  type: AppToastType.info,
-                  message: 'Chức năng đang được phát triển.',
-                ),
+                onTap: () => context.push(AppRoutes.studentMessages),
                 child: Container(
                   width: 36,
                   height: 36,

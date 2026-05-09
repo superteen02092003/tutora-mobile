@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/student/data/models/profile_models.dart';
 import 'package:tutora/features/student/presentation/providers/profile_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_primitives.dart';
@@ -110,7 +112,7 @@ class ProfileHeroHeader extends ConsumerWidget {
               const AppLogo(size: 14),
               const Spacer(),
               GestureDetector(
-                onTap: () => AppToast.show(context, message: 'Đang phát triển'),
+                onTap: () => context.push(AppRoutes.studentMessages),
                 child: Container(
                   width: 36,
                   height: 36,

@@ -12,12 +12,35 @@ import 'package:tutora/features/student/presentation/screens/student_profile/pro
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_settings_section.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_card.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_detail_screen.dart';
+import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 
-class StudentProfilePage extends ConsumerWidget {
+class StudentProfilePage extends ConsumerStatefulWidget {
   const StudentProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudentProfilePage> createState() => _StudentProfilePageState();
+}
+
+class _StudentProfilePageState extends ConsumerState<StudentProfilePage>
+    with ScrollToTopMixin {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 4, _scrollController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(profileProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
@@ -48,6 +71,7 @@ class StudentProfilePage extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ListView(
+          controller: _scrollController,
           padding: EdgeInsets.only(bottom: bottomPad + AppSpacing.xxl),
           children: [
             ProfileHeroHeader(profile: profile),

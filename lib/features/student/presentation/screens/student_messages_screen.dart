@@ -6,45 +6,28 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/student/presentation/screens/student_chat_page.dart';
 import 'package:tutora/features/tutor/data/models/chat_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_chat_page.dart';
-import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-class TutorMessagesScreen extends ConsumerStatefulWidget {
-  const TutorMessagesScreen({super.key});
+class StudentMessagesScreen extends ConsumerStatefulWidget {
+  const StudentMessagesScreen({super.key});
 
   @override
-  ConsumerState<TutorMessagesScreen> createState() =>
-      _TutorMessagesScreenState();
+  ConsumerState<StudentMessagesScreen> createState() =>
+      _StudentMessagesScreenState();
 }
 
-class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
-    with TutorScrollToTopMixin {
-  final _scrollController = ScrollController();
+class _StudentMessagesScreenState extends ConsumerState<StudentMessagesScreen> {
   String _search = '';
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      listenScrollToTop(context, 3, _scrollController);
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   void _openChat(ChatChannelDto channel) {
     unawaited(
       Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute<void>(
-          builder: (_) => TutorChatPage(channel: channel),
+          builder: (_) => StudentChatPage(channel: channel),
         ),
       ),
     );
@@ -81,6 +64,24 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.paper,
+                        border: Border.all(color: AppColors.line),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 14,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(child: Text('Tin nhắn', style: AppTextStyles.h2())),
                   GestureDetector(
                     onTap: () => ref.read(channelListProvider.notifier).load(),
@@ -167,7 +168,12 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
             // Body
             Expanded(
               child: state.isLoading && state.channels.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.oxblood,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : state.error != null && state.channels.isEmpty
                   ? Center(
                       child: Column(
@@ -220,14 +226,24 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
                               color: AppColors.ink3,
                             ),
                           ),
+                          if (_search.isEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'Tin nhắn với gia sư sẽ xuất hiện ở đây',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: AppColors.ink4,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     )
                   : RefreshIndicator(
+                      color: AppColors.oxblood,
                       onRefresh: () =>
                           ref.read(channelListProvider.notifier).load(),
                       child: ListView.builder(
-                        controller: _scrollController,
                         padding: EdgeInsets.only(
                           bottom: bottomPad + AppSpacing.xxl,
                         ),
