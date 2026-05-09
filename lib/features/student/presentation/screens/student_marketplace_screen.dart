@@ -10,6 +10,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/utils/format_utils.dart';
+import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/marketplace_controller.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
@@ -25,8 +26,8 @@ class StudentMarketplacePage extends ConsumerStatefulWidget {
       _StudentMarketplacePageState();
 }
 
-class _StudentMarketplacePageState
-    extends ConsumerState<StudentMarketplacePage> {
+class _StudentMarketplacePageState extends ConsumerState<StudentMarketplacePage>
+    with ScrollToTopMixin {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -34,6 +35,9 @@ class _StudentMarketplacePageState
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 1, _scrollController);
+    });
   }
 
   @override

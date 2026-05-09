@@ -9,6 +9,7 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/models/lesson_models.dart';
 import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
+import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/shared/widgets/app_calendar.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 
@@ -20,8 +21,9 @@ class StudentLessonsPage extends ConsumerStatefulWidget {
 }
 
 class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, ScrollToTopMixin {
   late final TabController _tabs;
+  final _scrollController = ScrollController();
   bool _showCalendar = false;
 
   @override
@@ -29,17 +31,20 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     _tabs.addListener(() => setState(() {}));
-    // Load lessons on init
     unawaited(
       Future.microtask(
         () => ref.read(lessonListProvider.notifier).load(reset: true),
       ),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 3, _scrollController);
+    });
   }
 
   @override
   void dispose() {
     _tabs.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -101,8 +106,14 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
                     : TabBarView(
                         controller: _tabs,
                         children: [
-                          _SessionListView(lessons: upcomingLessons),
-                          _SessionListView(lessons: doneLessons),
+                          _SessionListView(
+                            lessons: upcomingLessons,
+                            scrollController: _scrollController,
+                          ),
+                          _SessionListView(
+                            lessons: doneLessons,
+                            scrollController: _scrollController,
+                          ),
                         ],
                       ),
               ),
@@ -335,8 +346,9 @@ class _SegmentedTabs extends StatelessWidget {
 // Session list
 
 class _SessionListView extends StatelessWidget {
-  const _SessionListView({required this.lessons});
+  const _SessionListView({required this.lessons, this.scrollController});
   final List<StudentLessonDto> lessons;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -358,6 +370,7 @@ class _SessionListView extends StatelessWidget {
       );
     }
     return ListView.separated(
+      controller: scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, AppSpacing.xxl),
       itemCount: lessons.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
