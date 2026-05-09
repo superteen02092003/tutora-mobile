@@ -28,6 +28,7 @@ Future<void> showBookingSheet(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => ProviderScope(
       child: _BookingSheet(profile: profile, tutorId: tutorId),

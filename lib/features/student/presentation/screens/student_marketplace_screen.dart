@@ -58,6 +58,7 @@ class _StudentMarketplacePageState
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterSheet(
         current: current,
@@ -86,6 +87,7 @@ class _StudentMarketplacePageState
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _TopBar(
               searchController: _searchController,
