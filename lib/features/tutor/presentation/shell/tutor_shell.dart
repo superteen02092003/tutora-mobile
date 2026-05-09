@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -6,113 +7,183 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
 
-class TutorShell extends StatelessWidget {
+// Tab order: Home(0) · Contribute(1) · Schedule(2, center bump) · Messages(3) · Profile(4)
+
+class TutorShellScrollNotifier extends InheritedNotifier<ValueNotifier<int>> {
+  const TutorShellScrollNotifier({
+    required ValueNotifier<int> notifier,
+    required super.child,
+    super.key,
+  }) : super(notifier: notifier);
+
+  static ValueNotifier<int>? of(BuildContext context) => context
+      .dependOnInheritedWidgetOfExactType<TutorShellScrollNotifier>()
+      ?.notifier;
+}
+
+class TutorShell extends StatefulWidget {
   const TutorShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
+  @override
+  State<TutorShell> createState() => _TutorShellState();
+}
+
+class _TutorShellState extends State<TutorShell> {
   static const double _fabSize = 60;
   static const double _bumpRadius = 40;
   static const double _barFlatHeight = 64;
   static const double _fabLift = 18;
   static const double _fabGap = -6;
 
+  final _scrollNotifier = ValueNotifier<int>(-1);
+
+  @override
+  void dispose() {
+    _scrollNotifier.dispose();
+    super.dispose();
+  }
+
   void _onTap(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    final current = widget.navigationShell.currentIndex;
+    if (index == current) {
+      _scrollNotifier.value = index;
+      _scrollNotifier.value = -1;
+      widget.navigationShell.goBranch(index, initialLocation: true);
+    } else {
+      widget.navigationShell.goBranch(index);
+    }
+  }
+
+  bool _onPopInvoked() {
+    if (widget.navigationShell.currentIndex != 0) {
+      widget.navigationShell.goBranch(0);
+      return false;
+    }
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    final current = navigationShell.currentIndex;
+    final current = widget.navigationShell.currentIndex;
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final totalHeight = _barFlatHeight + _fabLift + bottomPad;
 
-    return Scaffold(
-      extendBody: true,
-      body: AuthListener(child: navigationShell),
-      bottomNavigationBar: SizedBox(
-        height: totalHeight,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Painted bar with convex bump
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _BumpBarPainter(
-                  fabLift: _fabLift,
-                  bumpRadius: _bumpRadius,
-                  fabGap: _fabGap,
-                  color: AppColors.paper,
-                  shadowColor: Colors.black.withValues(alpha: 0.8),
-                  borderColor: Colors.black.withValues(alpha: 0.18),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final canExit = _onPopInvoked();
+        if (canExit) {
+          unawaited(Navigator.of(context).maybePop());
+        }
+      },
+      child: TutorShellScrollNotifier(
+        notifier: _scrollNotifier,
+        child: Scaffold(
+          extendBody: true,
+          body: AuthListener(child: widget.navigationShell),
+          bottomNavigationBar: SizedBox(
+            height: totalHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _BumpBarPainter(
+                      fabLift: _fabLift,
+                      bumpRadius: _bumpRadius,
+                      fabGap: _fabGap,
+                      color: AppColors.paper,
+                      shadowColor: Colors.black.withValues(alpha: 0.8),
+                      borderColor: Colors.black.withValues(alpha: 0.18),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            // Tab row sits on the flat portion of the bar
-            Positioned(
-              left: 0,
-              right: 0,
-              top: _fabLift,
-              height: _barFlatHeight,
-              child: Row(
-                children: [
-                  _NavTab(
-                    index: 0,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.home_outlined,
-                    activeIcon: Icons.home_rounded,
-                    label: 'Trang chủ',
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: _fabLift,
+                  height: _barFlatHeight,
+                  child: Row(
+                    children: [
+                      _NavTab(
+                        index: 0,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Trang chủ',
+                      ),
+                      _NavTab(
+                        index: 1,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.add_box_outlined,
+                        activeIcon: Icons.add_box_rounded,
+                        label: 'Diễn đàn',
+                      ),
+                      const Expanded(child: SizedBox()),
+                      _NavTab(
+                        index: 3,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.chat_bubble_outline_rounded,
+                        activeIcon: Icons.chat_bubble_rounded,
+                        label: 'Tin nhắn',
+                      ),
+                      _NavTab(
+                        index: 4,
+                        current: current,
+                        onTap: _onTap,
+                        icon: Icons.person_outline_rounded,
+                        activeIcon: Icons.person_rounded,
+                        label: 'Tôi',
+                      ),
+                    ],
                   ),
-                  _NavTab(
-                    index: 1,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.add_box_outlined,
-                    activeIcon: Icons.add_box_rounded,
-                    label: 'Diễn đàn',
-                  ),
-                  // Spacer reserves room for the center bump
-                  const Expanded(child: SizedBox()),
-                  _NavTab(
-                    index: 3,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.chat_bubble_outline_rounded,
-                    activeIcon: Icons.chat_bubble_rounded,
-                    label: 'Tin nhắn',
-                  ),
-                  _NavTab(
-                    index: 4,
-                    current: current,
-                    onTap: _onTap,
-                    icon: Icons.person_outline_rounded,
-                    activeIcon: Icons.person_rounded,
-                    label: 'Tôi',
-                  ),
-                ],
-              ),
-            ),
-            // Center Schedule button — sits inside the upward bump
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _ScheduleFab(
-                  size: _fabSize,
-                  isActive: current == 2,
-                  onTap: () => _onTap(2),
                 ),
-              ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _ScheduleFab(
+                      size: _fabSize,
+                      isActive: current == 2,
+                      onTap: () => _onTap(2),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
+  }
+}
+
+mixin TutorScrollToTopMixin<T extends StatefulWidget> on State<T> {
+  void listenScrollToTop(
+    BuildContext context,
+    int branchIndex,
+    ScrollController controller,
+  ) {
+    final notifier = TutorShellScrollNotifier.of(context);
+    if (notifier == null) return;
+    notifier.addListener(() {
+      if (notifier.value == branchIndex && controller.hasClients) {
+        unawaited(
+          controller.animateTo(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          ),
+        );
+      }
+    });
   }
 }
 

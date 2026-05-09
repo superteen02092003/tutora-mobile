@@ -9,6 +9,7 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/models/chat_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_chat_page.dart';
+import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -20,8 +21,24 @@ class TutorMessagesScreen extends ConsumerStatefulWidget {
       _TutorMessagesScreenState();
 }
 
-class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen> {
+class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
+    with TutorScrollToTopMixin {
+  final _scrollController = ScrollController();
   String _search = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 3, _scrollController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _openChat(ChatChannelDto channel) {
     unawaited(
@@ -187,20 +204,30 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen> {
                     )
                   : filtered.isEmpty
                   ? Center(
-                      child: Text(
-                        _search.isEmpty
-                            ? 'Chưa có cuộc trò chuyện nào'
-                            : 'Không tìm thấy kết quả',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: AppColors.ink3,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/common/empty_mesages.png',
+                            width: 200,
+                          ),
+                          Text(
+                            _search.isEmpty
+                                ? 'Chưa có cuộc trò chuyện nào'
+                                : 'Không tìm thấy kết quả',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.ink3,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : RefreshIndicator(
                       onRefresh: () =>
                           ref.read(channelListProvider.notifier).load(),
                       child: ListView.builder(
+                        controller: _scrollController,
                         padding: EdgeInsets.only(
                           bottom: bottomPad + AppSpacing.xxl,
                         ),

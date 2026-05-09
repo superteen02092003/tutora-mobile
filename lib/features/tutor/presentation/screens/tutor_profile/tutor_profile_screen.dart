@@ -16,15 +16,38 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_e
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_pricing_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_verification_progress_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_availability_screen.dart';
+import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/web_only_banner.dart';
 
-class TutorProfileScreen extends ConsumerWidget {
+class TutorProfileScreen extends ConsumerStatefulWidget {
   const TutorProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TutorProfileScreen> createState() => _TutorProfileScreenState();
+}
+
+class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
+    with TutorScrollToTopMixin {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 4, _scrollController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(tutorProfileProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
@@ -57,6 +80,7 @@ class TutorProfileScreen extends ConsumerWidget {
           const _TutorProfileHeader(),
           Expanded(
             child: ListView(
+              controller: _scrollController,
               padding: EdgeInsets.fromLTRB(14, 14, 14, bottomPad + 100),
               children: [
                 // Wallet shortcut

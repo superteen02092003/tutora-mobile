@@ -213,20 +213,10 @@ class _StudentMessagesScreenState extends ConsumerState<StudentMessagesScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: const BoxDecoration(
-                              color: AppColors.cream2,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              size: 28,
-                              color: AppColors.ink4,
-                            ),
+                          Image.asset(
+                            'assets/images/common/empty_mesages.png',
+                            width: 200,
                           ),
-                          const SizedBox(height: 12),
                           Text(
                             _search.isEmpty
                                 ? 'Chưa có cuộc trò chuyện nào'

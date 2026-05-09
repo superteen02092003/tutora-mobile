@@ -10,10 +10,19 @@ import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
+import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 
-class TutorHomeScreen extends ConsumerWidget {
+class TutorHomeScreen extends ConsumerStatefulWidget {
   const TutorHomeScreen({super.key});
+
+  @override
+  ConsumerState<TutorHomeScreen> createState() => _TutorHomeScreenState();
+}
+
+class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen>
+    with TutorScrollToTopMixin {
+  final _scrollController = ScrollController();
 
   static String _firstName(String name) {
     final parts = name.trim().split(' ');
@@ -21,7 +30,21 @@ class TutorHomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenScrollToTop(context, 0, _scrollController);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileState = ref.watch(tutorProfileProvider);
     final dashState = ref.watch(tutorDashboardProvider);
     final name = profileState.user?.fullName ?? '';
@@ -35,6 +58,7 @@ class TutorHomeScreen extends ConsumerWidget {
                 onRefresh: () =>
                     ref.read(tutorDashboardProvider.notifier).load(),
                 child: ListView(
+                  controller: _scrollController,
                   padding: EdgeInsets.zero,
                   children: [
                     _TopBar(name: name),
