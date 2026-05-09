@@ -14,6 +14,7 @@ abstract final class AppRoutes {
   static const studentLessons = '/student/lessons';
 
   // Student sub-routes
+  static const studentMessages = '/student/messages';
   static const studentCapturePlaceholder = '/student/capture-stub';
   static const studentSolution = '/student/solution';
   static const tutorDetail = '/student/search/tutor/:id';

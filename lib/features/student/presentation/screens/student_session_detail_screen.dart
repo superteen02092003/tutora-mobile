@@ -1,19 +1,104 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/mock/student_lessons_mock.dart';
+import 'package:tutora/features/student/data/models/lesson_models.dart';
+import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
 
-class StudentSessionDetailPage extends StatelessWidget {
-  const StudentSessionDetailPage({required this.lesson, super.key});
-  final MockLesson lesson;
+class StudentSessionDetailPage extends ConsumerWidget {
+  const StudentSessionDetailPage({required this.lessonId, super.key});
+  final int lessonId;
 
-  bool get _isDone => lesson.status == LessonStatus.done;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(lessonDetailProvider(lessonId));
+    return async.when(
+      loading: () => const Scaffold(
+        backgroundColor: AppColors.cream,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.oxblood,
+            strokeWidth: 2,
+          ),
+        ),
+      ),
+      error: (e, _) => Scaffold(
+        backgroundColor: AppColors.cream,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const _NavBar(title: 'Chi tiết buổi học'),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Không tải được buổi học',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        e.toString(),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.ink3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 14),
+                      GestureDetector(
+                        onTap: () =>
+                            ref.invalidate(lessonDetailProvider(lessonId)),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.ink,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Thử lại',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.cream,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      data: (lesson) => _DetailScaffold(lesson: lesson),
+    );
+  }
+}
+
+// ── Main scaffold ──────────────────────────────────────────────────────────
+
+class _DetailScaffold extends StatelessWidget {
+  const _DetailScaffold({required this.lesson});
+  final StudentLessonDetailDto lesson;
+
+  bool get _isDone => lesson.statusType == LessonStatusType.done;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +109,9 @@ class StudentSessionDetailPage extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            _NavBar(title: _isDone ? 'Tổng kết buổi học' : 'Chi tiết buổi học'),
+            _NavBar(
+              title: _isDone ? 'Tổng kết buổi học' : 'Chi tiết buổi học',
+            ),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.only(bottom: bottomInset + 88),
@@ -34,18 +121,21 @@ class StudentSessionDetailPage extends StatelessWidget {
                     _TutorCard(lesson: lesson),
                     _DetailsCard(lesson: lesson),
                     const _RatingCard(),
-                    const _AiRecapCard(),
+                    if (lesson.report != null)
+                      _RecapCard(report: lesson.report!),
                   ] else ...[
                     _ActiveBanner(lesson: lesson),
                     _TutorCard(lesson: lesson),
                     _DetailsCard(lesson: lesson),
-                    const _AiPrepCard(),
                   ],
                 ],
               ),
             ),
             if (_isDone)
-              _DoneActions(lesson: lesson, bottomInset: bottomInset)
+              _DoneActions(
+                tutorName: lesson.tutorName,
+                bottomInset: bottomInset,
+              )
             else
               _ActiveActions(lesson: lesson, bottomInset: bottomInset),
           ],
@@ -55,7 +145,8 @@ class StudentSessionDetailPage extends StatelessWidget {
   }
 }
 
-// ── Nav bar ────────────────────────────────────────────────────────────────
+// Nav bar
+
 class _NavBar extends StatelessWidget {
   const _NavBar({required this.title});
   final String title;
@@ -94,30 +185,18 @@ class _NavBar extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.paper,
-              border: Border.all(color: AppColors.line),
-            ),
-            child: const Icon(
-              Icons.more_vert_rounded,
-              size: 16,
-              color: AppColors.ink,
-            ),
-          ),
+          const SizedBox(width: 36),
         ],
       ),
     );
   }
 }
 
-// ── Done banner ────────────────────────────────────────────────────────────
+// Done banner
+
 class _DoneBanner extends StatelessWidget {
   const _DoneBanner({required this.lesson});
-  final MockLesson lesson;
+  final StudentLessonDetailDto lesson;
 
   @override
   Widget build(BuildContext context) {
@@ -153,28 +232,29 @@ class _DoneBanner extends StatelessWidget {
   }
 }
 
-// ── Active banner (with pulse dot) ────────────────────────────────────────
+// Active banner
+
 class _ActiveBanner extends StatelessWidget {
   const _ActiveBanner({required this.lesson});
-  final MockLesson lesson;
+  final StudentLessonDetailDto lesson;
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, text) = switch (lesson.status) {
-      LessonStatus.upcoming => (
-        AppColors.oxblood,
-        const Color(0xFFFFF1E6),
-        'Sắp diễn ra · bắt đầu sau 2 giờ',
-      ),
-      LessonStatus.confirmed => (
+    final (bg, fg, text) = switch (lesson.statusType) {
+      LessonStatusType.scheduled => (
         AppColors.moss,
         const Color(0xFFE0E7DF),
         'Đã xác nhận · chờ buổi học',
       ),
-      _ => (
+      LessonStatusType.pending => (
         const Color(0xFFF0E3CA),
         const Color(0xFF5C3A1A),
         'Chờ gia sư xác nhận',
+      ),
+      _ => (
+        AppColors.moss,
+        const Color(0xFFE0E7DF),
+        'Đã xác nhận',
       ),
     };
 
@@ -224,10 +304,9 @@ class _PulseDotState extends State<_PulseDot>
       duration: const Duration(milliseconds: 1200),
     );
     unawaited(_ctrl.repeat(reverse: true));
-    _anim = Tween<double>(
-      begin: 0.35,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.35, end: 1).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -249,10 +328,10 @@ class _PulseDotState extends State<_PulseDot>
   }
 }
 
-// ── Tutor card ─────────────────────────────────────────────────────────────
+// Tutor card
 class _TutorCard extends StatelessWidget {
   const _TutorCard({required this.lesson});
-  final MockLesson lesson;
+  final StudentLessonDetailDto lesson;
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +345,7 @@ class _TutorCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          UserAvatar(name: lesson.tutorName, size: 56),
+          UserAvatar(name: lesson.tutorName ?? 'GS', size: 56),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -276,7 +355,7 @@ class _TutorCard extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        lesson.tutorName,
+                        lesson.tutorName ?? 'Gia sư',
                         style: GoogleFonts.bricolageGrotesque(
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
@@ -290,34 +369,8 @@ class _TutorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Senior · Top 1% · ${lesson.subject}',
+                  lesson.subjectName ?? '',
                   style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.star_rounded,
-                      size: 11,
-                      color: AppColors.gold,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '4.96',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    Text(
-                      ' · 482 buổi',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: AppColors.ink3,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -328,10 +381,10 @@ class _TutorCard extends StatelessWidget {
   }
 }
 
-// ── Details card (no fee row) ──────────────────────────────────────────────
+// Details card
 class _DetailsCard extends StatelessWidget {
   const _DetailsCard({required this.lesson});
-  final MockLesson lesson;
+  final StudentLessonDetailDto lesson;
 
   @override
   Widget build(BuildContext context) {
@@ -339,14 +392,19 @@ class _DetailsCard extends StatelessWidget {
       (
         icon: Icons.access_time_rounded,
         label: 'Thời gian',
-        value: '${lesson.date} · ${lesson.timeRange}',
+        value: '${lesson.dateLabel} · ${lesson.timeRange}',
       ),
       (
         icon: Icons.menu_book_rounded,
         label: 'Môn học',
-        value: '${lesson.subject} · Cánh Diều',
+        value: lesson.subjectName ?? '—',
       ),
-      (icon: Icons.auto_awesome_rounded, label: 'Chủ đề', value: lesson.topic),
+      if (lesson.lessonContent?.isNotEmpty ?? false)
+        (
+          icon: Icons.auto_awesome_rounded,
+          label: 'Nội dung',
+          value: lesson.lessonContent!,
+        ),
     ];
 
     return Container(
@@ -410,7 +468,7 @@ class _DetailsCard extends StatelessWidget {
   }
 }
 
-// ── Rating card (done sessions only) ──────────────────────────────────────
+// Rating card (done sessions only)
 class _RatingCard extends StatefulWidget {
   const _RatingCard();
 
@@ -507,9 +565,10 @@ class _RatingCardState extends State<_RatingCard> {
   }
 }
 
-// ── AI recap card (done sessions) ──────────────────────────────────────────
-class _AiRecapCard extends StatelessWidget {
-  const _AiRecapCard();
+// Recap card
+class _RecapCard extends StatelessWidget {
+  const _RecapCard({required this.report});
+  final LessonReportDto report;
 
   @override
   Widget build(BuildContext context) {
@@ -541,89 +600,54 @@ class _AiRecapCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'TUTORA AI TÓM TẮT',
+                'BÁO CÁO BUỔI HỌC',
                 style: AppTextStyles.eyebrow(color: AppColors.gold),
               ),
               const SizedBox(height: 12),
-              const _RecapRow(
+              _RecapRow(
                 icon: Icons.check_circle_outline_rounded,
                 label: 'Đã học',
-                text: 'Đạo hàm cơ bản — quy tắc lũy thừa, tích, thương',
+                text: report.contentCovered,
               ),
-              const SizedBox(height: 10),
-              const _RecapRow(
-                icon: Icons.trending_up_rounded,
-                label: 'Tiến bộ',
-                text: 'Nắm lý thuyết tốt, cần luyện thêm bài tập ứng dụng',
-              ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.25),
-                  ),
+              if (report.homeworkAssigned?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 10),
+                _RecapRow(
+                  icon: Icons.assignment_outlined,
+                  label: 'Bài tập',
+                  text: report.homeworkAssigned!,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.lightbulb_outline_rounded,
-                      size: 13,
-                      color: AppColors.gold,
+              ],
+              if (report.studentPerformanceRating != null) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.25),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: AppColors.cream.withValues(alpha: 0.8),
-                            height: 1.4,
-                          ),
-                          children: [
-                            const TextSpan(text: 'Ôn cho buổi sau: '),
-                            TextSpan(
-                              text: 'đạo hàm hàm hợp (chain rule)',
-                              style: GoogleFonts.ibmPlexSerif(
-                                fontStyle: FontStyle.italic,
-                                fontSize: 12,
-                                color: AppColors.gold,
-                              ),
-                            ),
-                          ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 13,
+                        color: AppColors.gold,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Đánh giá của gia sư: ${report.studentPerformanceRating}/5',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.cream,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Text(
-                    'Xem lại bài giải đã quét',
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.gold,
-                    ),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
@@ -676,112 +700,10 @@ class _RecapRow extends StatelessWidget {
   }
 }
 
-// ── AI prep card (upcoming sessions) ──────────────────────────────────────
-class _AiPrepCard extends StatelessWidget {
-  const _AiPrepCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                gradient: RadialGradient(
-                  center: const Alignment(1.1, -1.1),
-                  radius: 1.2,
-                  colors: [
-                    AppColors.gold.withValues(alpha: 0.18),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'TUTORA AI CHUẨN BỊ',
-                style: AppTextStyles.eyebrow(color: AppColors.gold),
-              ),
-              const SizedBox(height: 8),
-              RichText(
-                text: TextSpan(
-                  style: GoogleFonts.ibmPlexSerif(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    height: 1.35,
-                    color: AppColors.cream,
-                  ),
-                  children: [
-                    const TextSpan(text: 'Bạn đã quét 3 bài Vi-ét — '),
-                    TextSpan(
-                      text: 'sai bước đổi dấu b',
-                      style: GoogleFonts.ibmPlexSerif(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.gold,
-                      ),
-                    ),
-                    const TextSpan(text: '.'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Đề xuất: nhờ gia sư ôn lại quy tắc dấu trước khi vào bài mới.',
-                style: GoogleFonts.inter(
-                  fontSize: 11.5,
-                  color: AppColors.cream.withValues(alpha: 0.65),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.gold.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Text(
-                    'Xem lại bài gần nhất',
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.gold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Done actions ───────────────────────────────────────────────────────────
+// Done actions
 class _DoneActions extends StatelessWidget {
-  const _DoneActions({required this.lesson, required this.bottomInset});
-  final MockLesson lesson;
+  const _DoneActions({required this.tutorName, required this.bottomInset});
+  final String? tutorName;
   final double bottomInset;
 
   @override
@@ -799,7 +721,7 @@ class _DoneActions extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
           child: Text(
-            'Đặt buổi học tiếp theo với ${lesson.tutorName}',
+            'Đặt buổi học tiếp theo với ${tutorName ?? 'gia sư'}',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 13,
@@ -813,10 +735,10 @@ class _DoneActions extends StatelessWidget {
   }
 }
 
-// ── Active actions ─────────────────────────────────────────────────────────
+// Active actions
 class _ActiveActions extends StatelessWidget {
   const _ActiveActions({required this.lesson, required this.bottomInset});
-  final MockLesson lesson;
+  final StudentLessonDetailDto lesson;
   final double bottomInset;
 
   @override
@@ -848,20 +770,23 @@ class _ActiveActions extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(
-              onTap: () {},
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.oxblood,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  'Vào phòng học',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFFFF1E6),
+              onTap: lesson.meetingLink != null ? () {} : null,
+              child: Opacity(
+                opacity: lesson.meetingLink != null ? 1.0 : 0.5,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.oxblood,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    'Vào phòng học',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFFFF1E6),
+                    ),
                   ),
                 ),
               ),
@@ -908,7 +833,7 @@ class _ActiveActions extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Bạn có chắc muốn hủy buổi học với ${lesson.tutorName}?',
+                'Bạn có chắc muốn hủy buổi học với ${lesson.tutorName ?? 'gia sư'}?',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: AppColors.ink2,

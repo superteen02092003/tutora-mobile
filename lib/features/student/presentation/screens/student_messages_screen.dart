@@ -1,0 +1,278 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/student/presentation/screens/student_chat_page.dart';
+import 'package:tutora/features/tutor/data/models/chat_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
+
+class StudentMessagesScreen extends ConsumerStatefulWidget {
+  const StudentMessagesScreen({super.key});
+
+  @override
+  ConsumerState<StudentMessagesScreen> createState() =>
+      _StudentMessagesScreenState();
+}
+
+class _StudentMessagesScreenState extends ConsumerState<StudentMessagesScreen> {
+  String _search = '';
+
+  void _openChat(ChatChannelDto channel) {
+    unawaited(
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StudentChatPage(channel: channel),
+        ),
+      ),
+    );
+  }
+
+  void _deleteChannel(ChatChannelDto channel) {
+    AppToast.show(
+      context,
+      message: 'Đã xoá cuộc trò chuyện với ${channel.otherUserName}',
+      type: AppToastType.error,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(channelListProvider);
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    final filtered = state.channels.where((c) {
+      if (_search.isEmpty) return true;
+      final q = _search.toLowerCase();
+      return c.otherUserName.toLowerCase().contains(q) ||
+          c.lastMessagePreview.toLowerCase().contains(q);
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: AppColors.cream,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.paper,
+                        border: Border.all(color: AppColors.line),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 14,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Tin nhắn', style: AppTextStyles.h2())),
+                  GestureDetector(
+                    onTap: () => ref.read(channelListProvider.notifier).load(),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.paper,
+                        border: Border.all(color: AppColors.line),
+                      ),
+                      child: const Icon(
+                        Icons.refresh_rounded,
+                        size: 16,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cream2,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.search_rounded,
+                      size: 16,
+                      color: AppColors.ink4,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        onChanged: (v) => setState(() => _search = v),
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.ink,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          hintText: 'Tìm kiếm hội thoại...',
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.ink4,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+              child: Row(
+                children: [
+                  Text('GẦN ĐÂY', style: AppTextStyles.eyebrow()),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Divider(color: AppColors.line, height: 1),
+                  ),
+                ],
+              ),
+            ),
+
+            // Body
+            Expanded(
+              child: state.isLoading && state.channels.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.oxblood,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : state.error != null && state.channels.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.wifi_off_rounded,
+                            size: 40,
+                            color: AppColors.ink4,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Không tải được tin nhắn',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.ink3,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () =>
+                                ref.read(channelListProvider.notifier).load(),
+                            child: Text(
+                              'Thử lại',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.oxblood,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : filtered.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: const BoxDecoration(
+                              color: AppColors.cream2,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 28,
+                              color: AppColors.ink4,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _search.isEmpty
+                                ? 'Chưa có cuộc trò chuyện nào'
+                                : 'Không tìm thấy kết quả',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.ink3,
+                            ),
+                          ),
+                          if (_search.isEmpty) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'Tin nhắn với gia sư sẽ xuất hiện ở đây',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: AppColors.ink4,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.oxblood,
+                      onRefresh: () =>
+                          ref.read(channelListProvider.notifier).load(),
+                      child: ListView.builder(
+                        padding: EdgeInsets.only(
+                          bottom: bottomPad + AppSpacing.xxl,
+                        ),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final channel = filtered[i];
+                          return SwipeableConvoItem(
+                            key: ValueKey(channel.channelId),
+                            channel: channel,
+                            onTap: () => _openChat(channel),
+                            onDelete: () => _deleteChannel(channel),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

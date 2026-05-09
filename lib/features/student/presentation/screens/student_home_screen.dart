@@ -12,7 +12,6 @@ import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/student/presentation/providers/dashboard_provider.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
-import 'package:tutora/shared/widgets/app_toast.dart';
 
 class StudentHomePage extends ConsumerWidget {
   const StudentHomePage({super.key});
@@ -168,14 +167,7 @@ class _TopBar extends StatelessWidget {
           const SizedBox(width: 10),
           // Chat icon
           GestureDetector(
-            onTap: () {
-              // add page later
-              AppToast.show(
-                context,
-                type: AppToastType.info,
-                message: 'Chức năng đang được phát triển.',
-              );
-            },
+            onTap: () => context.push(AppRoutes.studentMessages),
             child: Container(
               width: 36,
               height: 36,
