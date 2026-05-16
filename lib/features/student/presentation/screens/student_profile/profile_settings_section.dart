@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/student/presentation/providers/profile_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_primitives.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
@@ -60,6 +62,12 @@ class ProfileSettingsSection extends ConsumerWidget {
         const SizedBox(height: 14),
         ProfileSectionCard(
           children: [
+            SettingRow(
+              icon: Icons.receipt_long_outlined,
+              label: 'Booking của tôi',
+              sub: 'Xem lịch sử đặt gia sư',
+              onTap: () => context.push(AppRoutes.studentBookings),
+            ),
             SettingRow(
               icon: Icons.menu_book_outlined,
               label: 'Môn học quan tâm',
