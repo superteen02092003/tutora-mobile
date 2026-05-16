@@ -7,6 +7,8 @@ import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
+import 'package:tutora/features/student/presentation/screens/student_booking_detail_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_booking_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_capture_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_home_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_lessons_screen.dart';
@@ -63,6 +65,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.studentCapture,
         builder: (context, _) => const StudentCapturePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentBookings,
+        builder: (context, _) => const StudentBookingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentBookingDetail,
+        builder: (context, state) => StudentBookingDetailScreen(
+          bookingId: int.parse(state.pathParameters['id'] ?? '0'),
+        ),
       ),
       GoRoute(
         path: AppRoutes.studentSolution,

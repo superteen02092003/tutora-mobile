@@ -2,6 +2,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
 import 'package:tutora/features/student/data/models/booking_models.dart';
+export 'package:tutora/features/student/data/models/booking_models.dart'
+    show
+        BookingDetailDto,
+        BookingStatusType,
+        ScheduleSlotDto,
+        StudentBookingDto,
+        StudentBookingPagedResult;
 
 class BookingDatasource {
   const BookingDatasource(this._dio);
@@ -33,6 +40,32 @@ class BookingDatasource {
     } on DioException {
       return null;
     }
+  }
+
+  Future<BookingDetailDto> getBookingDetail(int bookingId) async {
+    final response = await _dio.get<dynamic>('/bookings/$bookingId');
+    final data = response.data as Map<String, dynamic>;
+    final content = data['content'] as Map<String, dynamic>? ?? data;
+    return BookingDetailDto.fromJson(content);
+  }
+
+  Future<StudentBookingPagedResult> getStudentBookings({
+    int page = 1,
+    int pageSize = 20,
+    String? status,
+  }) async {
+    final params = <String, dynamic>{
+      'page': page,
+      'pageSize': pageSize,
+      if (status != null && status.isNotEmpty) 'status': status,
+    };
+    final response = await _dio.get<dynamic>(
+      '/student/bookings',
+      queryParameters: params,
+    );
+    return StudentBookingPagedResult.fromJson(
+      response.data as Map<String, dynamic>,
+    );
   }
 
   Future<List<StudentSummaryDto>> getMyStudents() async {
