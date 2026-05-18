@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:tutora/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:tutora/shared/services/push_token_service.dart';
 
 sealed class AuthState {}
 
@@ -16,12 +17,15 @@ final class AuthError extends AuthState {
 }
 
 class AuthController extends StateNotifier<AuthState> {
-  AuthController(this._logoutUseCase) : super(AuthIdle());
+  AuthController(this._logoutUseCase, this._pushTokenService)
+    : super(AuthIdle());
 
   final LogoutUseCase _logoutUseCase;
+  final PushTokenService _pushTokenService;
 
   Future<void> logout() async {
     state = AuthLoading();
+    await _pushTokenService.unregisterToken();
     final result = await _logoutUseCase();
     if (result.failure != null) {
       state = AuthError(result.failure!.message);
@@ -35,5 +39,6 @@ final StateNotifierProvider<AuthController, AuthState> authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
       return AuthController(
         LogoutUseCase(ref.read(authRepositoryProvider)),
+        ref.read(pushTokenServiceProvider),
       );
     });

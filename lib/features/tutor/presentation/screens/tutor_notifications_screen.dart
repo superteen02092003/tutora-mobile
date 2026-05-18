@@ -1,113 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/shared/models/notification_models.dart';
+import 'package:tutora/shared/providers/notification_provider.dart';
 
-// Mock data
-enum _NotiType { booking, lesson, payment, system }
-
-class _Noti {
-  const _Noti({
-    required this.id,
-    required this.type,
-    required this.title,
-    required this.body,
-    required this.time,
-    this.isRead = false,
-  });
-
-  final String id;
-  final _NotiType type;
-  final String title;
-  final String body;
-  final String time;
-  final bool isRead;
-
-  IconData get icon => switch (type) {
-    _NotiType.booking => Icons.event_available_outlined,
-    _NotiType.lesson => Icons.menu_book_outlined,
-    _NotiType.payment => Icons.payments_outlined,
-    _NotiType.system => Icons.info_outline,
-  };
-
-  _Noti copyWith({bool? isRead}) => _Noti(
-    id: id,
-    type: type,
-    title: title,
-    body: body,
-    time: time,
-    isRead: isRead ?? this.isRead,
-  );
-}
-
-final _kMock = <_Noti>[
-  const _Noti(
-    id: 'n1',
-    type: _NotiType.booking,
-    title: 'Yêu cầu đặt lịch mới',
-    body: 'Phụ huynh Nguyễn Thị Lan muốn đặt lịch học Toán 10 — 3 buổi/tuần.',
-    time: '5p trước',
-  ),
-  const _Noti(
-    id: 'n2',
-    type: _NotiType.payment,
-    title: 'Tiền được giải ngân',
-    body: 'Buổi học với Minh Anh ngày 7/5 đã hoàn thành. 180.000 ₫ đã vào ví.',
-    time: '1 giờ trước',
-  ),
-  const _Noti(
-    id: 'n3',
-    type: _NotiType.lesson,
-    title: 'Nhắc buổi học sắp tới',
-    body: 'Buổi học Vật Lý 11 với Đức Khang sẽ bắt đầu lúc 19:00 hôm nay.',
-    time: '3 giờ trước',
-    isRead: true,
-  ),
-  const _Noti(
-    id: 'n4',
-    type: _NotiType.booking,
-    title: 'Booking sắp hết hạn',
-    body: 'Yêu cầu từ phụ huynh Trần Văn Bình sẽ hết hạn sau 12 giờ nữa.',
-    time: 'Hôm qua',
-    isRead: true,
-  ),
-  const _Noti(
-    id: 'n5',
-    type: _NotiType.lesson,
-    title: 'Học sinh vắng mặt',
-    body: 'Bảo Trân chưa check-in buổi học Toán 11 lúc 17:00 ngày 6/5.',
-    time: '6/5',
-    isRead: true,
-  ),
-  const _Noti(
-    id: 'n6',
-    type: _NotiType.system,
-    title: 'Hồ sơ đã được duyệt',
-    body: 'Chúc mừng! Hồ sơ gia sư của bạn đã được admin xác minh thành công.',
-    time: '2/5',
-    isRead: true,
-  ),
-];
-
-class TutorNotificationsScreen extends StatefulWidget {
+class TutorNotificationsScreen extends ConsumerStatefulWidget {
   const TutorNotificationsScreen({super.key});
 
   @override
-  State<TutorNotificationsScreen> createState() =>
+  ConsumerState<TutorNotificationsScreen> createState() =>
       _TutorNotificationsScreenState();
 }
 
-class _TutorNotificationsScreenState extends State<TutorNotificationsScreen>
+class _TutorNotificationsScreenState
+    extends ConsumerState<TutorNotificationsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  late List<_Noti> _notis;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     _tabs.addListener(() => setState(() {}));
-    _notis = List.of(_kMock);
+    unawaited(
+      Future.microtask(() => ref.read(notificationProvider.notifier).load()),
+    );
   }
 
   @override
@@ -116,31 +37,16 @@ class _TutorNotificationsScreenState extends State<TutorNotificationsScreen>
     super.dispose();
   }
 
-  void _markRead(String id) {
-    setState(() {
-      final i = _notis.indexWhere((n) => n.id == id);
-      if (i != -1) _notis[i] = _notis[i].copyWith(isRead: true);
-    });
-  }
-
-  void _markAllRead() {
-    setState(() {
-      _notis = _notis.map((n) => n.copyWith(isRead: true)).toList();
-    });
-  }
-
-  List<_Noti> get _unread => _notis.where((n) => !n.isRead).toList();
-
   @override
   Widget build(BuildContext context) {
-    final hasUnread = _unread.isNotEmpty;
+    final state = ref.watch(notificationProvider);
+    final hasUnread = state.unreadCount > 0;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 12, 16, 4),
               child: Row(
@@ -158,7 +64,8 @@ class _TutorNotificationsScreenState extends State<TutorNotificationsScreen>
                   ),
                   if (hasUnread)
                     GestureDetector(
-                      onTap: _markAllRead,
+                      onTap: () =>
+                          ref.read(notificationProvider.notifier).markAllRead(),
                       child: Text(
                         'Đánh dấu tất cả đã đọc',
                         style: AppTextStyles.label(color: AppColors.oxblood),
@@ -167,7 +74,6 @@ class _TutorNotificationsScreenState extends State<TutorNotificationsScreen>
                 ],
               ),
             ),
-            // Segmented tabs
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
@@ -207,13 +113,34 @@ class _TutorNotificationsScreenState extends State<TutorNotificationsScreen>
             ),
             const SizedBox(height: AppSpacing.sm),
             Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  _NotiList(items: _notis, onTap: _markRead),
-                  _NotiList(items: _unread, onTap: _markRead),
-                ],
-              ),
+              child: state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.oxblood,
+                      ),
+                    )
+                  : state.error != null
+                  ? _ErrorState(
+                      onRetry: () =>
+                          ref.read(notificationProvider.notifier).load(),
+                    )
+                  : TabBarView(
+                      controller: _tabs,
+                      children: [
+                        _NotiList(
+                          items: state.items,
+                          onTap: (id) => ref
+                              .read(notificationProvider.notifier)
+                              .markRead(id),
+                        ),
+                        _NotiList(
+                          items: state.unread,
+                          onTap: (id) => ref
+                              .read(notificationProvider.notifier)
+                              .markRead(id),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -225,8 +152,8 @@ class _TutorNotificationsScreenState extends State<TutorNotificationsScreen>
 class _NotiList extends StatelessWidget {
   const _NotiList({required this.items, required this.onTap});
 
-  final List<_Noti> items;
-  final void Function(String id) onTap;
+  final List<NotificationDto> items;
+  final void Function(int id) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -270,22 +197,8 @@ class _NotiList extends StatelessWidget {
 class _NotiTile extends StatelessWidget {
   const _NotiTile({required this.item, required this.onTap});
 
-  final _Noti item;
+  final NotificationDto item;
   final VoidCallback onTap;
-
-  Color get _iconBg => switch (item.type) {
-    _NotiType.booking => const Color(0xFFE8F0FE),
-    _NotiType.lesson => const Color(0xFFD5EDD9),
-    _NotiType.payment => const Color(0xFFFFF3CD),
-    _NotiType.system => AppColors.cream2,
-  };
-
-  Color get _iconColor => switch (item.type) {
-    _NotiType.booking => const Color(0xFF3D6EEA),
-    _NotiType.lesson => AppColors.moss,
-    _NotiType.payment => const Color(0xFF7A5900),
-    _NotiType.system => AppColors.ink3,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -305,9 +218,9 @@ class _NotiTile extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _iconBg,
+                    color: item.iconBg,
                   ),
-                  child: Icon(item.icon, size: 20, color: _iconColor),
+                  child: Icon(item.icon, size: 20, color: item.iconColor),
                 ),
                 if (!item.isRead)
                   Positioned(
@@ -338,13 +251,13 @@ class _NotiTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    item.body,
+                    item.message,
                     style: AppTextStyles.bodySmall(color: AppColors.ink4),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(item.time, style: AppTextStyles.eyebrow()),
+                  Text(item.timeAgo, style: AppTextStyles.eyebrow()),
                 ],
               ),
             ),
@@ -362,6 +275,37 @@ class _NotiTile extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi_off_outlined, size: 48, color: AppColors.ink4),
+          const SizedBox(height: 12),
+          Text(
+            'Không tải được thông báo',
+            style: AppTextStyles.body(color: AppColors.ink3),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(
+              'Thử lại',
+              style: AppTextStyles.label(color: AppColors.oxblood),
+            ),
+          ),
+        ],
       ),
     );
   }

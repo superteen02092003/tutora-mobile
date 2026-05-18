@@ -61,46 +61,46 @@ class TutorProfileDatasource {
     await _dio.put<void>('/passwords/change', data: request.toJson());
   }
 
-  // GET /api/tutor-verification/{id}/progress
+  // GET /api/tutors/{id}/verification/progress
   Future<TutorVerificationProgressDto> getVerificationProgress() async {
     final userId = await _getUserId();
     final res = await _dio.get<Map<String, dynamic>>(
-      '/tutor-verification/$userId/progress',
+      '/tutors/$userId/verification/progress',
     );
     return TutorVerificationProgressDto.fromJson(res.data!);
   }
 
-  // PUT /api/tutor-verification/{id}/tutor-profile/introduction
+  // PUT /api/tutors/{id}/profile/introduction
   Future<void> updateIntroduction(UpdateIntroductionRequest request) async {
     final userId = await _getUserId();
     await _dio.put<void>(
-      '/tutor-verification/$userId/tutor-profile/introduction',
+      '/tutors/$userId/profile/introduction',
       data: request.toJson(),
     );
   }
 
-  // PUT /api/tutor-verification/{id}/tutor-profile/pricing
+  // PUT /api/tutors/{id}/profile/pricing
   Future<void> updatePricing(UpdatePricingRequest request) async {
     final userId = await _getUserId();
     await _dio.put<void>(
-      '/tutor-verification/$userId/tutor-profile/pricing',
+      '/tutors/$userId/profile/pricing',
       data: request.toJson(),
     );
   }
 
-  // POST /api/tutor-verification/{id}/submit-for-review
+  // POST /api/tutors/{id}/submit-for-review
   Future<void> submitForReview() async {
     final userId = await _getUserId();
     await _dio.post<void>(
-      '/tutor-verification/$userId/submit-for-review',
+      '/tutors/$userId/submit-for-review',
     );
   }
 
-  // GET /api/tutor-verification/{id}/tutor-profile/certificates
+  // GET /api/tutors/{id}/profile/certificates
   Future<List<CertificateDto>> getCertificates() async {
     final userId = await _getUserId();
     final res = await _dio.get<Map<String, dynamic>>(
-      '/tutor-verification/$userId/tutor-profile/certificates',
+      '/tutors/$userId/profile/certificates',
     );
     final content = res.data?['content'];
     if (content is List) {
@@ -112,15 +112,15 @@ class TutorProfileDatasource {
     return [];
   }
 
-  // DELETE /api/tutor-verification/{id}/tutor-profile/certificates/{certId}
+  // DELETE /api/tutors/{id}/profile/certificates/{certId}
   Future<void> deleteCertificate(String certId) async {
     final userId = await _getUserId();
     await _dio.delete<void>(
-      '/tutor-verification/$userId/tutor-profile/certificates/$certId',
+      '/tutors/$userId/profile/certificates/$certId',
     );
   }
 
-  // POST /api/tutor-verification/{id}/tutor-profile/certificates  (multipart)
+  // POST /api/tutors/{id}/profile/certificates  (multipart)
   Future<void> uploadCertificate({
     required String filePath,
     required String certificateName,
@@ -137,7 +137,7 @@ class TutorProfileDatasource {
       if (yearIssued != null) 'YearIssued': yearIssued.toString(),
     });
     await _dio.post<void>(
-      '/tutor-verification/$userId/tutor-profile/certificates',
+      '/tutors/$userId/profile/certificates',
       data: formData,
     );
   }

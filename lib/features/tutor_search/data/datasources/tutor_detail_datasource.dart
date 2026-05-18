@@ -10,7 +10,7 @@ class TutorDetailDatasource {
   Future<TutorFullProfileDto> getFullProfile(String tutorId) async {
     try {
       final response = await _dio.get<dynamic>(
-        '/Tutor/$tutorId/full-profile-landing-page',
+        '/tutors/$tutorId/full-profile',
       );
       return TutorFullProfileDto.fromJson(
         response.data as Map<String, dynamic>,

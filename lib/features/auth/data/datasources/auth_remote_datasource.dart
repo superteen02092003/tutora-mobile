@@ -12,7 +12,7 @@ class AuthRemoteDatasource {
   Future<RegisterResponse> register(RegisterRequest request) async {
     try {
       final response = await _dio.post<dynamic>(
-        '/SimpleAuth/register',
+        '/auth/register',
         data: request.toJson(),
       );
       return RegisterResponse.fromJson(response.data as Map<String, dynamic>);
@@ -24,7 +24,7 @@ class AuthRemoteDatasource {
   Future<LoginResponse> login(LoginRequest request) async {
     try {
       final response = await _dio.post<dynamic>(
-        '/SimpleAuth/login',
+        '/auth/login',
         data: request.toJson(),
       );
       return LoginResponse.fromJson(response.data as Map<String, dynamic>);

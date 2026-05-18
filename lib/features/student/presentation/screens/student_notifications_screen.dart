@@ -1,29 +1,35 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/mock/student_notifications_mock.dart';
+import 'package:tutora/shared/models/notification_models.dart';
+import 'package:tutora/shared/providers/notification_provider.dart';
 
-class StudentNotificationsScreen extends StatefulWidget {
+class StudentNotificationsScreen extends ConsumerStatefulWidget {
   const StudentNotificationsScreen({super.key});
 
   @override
-  State<StudentNotificationsScreen> createState() =>
+  ConsumerState<StudentNotificationsScreen> createState() =>
       _StudentNotificationsScreenState();
 }
 
-class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
+class _StudentNotificationsScreenState
+    extends ConsumerState<StudentNotificationsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
-  late List<MockNotification> _notis;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
     _tabs.addListener(() => setState(() {}));
-    _notis = List.of(kMockNotifications);
+    unawaited(
+      Future.microtask(() => ref.read(notificationProvider.notifier).load()),
+    );
   }
 
   @override
@@ -32,24 +38,10 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
     super.dispose();
   }
 
-  void _markRead(String id) {
-    setState(() {
-      final i = _notis.indexWhere((n) => n.id == id);
-      if (i != -1) _notis[i] = _notis[i].copyWith(isRead: true);
-    });
-  }
-
-  void _markAllRead() {
-    setState(() {
-      _notis = _notis.map((n) => n.copyWith(isRead: true)).toList();
-    });
-  }
-
-  List<MockNotification> get _unread => _notis.where((n) => !n.isRead).toList();
-
   @override
   Widget build(BuildContext context) {
-    final hasUnread = _unread.isNotEmpty;
+    final state = ref.watch(notificationProvider);
+    final hasUnread = state.unreadCount > 0;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -58,19 +50,41 @@ class _StudentNotificationsScreenState extends State<StudentNotificationsScreen>
           children: [
             _Header(
               hasUnread: hasUnread,
-              onMarkAll: _markAllRead,
+              onMarkAll: () =>
+                  ref.read(notificationProvider.notifier).markAllRead(),
               onBack: () => context.pop(),
             ),
             _SegmentedTabs(controller: _tabs),
             const SizedBox(height: AppSpacing.sm),
             Expanded(
-              child: TabBarView(
-                controller: _tabs,
-                children: [
-                  _NotiList(items: _notis, onTap: _markRead),
-                  _NotiList(items: _unread, onTap: _markRead),
-                ],
-              ),
+              child: state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.oxblood,
+                      ),
+                    )
+                  : state.error != null
+                  ? _ErrorState(
+                      onRetry: () =>
+                          ref.read(notificationProvider.notifier).load(),
+                    )
+                  : TabBarView(
+                      controller: _tabs,
+                      children: [
+                        _NotiList(
+                          items: state.items,
+                          onTap: (id) => ref
+                              .read(notificationProvider.notifier)
+                              .markRead(id),
+                        ),
+                        _NotiList(
+                          items: state.unread,
+                          onTap: (id) => ref
+                              .read(notificationProvider.notifier)
+                              .markRead(id),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -165,8 +179,8 @@ class _SegmentedTabs extends StatelessWidget {
 class _NotiList extends StatelessWidget {
   const _NotiList({required this.items, required this.onTap});
 
-  final List<MockNotification> items;
-  final void Function(String id) onTap;
+  final List<NotificationDto> items;
+  final void Function(int id) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -191,20 +205,8 @@ class _NotiList extends StatelessWidget {
 class _NotiTile extends StatelessWidget {
   const _NotiTile({required this.item, required this.onTap});
 
-  final MockNotification item;
+  final NotificationDto item;
   final VoidCallback onTap;
-
-  Color get _iconBg => switch (item.type) {
-    NotificationType.lesson => const Color(0xFFE8F0FE),
-    NotificationType.review => const Color(0xFFFFF3E0),
-    NotificationType.system => AppColors.cream2,
-  };
-
-  Color get _iconColor => switch (item.type) {
-    NotificationType.lesson => const Color(0xFF3D6EEA),
-    NotificationType.review => const Color(0xFFE07B00),
-    NotificationType.system => AppColors.ink3,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -224,9 +226,9 @@ class _NotiTile extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _iconBg,
+                    color: item.iconBg,
                   ),
-                  child: Icon(item.icon, size: 20, color: _iconColor),
+                  child: Icon(item.icon, size: 20, color: item.iconColor),
                 ),
                 if (!item.isRead)
                   Positioned(
@@ -257,16 +259,13 @@ class _NotiTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    item.body,
+                    item.message,
                     style: AppTextStyles.bodySmall(color: AppColors.ink4),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    item.time,
-                    style: AppTextStyles.eyebrow(),
-                  ),
+                  Text(item.timeAgo, style: AppTextStyles.eyebrow()),
                 ],
               ),
             ),
@@ -296,6 +295,37 @@ class _EmptyState extends StatelessWidget {
           Text(
             'Bạn đã đọc hết rồi!',
             style: AppTextStyles.bodySmall(color: AppColors.ink4),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.wifi_off_outlined, size: 48, color: AppColors.ink4),
+          const SizedBox(height: 12),
+          Text(
+            'Không tải được thông báo',
+            style: AppTextStyles.body(color: AppColors.ink3),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(
+              'Thử lại',
+              style: AppTextStyles.label(color: AppColors.oxblood),
+            ),
           ),
         ],
       ),
