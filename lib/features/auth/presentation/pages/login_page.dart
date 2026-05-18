@@ -14,6 +14,7 @@ import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/login_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
+import 'package:tutora/shared/services/push_token_service.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -45,6 +46,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!mounted || token == null) return;
     final claims = parseJwt(token);
     if (!mounted || claims == null) return;
+
+    unawaited(ref.read(pushTokenServiceProvider).registerToken());
+
     switch (claims.role) {
       case UserRole.student:
         context.go(AppRoutes.studentHome);
