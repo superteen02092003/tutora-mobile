@@ -40,7 +40,7 @@ class TutorSearchDatasource {
       };
 
       final response = await _dio.get<dynamic>(
-        '/tutor-search',
+        '/tutors/search',
         queryParameters: params,
       );
       return TutorSearchPage.fromJson(response.data as Map<String, dynamic>);

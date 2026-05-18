@@ -31,7 +31,7 @@ class BookingDatasource {
   Future<String?> getMyStudentProfileId() async {
     try {
       final response = await _dio.get<dynamic>(
-        '/parent/students/my-link-status',
+        '/parent/students/link-status',
       );
       final data = response.data as Map<String, dynamic>;
       final content = data['content'] as Map<String, dynamic>?;
@@ -60,7 +60,7 @@ class BookingDatasource {
       if (status != null && status.isNotEmpty) 'status': status,
     };
     final response = await _dio.get<dynamic>(
-      '/student/bookings',
+      '/bookings',
       queryParameters: params,
     );
     return StudentBookingPagedResult.fromJson(
