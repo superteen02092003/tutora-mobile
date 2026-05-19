@@ -7,11 +7,12 @@ import 'package:tutora/features/student/presentation/providers/profile_provider.
 import 'package:tutora/features/student/presentation/screens/change_password_screen.dart';
 import 'package:tutora/features/student/presentation/screens/edit_info_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_hero_header.dart';
-import 'package:tutora/features/student/presentation/screens/student_profile/profile_primitives.dart';
-import 'package:tutora/features/student/presentation/screens/student_profile/profile_recent_history.dart';
+// import 'package:tutora/features/student/presentation/screens/student_profile/profile_primitives.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_settings_section.dart';
-import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_card.dart';
-import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_detail_screen.dart';
+// TODO: student wallet — ẩn tạm, chưa phát triển
+// import 'package:tutora/features/student/presentation/screens/student_profile/profile_recent_history.dart';
+// import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_card.dart';
+// import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 
 class StudentProfilePage extends ConsumerStatefulWidget {
@@ -81,17 +82,18 @@ class _StudentProfilePageState extends ConsumerState<StudentProfilePage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProfileWalletCard(
-                    onDetailTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const ProfileWalletDetailScreen(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const ProfileSectionLabel('Lịch sử học gần đây'),
-                  ProfileRecentHistory(onViewAll: () {}),
-                  const SizedBox(height: 14),
+                  // TODO: student wallet — ẩn tạm, chưa phát triển
+                  // ProfileWalletCard(
+                  //   onDetailTap: () => Navigator.of(context).push(
+                  //     MaterialPageRoute<void>(
+                  //       builder: (_) => const ProfileWalletDetailScreen(),
+                  //     ),
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 14),
+                  // const ProfileSectionLabel('Lịch sử học gần đây'),
+                  // ProfileRecentHistory(onViewAll: () {}),
+                  // const SizedBox(height: 14),
                   ProfileSettingsSection(
                     onEditInfo: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
