@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -78,7 +80,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.studentSolution,
-        builder: (context, _) => const StudentSolutionPage(),
+        builder: (context, state) => StudentSolutionPage(
+          imageBytes: state.extra as Uint8List?,
+        ),
       ),
 
       StatefulShellRoute.indexedStack(

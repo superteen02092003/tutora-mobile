@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/features/student/presentation/screens/student_crop_screen.dart';
 
 const _kBg = Color(0xFF0B0E18);
 
@@ -17,106 +20,161 @@ class StudentCapturePage extends StatefulWidget {
 }
 
 class _StudentCapturePageState extends State<StudentCapturePage>
-    with SingleTickerProviderStateMixin {
+    with WidgetsBindingObserver {
+  CameraController? _camCtrl;
+  bool _camReady = false;
   bool _flash = false;
-  bool _aligning = true;
-  bool _thinking = false;
-
-  late final AnimationController _scanCtrl;
-  late final Animation<double> _scanAnim;
-  Timer? _alignTimer;
+  bool _capturing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-    _scanCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    unawaited(_scanCtrl.repeat(reverse: true));
-    _scanAnim = CurvedAnimation(parent: _scanCtrl, curve: Curves.easeInOut);
-    _alignTimer = Timer(const Duration(milliseconds: 1100), () {
-      if (mounted) setState(() => _aligning = false);
-    });
+    unawaited(_initCamera());
   }
 
-  Future<void> _onShutter() async {
-    setState(() => _thinking = true);
-    await Future<void>.delayed(const Duration(milliseconds: 2200));
-    if (!mounted) return;
-    await context.push(AppRoutes.studentSolution);
-    if (mounted) setState(() => _thinking = false);
+  Future<void> _initCamera() async {
+    final cameras = await availableCameras();
+    if (cameras.isEmpty || !mounted) return;
+
+    final back = cameras.firstWhere(
+      (c) => c.lensDirection == CameraLensDirection.back,
+      orElse: () => cameras.first,
+    );
+
+    final ctrl = CameraController(
+      back,
+      ResolutionPreset.high,
+      enableAudio: false,
+      imageFormatGroup: ImageFormatGroup.jpeg,
+    );
+
+    try {
+      await ctrl.initialize();
+      if (!mounted) {
+        await ctrl.dispose();
+        return;
+      }
+      setState(() {
+        _camCtrl = ctrl;
+        _camReady = true;
+      });
+    } catch (_) {
+      await ctrl.dispose();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    if (state == AppLifecycleState.inactive) {
+      unawaited(ctrl.dispose());
+    } else if (state == AppLifecycleState.resumed) {
+      unawaited(_initCamera());
+    }
   }
 
   @override
   void dispose() {
-    _scanCtrl.dispose();
-    _alignTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_camCtrl?.dispose() ?? Future.value());
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     super.dispose();
+  }
+
+  Future<void> _toggleFlash() async {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !_camReady) return;
+    final next = !_flash;
+    await ctrl.setFlashMode(next ? FlashMode.torch : FlashMode.off);
+    setState(() => _flash = next);
+  }
+
+  Future<void> _onShutter() async {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !_camReady || _capturing) return;
+    setState(() => _capturing = true);
+    try {
+      final xFile = await ctrl.takePicture();
+      if (!mounted) return;
+      await _cropAndNavigate(xFile.path);
+    } catch (_) {
+      if (mounted) setState(() => _capturing = false);
+    }
+  }
+
+  Future<void> _onGallery() async {
+    final picker = ImagePicker();
+    final xFile = await picker.pickImage(source: ImageSource.gallery);
+    if (xFile == null || !mounted) return;
+    setState(() => _capturing = true);
+    await _cropAndNavigate(xFile.path);
+  }
+
+  Future<void> _cropAndNavigate(String path) async {
+    final raw = await File(path).readAsBytes();
+    if (!mounted) return;
+
+    final cropped = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(
+        builder: (_) => StudentCropPage(imageBytes: raw),
+        fullscreenDialog: true,
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (cropped == null) {
+      setState(() => _capturing = false);
+      return;
+    }
+
+    await context.push('/student/solution', extra: cropped);
+    if (mounted) setState(() => _capturing = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
     final botPad = MediaQuery.of(context).padding.bottom;
-    // Frame spans from below top chrome to above bottom controls
-    const frameTop = 100.0;
-    const frameBottom = 160.0; // space for shutter row
-    final frameTopAbs = topPad + frameTop;
-    final frameBottomAbs = frameBottom + botPad;
 
     return Scaffold(
       backgroundColor: _kBg,
       body: Stack(
         children: [
-          // Background radial gradient
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(0, -0.1),
-                  radius: 0.85,
-                  colors: [Color(0xFF2A2C36), _kBg],
-                  stops: [0.0, 0.8],
-                ),
-              ),
-            ),
-          ),
-
-          // Simulated paper document — vertically centered in the frame area
-          _DocumentSim(
-            topPad: topPad,
-            frameTop: frameTop,
-            frameBottom: frameBottom,
-            botPad: botPad,
-          ),
-
-          // Dim overlay with frame hole
+          // Camera preview hoặc loading placeholder
           Positioned.fill(
+            child: _camReady && _camCtrl != null
+                ? _CameraPreview(ctrl: _camCtrl!)
+                : const _DarkPlaceholder(),
+          ),
+
+          // Dim vignette
+          const Positioned.fill(
             child: IgnorePointer(
-              child: CustomPaint(
-                painter: _DimOverlayPainter(
-                  frameLeft: 24,
-                  frameTop: frameTopAbs,
-                  frameRight: 24,
-                  frameBottom: frameBottomAbs,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    radius: 1.2,
+                    colors: [Colors.transparent, Color(0x660B0E18)],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // Frame overlay
+          // Scan frame
           Positioned(
+            top: topPad + 80,
             left: 24,
             right: 24,
-            top: frameTopAbs,
-            bottom: frameBottomAbs,
-            child: _FrameOverlay(aligning: _aligning, scanAnim: _scanAnim),
+            bottom: botPad + 160,
+            child: const _ScanFrame(),
           ),
 
-          // Top chrome — X · QUÉT BÀI TẬP · flash
+          // Top chrome
           Positioned(
             top: topPad + 12,
             left: 16,
@@ -124,21 +182,40 @@ class _StudentCapturePageState extends State<StudentCapturePage>
             child: _TopChrome(
               flash: _flash,
               onClose: () => context.go('/student/home'),
-              onFlashToggle: () => setState(() => _flash = !_flash),
+              onFlashToggle: _toggleFlash,
             ),
           ),
 
-          // AI thinking overlay
-          if (_thinking) const Positioned.fill(child: _ThinkingOverlay()),
+          // Hint
+          Positioned(
+            top: topPad + 56,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Text(
+                'Căn bài toán vào khung rồi chụp',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
 
-          // Bottom controls — gallery left · shutter center
+          // Thinking overlay khi đang xử lý
+          if (_capturing) const Positioned.fill(child: _ThinkingOverlay()),
+
+          // Bottom controls
           Positioned(
             bottom: botPad + 24,
             left: 0,
             right: 0,
             child: _BottomControls(
-              onShutter: _thinking ? null : () => unawaited(_onShutter()),
-              onGallery: () {},
+              enabled: !_capturing,
+              onShutter: _onShutter,
+              onGallery: _onGallery,
             ),
           ),
         ],
@@ -147,104 +224,21 @@ class _StudentCapturePageState extends State<StudentCapturePage>
   }
 }
 
-// Simulated paper document — centered in the scan frame area
-class _DocumentSim extends StatelessWidget {
-  const _DocumentSim({
-    required this.topPad,
-    required this.frameTop,
-    required this.frameBottom,
-    required this.botPad,
-  });
-  final double topPad;
-  final double frameTop;
-  final double frameBottom;
-  final double botPad;
+// Camera preview
+class _CameraPreview extends StatelessWidget {
+  const _CameraPreview({required this.ctrl});
+  final CameraController ctrl;
 
   @override
   Widget build(BuildContext context) {
-    final screenH = MediaQuery.of(context).size.height;
-    final frameTopAbs = topPad + frameTop;
-    final frameBottomAbs = screenH - (frameBottom + botPad);
-    final frameMid = (frameTopAbs + frameBottomAbs) / 2;
-    return Positioned(
-      top: frameMid - 165, // half of paper height (330)
-      left: 0,
-      right: 0,
-      child: Center(
-        child: Container(
-          width: 260,
-          height: 330,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF4EFE2),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 60,
-                offset: const Offset(0, 30),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'BÀI 14 · §3.4',
-                style: GoogleFonts.ibmPlexMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                  color: const Color(0xFF3E2F28),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Bài 7.',
-                style: GoogleFonts.ibmPlexSerif(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF3E2F28),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Cho phương trình bậc hai',
-                style: GoogleFonts.ibmPlexMono(
-                  fontSize: 9,
-                  height: 1.6,
-                  color: const Color(0xFF3E2F28),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  'x² − 5x + 6 = 0',
-                  style: GoogleFonts.ibmPlexSerif(
-                    fontStyle: FontStyle.italic,
-                    fontSize: 11,
-                    color: const Color(0xFF3E2F28),
-                  ),
-                ),
-              ),
-              Text(
-                'Tìm hai nghiệm x₁, x₂ và kiểm\ntra hệ thức Vi-ét:\n x₁ + x₂ = 5,   x₁ · x₂ = 6',
-                style: GoogleFonts.ibmPlexMono(
-                  fontSize: 9,
-                  height: 1.6,
-                  color: const Color(0xFF3E2F28),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'a) Áp dụng công thức nghiệm.\nb) Phân tích nhân tử kiểm chứng.\nc) Vẽ đồ thị y = x² − 5x + 6.',
-                style: GoogleFonts.ibmPlexMono(
-                  fontSize: 9,
-                  height: 1.6,
-                  color: const Color(0xFF3E2F28),
-                ),
-              ),
-            ],
+    return ClipRect(
+      child: OverflowBox(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: ctrl.value.previewSize?.height ?? 1,
+            height: ctrl.value.previewSize?.width ?? 1,
+            child: CameraPreview(ctrl),
           ),
         ),
       ),
@@ -252,123 +246,106 @@ class _DocumentSim extends StatelessWidget {
   }
 }
 
-// Dim overlay with rectangular hole
-class _DimOverlayPainter extends CustomPainter {
-  const _DimOverlayPainter({
-    required this.frameLeft,
-    required this.frameTop,
-    required this.frameRight,
-    required this.frameBottom,
-  });
-
-  final double frameLeft;
-  final double frameTop;
-  final double frameRight;
-  final double frameBottom;
+class _DarkPlaceholder extends StatelessWidget {
+  const _DarkPlaceholder();
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0x8C0B0E18);
-    final hole = RRect.fromLTRBR(
-      frameLeft,
-      frameTop,
-      size.width - frameRight,
-      size.height - frameBottom,
-      const Radius.circular(18),
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: _kBg,
+      child: Center(
+        child: CircularProgressIndicator(
+          color: AppColors.gold,
+          strokeWidth: 2,
+        ),
+      ),
     );
-    final path = Path()
-      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addRRect(hole)
-      ..fillType = PathFillType.evenOdd;
-    canvas.drawPath(path, paint);
+  }
+}
+
+// Scan frame
+class _ScanFrame extends StatefulWidget {
+  const _ScanFrame();
+
+  @override
+  State<_ScanFrame> createState() => _ScanFrameState();
+}
+
+class _ScanFrameState extends State<_ScanFrame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    unawaited(_ctrl.repeat(reverse: true));
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
   @override
-  bool shouldRepaint(_DimOverlayPainter old) =>
-      old.frameLeft != frameLeft ||
-      old.frameTop != frameTop ||
-      old.frameRight != frameRight ||
-      old.frameBottom != frameBottom;
-}
-
-// Frame overlay
-class _FrameOverlay extends StatelessWidget {
-  const _FrameOverlay({required this.aligning, required this.scanAnim});
-
-  final bool aligning;
-  final Animation<double> scanAnim;
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Frame border
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(18),
+      builder: (context, constraints) => Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
                 ),
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
-
-            // Corner brackets
-            const Positioned.fill(
-              child: CustomPaint(
-                painter: _CornerBracketPainter(color: AppColors.gold),
-              ),
+          ),
+          const Positioned.fill(
+            child: CustomPaint(
+              painter: _CornerBracketPainter(color: AppColors.gold),
             ),
-
-            // Scan line (only while aligning)
-            if (aligning)
-              AnimatedBuilder(
-                animation: scanAnim,
-                builder: (context, _) => Positioned(
-                  left: 8,
-                  right: 8,
-                  top: 12 + scanAnim.value * (constraints.maxHeight - 24),
-                  child: Container(
-                    height: 2,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          AppColors.gold,
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
+          ),
+          AnimatedBuilder(
+            animation: _anim,
+            builder: (_, _) => Positioned(
+              left: 12,
+              right: 12,
+              top: 12 + _anim.value * (constraints.maxHeight - 24),
+              child: Container(
+                height: 2,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      AppColors.gold,
+                      Colors.transparent,
+                    ],
                   ),
                 ),
               ),
-
-            // Status pill
-            Positioned(
-              bottom: 14,
-              left: 0,
-              right: 0,
-              child: Center(child: _StatusPill(aligning: aligning)),
             ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 }
 
-// Corner brackets painter
+// Corner brackets
 class _CornerBracketPainter extends CustomPainter {
   const _CornerBracketPainter({required this.color});
   final Color color;
 
   static const _len = 28.0;
-  static const _r = 8.0;
+  static const _r = 10.0;
   static const _sw = 3.0;
 
   void _drawBracket(
@@ -388,13 +365,6 @@ class _CornerBracketPainter extends CustomPainter {
     final y = top ? 0.0 : size.height;
     final dx = left ? 1.0 : -1.0;
     final dy = top ? 1.0 : -1.0;
-
-    // Verified arc direction:
-    //   TL (L=T=true):  clockwise=true
-    //   TR (L=false,T=true): clockwise=true
-    //   BL (L=true,T=false): clockwise=false
-    //   BR (L=false,T=false): clockwise=true
-    // Formula: clockwise = left ? top : true
     final cw = !left || top;
 
     final path = Path()
@@ -422,46 +392,6 @@ class _CornerBracketPainter extends CustomPainter {
   bool shouldRepaint(_CornerBracketPainter old) => old.color != color;
 }
 
-// Status pill
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.aligning});
-  final bool aligning;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: aligning ? AppColors.gold : const Color(0xFF5BD27D),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            aligning ? 'Đang căn chỉnh trang…' : 'Đã nhận diện bài tập',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // Top chrome
 class _TopChrome extends StatelessWidget {
   const _TopChrome({
@@ -469,7 +399,6 @@ class _TopChrome extends StatelessWidget {
     required this.onClose,
     required this.onFlashToggle,
   });
-
   final bool flash;
   final VoidCallback onClose;
   final VoidCallback onFlashToggle;
@@ -485,9 +414,9 @@ class _TopChrome extends StatelessWidget {
         ),
         const Spacer(),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.5),
+            color: Colors.black.withValues(alpha: 0.45),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
@@ -495,7 +424,7 @@ class _TopChrome extends StatelessWidget {
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1,
+              letterSpacing: 1.2,
               color: Colors.white,
             ),
           ),
@@ -530,98 +459,98 @@ class _ChromeButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-        child: child,
+        child: Center(child: child),
       ),
     );
   }
 }
 
-// Bottom controls — gallery left · shutter center
+// Bottom controls
 class _BottomControls extends StatelessWidget {
-  const _BottomControls({required this.onShutter, required this.onGallery});
-  final VoidCallback? onShutter;
+  const _BottomControls({
+    required this.enabled,
+    required this.onShutter,
+    required this.onGallery,
+  });
+  final bool enabled;
+  final VoidCallback onShutter;
   final VoidCallback onGallery;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 36),
+      padding: const EdgeInsets.symmetric(horizontal: 40),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Gallery button — left
           GestureDetector(
-            onTap: onGallery,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.white.withValues(alpha: 0.1),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              ),
-              child: const Center(
-                child: Icon(
+            onTap: enabled ? onGallery : null,
+            child: AnimatedOpacity(
+              opacity: enabled ? 1 : 0.4,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: const Icon(
                   Icons.photo_library_outlined,
-                  size: 18,
+                  size: 20,
                   color: Colors.white,
                 ),
               ),
             ),
           ),
           const Spacer(),
-          // Shutter center
-          _ShutterButton(onTap: onShutter),
+          GestureDetector(
+            onTap: enabled ? onShutter : null,
+            child: AnimatedScale(
+              scale: enabled ? 1.0 : 0.9,
+              duration: const Duration(milliseconds: 150),
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    width: 4,
+                  ),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           const Spacer(),
-          // Placeholder to balance layout
-          const SizedBox(width: 44),
+          const SizedBox(width: 48, height: 48),
         ],
       ),
     );
   }
 }
 
-class _ShutterButton extends StatelessWidget {
-  const _ShutterButton({required this.onTap});
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 78,
-        height: 78,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.3),
-            width: 4,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.5),
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.gold,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// AI thinking overlay
+// Thinking overlay
 class _ThinkingOverlay extends StatefulWidget {
   const _ThinkingOverlay();
 
@@ -632,12 +561,14 @@ class _ThinkingOverlay extends StatefulWidget {
 class _ThinkingOverlayState extends State<_ThinkingOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _anim;
+  late final Animation<double> _pulse;
+  int _labelIdx = 0;
+  Timer? _labelTimer;
 
-  static const _dots = [
-    'Đang nhận diện bài tập',
-    'Đang phân tích',
-    'Đang tạo lời giải',
+  static const _labels = [
+    'Đang nhận diện bài toán…',
+    'Đang phân tích cấu trúc…',
+    'Đang kết nối Tora AI…',
   ];
 
   @override
@@ -648,12 +579,16 @@ class _ThinkingOverlayState extends State<_ThinkingOverlay>
       duration: const Duration(milliseconds: 900),
     );
     unawaited(_ctrl.repeat(reverse: true));
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    _pulse = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    _labelTimer = Timer.periodic(const Duration(milliseconds: 800), (_) {
+      if (mounted) setState(() => _labelIdx = (_labelIdx + 1) % _labels.length);
+    });
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _labelTimer?.cancel();
     super.dispose();
   }
 
@@ -665,132 +600,52 @@ class _ThinkingOverlayState extends State<_ThinkingOverlay>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Pulsing gold ring
             AnimatedBuilder(
-              animation: _anim,
-              builder: (_, w) => Container(
-                width: 64 + _anim.value * 8,
-                height: 64 + _anim.value * 8,
+              animation: _pulse,
+              builder: (_, _) => Container(
+                width: 72 + _pulse.value * 10,
+                height: 72 + _pulse.value * 10,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: AppColors.gold.withValues(
-                      alpha: 0.3 + _anim.value * 0.5,
+                      alpha: 0.25 + _pulse.value * 0.5,
                     ),
                     width: 2,
                   ),
                 ),
                 child: Center(
                   child: Container(
-                    width: 48,
-                    height: 48,
+                    width: 56,
+                    height: 56,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.gold,
                     ),
                     child: const Icon(
                       Icons.auto_awesome_rounded,
-                      size: 22,
+                      size: 24,
                       color: AppColors.ink,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            // Cycling label
-            const _CyclingLabel(labels: _dots),
+            const SizedBox(height: 28),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                _labels[_labelIdx],
+                key: ValueKey(_labelIdx),
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CyclingLabel extends StatefulWidget {
-  const _CyclingLabel({required this.labels});
-  final List<String> labels;
-
-  @override
-  State<_CyclingLabel> createState() => _CyclingLabelState();
-}
-
-class _CyclingLabelState extends State<_CyclingLabel> {
-  int _idx = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 700), (_) {
-      if (mounted) setState(() => _idx = (_idx + 1) % widget.labels.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      widget.labels[_idx],
-      style: GoogleFonts.inter(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Colors.white.withValues(alpha: 0.85),
-        letterSpacing: 0.3,
-      ),
-    );
-  }
-}
-
-// Pulsing dot helper
-class _PulseDot extends StatefulWidget {
-  const _PulseDot({required this.color});
-  final Color color;
-
-  @override
-  State<_PulseDot> createState() => _PulseDotState();
-}
-
-class _PulseDotState extends State<_PulseDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    unawaited(_ctrl.repeat(reverse: true));
-    _anim = Tween<double>(begin: 0.4, end: 1).animate(_ctrl);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (context, _) => Opacity(
-        opacity: _anim.value,
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: widget.color,
-          ),
         ),
       ),
     );
