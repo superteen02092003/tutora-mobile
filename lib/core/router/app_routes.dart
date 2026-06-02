@@ -33,7 +33,20 @@ abstract final class AppRoutes {
   static const tutorBookingDetail = '/tutor/schedule/booking/:id';
   static const tutorNotifications = '/tutor/notifications';
 
+  // Parent shell tabs
+  static const parentHome = '/parent/home';
+  static const parentSearch = '/parent/search';
+  static const parentProfile = '/parent/profile';
+
+  // Parent sub-routes
+  static const parentBookings = '/parent/bookings';
+  static const parentNotifications = '/parent/notifications';
+  static const parentTutorDetail = '/parent/tutor/:id';
+  static const parentStudentDetail = '/parent/profile/student/:id';
+  static const parentCalendar = '/parent/profile/calendar';
+  static const parentLessonConfirm = '/parent/lesson/:id/confirm';
+
   // Shared
   static const chat = '/chat/:roomId';
-  static const notifications = '/notifications';
+  static const notifications = '/student/notifications';
 }

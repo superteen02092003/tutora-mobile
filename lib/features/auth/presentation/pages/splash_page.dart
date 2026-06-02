@@ -50,6 +50,8 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         context.go(AppRoutes.studentHome);
       case UserRole.tutor:
         context.go(AppRoutes.tutorHome);
+      case UserRole.parent:
+        context.go(AppRoutes.parentHome);
       case UserRole.unknown:
         context.go(AppRoutes.login);
     }

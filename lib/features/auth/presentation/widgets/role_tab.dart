@@ -3,17 +3,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 
-enum AuthRole { student, tutor }
+enum AuthRole { student, tutor, parent }
 
 extension AuthRoleX on AuthRole {
   String get label => switch (this) {
     AuthRole.student => 'Học sinh',
     AuthRole.tutor => 'Gia sư',
+    AuthRole.parent => 'Phụ huynh',
   };
 
   String get apiValue => switch (this) {
     AuthRole.student => 'Student',
     AuthRole.tutor => 'Tutor',
+    AuthRole.parent => 'Parent',
   };
 }
 

@@ -54,6 +54,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         context.go(AppRoutes.studentHome);
       case UserRole.tutor:
         context.go(AppRoutes.tutorHome);
+      case UserRole.parent:
+        context.go(AppRoutes.parentHome);
       case UserRole.unknown:
         break;
     }
