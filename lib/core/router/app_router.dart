@@ -4,11 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_calendar_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_home_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_marketplace_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_profile_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_student_detail_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_tutor_detail_screen.dart';
+import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/features/student/presentation/screens/student_booking_detail_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_booking_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_capture_screen.dart';
@@ -29,10 +39,76 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_p
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 
+// Auth-only routes — no role guard needed
+const Set<String> _publicPaths = {
+  AppRoutes.splash,
+  AppRoutes.login,
+  AppRoutes.register,
+  AppRoutes.forgot,
+  AppRoutes.otp,
+};
+
+// Routes that belong exclusively to each role
+const _studentOnlyPrefixes = ['/student/'];
+const _tutorOnlyPrefixes = ['/tutor/'];
+const _parentOnlyPrefixes = ['/parent/'];
+
+bool _isPublic(String path) => _publicPaths.any((p) => path == p);
+
+String? _roleGuard(String path, UserRole role) {
+  if (_isPublic(path)) return null;
+
+  final isStudentPath = _studentOnlyPrefixes.any(path.startsWith);
+  final isTutorPath = _tutorOnlyPrefixes.any(path.startsWith);
+  final isParentPath = _parentOnlyPrefixes.any(path.startsWith);
+
+  // If on a role-specific path, verify it matches the JWT role
+  if (isStudentPath && role != UserRole.student) {
+    return _homeForRole(role);
+  }
+  if (isTutorPath && role != UserRole.tutor) {
+    return _homeForRole(role);
+  }
+  if (isParentPath && role != UserRole.parent) {
+    return _homeForRole(role);
+  }
+
+  // Shared routes like /notifications — guard: must be logged in (handled by token check below)
+  return null;
+}
+
+String _homeForRole(UserRole role) => switch (role) {
+  UserRole.student => AppRoutes.studentHome,
+  UserRole.tutor => AppRoutes.tutorHome,
+  UserRole.parent => AppRoutes.parentHome,
+  UserRole.unknown => AppRoutes.login,
+};
+
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final storage = ref.read(secureStorageProvider);
+
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    redirect: (context, state) async {
+      final path = state.matchedLocation;
+
+      // Public pages: never redirect
+      if (_isPublic(path)) return null;
+
+      final token = await storage.getAccessToken();
+
+      // No token → login
+      if (token == null) return AppRoutes.login;
+
+      final claims = parseJwt(token);
+
+      // Invalid / expired token → login
+      if (claims == null || claims.isExpired) return AppRoutes.login;
+
+      // Role guard
+      return _roleGuard(path, claims.role);
+    },
     routes: [
       GoRoute(
         path: AppRoutes.splash,
@@ -56,6 +132,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           email: state.extra as String? ?? '',
         ),
       ),
+
+      // Student-only standalone routes
       GoRoute(
         path: AppRoutes.notifications,
         builder: (context, _) => const StudentNotificationsScreen(),
@@ -85,6 +163,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
+      // Student shell (5 tabs)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => StudentShell(navigationShell: shell),
         branches: [
@@ -140,11 +219,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // Tutor-only standalone routes
       GoRoute(
         path: AppRoutes.tutorNotifications,
         builder: (context, _) => const TutorNotificationsScreen(),
       ),
 
+      // Tutor shell (5 tabs)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShell(navigationShell: shell),
         branches: [
@@ -185,6 +266,71 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.tutorProfile,
                 builder: (context, _) => const TutorProfileScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+
+      // Parent-only standalone routes
+      GoRoute(
+        path: AppRoutes.parentNotifications,
+        builder: (context, _) => const StudentNotificationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.parentCalendar,
+        builder: (context, _) => const ParentCalendarPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.parentBookings,
+        builder: (context, _) => const ParentBookingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.parentLessonConfirm,
+        builder: (context, _) => const ParentHomePage(),
+      ),
+
+      // Parent shell (3 tabs)
+      StatefulShellRoute.indexedStack(
+        builder: (context, _, shell) => ParentShell(navigationShell: shell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.parentHome,
+                builder: (context, _) => const ParentHomePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.parentSearch,
+                builder: (context, _) => const ParentMarketplacePage(),
+                routes: [
+                  GoRoute(
+                    path: 'tutor/:id',
+                    builder: (context, state) => ParentTutorDetailPage(
+                      tutorId: state.pathParameters['id'] ?? '0',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.parentProfile,
+                builder: (context, _) => const ParentProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'student/:id',
+                    builder: (context, state) => ParentStudentDetailPage(
+                      studentId: state.pathParameters['id'] ?? '',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
