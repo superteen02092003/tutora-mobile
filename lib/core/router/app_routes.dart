@@ -42,6 +42,7 @@ abstract final class AppRoutes {
   static const parentBookings = '/parent/bookings';
   static const parentNotifications = '/parent/notifications';
   static const parentTutorDetail = '/parent/tutor/:id';
+  static const parentEditInfo = '/parent/edit-info';
   static const parentStudentDetail = '/parent/profile/student/:id';
   static const parentCalendar = '/parent/profile/calendar';
   static const parentLessonConfirm = '/parent/lesson/:id/confirm';

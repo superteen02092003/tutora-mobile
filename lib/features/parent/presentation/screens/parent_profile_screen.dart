@@ -8,13 +8,12 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
-import 'package:tutora/core/storage/secure_storage.dart';
-import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
+import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_change_password_screen.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
-import 'package:tutora/features/student/presentation/screens/change_password_screen.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -28,33 +27,150 @@ class ParentProfilePage extends ConsumerStatefulWidget {
 class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
     with ParentScrollToTopMixin {
   final _scrollController = ScrollController();
-  JwtClaims? _claims;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadClaims());
     unawaited(
-      Future.microtask(
-        () => ref.read(parentStudentsProvider.notifier).load(),
-      ),
+      Future.microtask(() async {
+        await ref.read(parentStudentsProvider.notifier).load();
+      }),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       listenScrollToTop(context, 2, _scrollController);
     });
   }
 
-  Future<void> _loadClaims() async {
-    final token = await ref.read(secureStorageProvider).getAccessToken();
-    if (token != null && mounted) {
-      setState(() => _claims = parseJwt(token));
-    }
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _confirmDeactivate() {
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: AppColors.paper,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDEDE),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 26,
+                    color: AppColors.oxblood,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Xoá tài khoản?',
+                  style: GoogleFonts.bricolageGrotesque(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Toàn bộ thông tin cá nhân, lịch sử học tập và dữ liệu liên quan sẽ bị xoá vĩnh viễn trong vòng 30 ngày.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.5,
+                    color: AppColors.ink3,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Nếu muốn khôi phục, vui lòng liên hệ đội ngũ hỗ trợ Tutora trước thời hạn.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.ink4,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.oxblood,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      final ok = await ref
+                          .read(parentProfileProvider.notifier)
+                          .deactivateAccount();
+                      if (!mounted) return;
+                      if (ok) {
+                        unawaited(
+                          ref.read(authControllerProvider.notifier).logout(),
+                        );
+                      } else {
+                        AppToast.show(
+                          context,
+                          message: 'Có lỗi xảy ra, thử lại sau',
+                          type: AppToastType.error,
+                        );
+                      }
+                    },
+                    child: Text(
+                      'Xác nhận xoá tài khoản',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Huỷ bỏ',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AppColors.ink3,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _confirmLogout() {
@@ -146,71 +262,129 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
   @override
   Widget build(BuildContext context) {
     final students = ref.watch(parentStudentsProvider);
+    final profileState = ref.watch(parentProfileProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    final name = _claims?.name ?? '';
-    final email = _claims?.email ?? '';
+    final name = profileState.profile?.fullName ?? '';
+    final email = profileState.profile?.email ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          controller: _scrollController,
-          padding: EdgeInsets.only(bottom: bottomPad + AppSpacing.xxl),
+        child: Column(
           children: [
-            _ProfileHeader(name: name, email: email),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Expanded(
+              child: ListView(
+                controller: _scrollController,
+                padding: EdgeInsets.only(bottom: bottomPad + AppSpacing.xxl),
                 children: [
-                  const _SectionLabel('Con của tôi'),
-                  const SizedBox(height: 6),
-                  _ChildrenCard(
-                    students: students.students,
-                    isLoading: students.isLoading,
-                  ),
+                  _ProfileHeader(name: name, email: email),
                   const SizedBox(height: 14),
-
-                  const _SectionLabel('Tiện ích'),
-                  const SizedBox(height: 6),
-                  _SettingsCard(
-                    children: [
-                      _SettingRow(
-                        icon: Icons.calendar_month_outlined,
-                        label: 'Lịch học tổng hợp',
-                        sub: 'Toàn bộ lịch học của các con',
-                        onTap: () => context.push(AppRoutes.parentCalendar),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  const _SectionLabel('Tài khoản'),
-                  const SizedBox(height: 6),
-                  _SettingsCard(
-                    children: [
-                      _SettingRow(
-                        icon: Icons.lock_outline_rounded,
-                        label: 'Bảo mật & Mật khẩu',
-                        onTap: () => context.push(
-                          '/parent/change-password',
-                          extra: ChangePasswordScreen.new,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _SectionLabel('Con của tôi'),
+                        const SizedBox(height: 6),
+                        _ChildrenCard(
+                          students: students.students,
+                          isLoading: students.isLoading,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _SettingsCard(
-                    children: [
-                      _SettingRow(
-                        icon: Icons.logout_rounded,
-                        label: 'Đăng xuất',
-                        danger: true,
-                        onTap: _confirmLogout,
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        const _SectionLabel('Tiện ích'),
+                        const SizedBox(height: 6),
+                        _SettingsCard(
+                          children: [
+                            _SettingRow(
+                              icon: Icons.calendar_month_outlined,
+                              label: 'Lịch học tổng hợp',
+                              sub: 'Toàn bộ lịch học của các con',
+                              onTap: () =>
+                                  context.push(AppRoutes.parentCalendar),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        const _SectionLabel('Tài khoản'),
+                        const SizedBox(height: 6),
+                        _SettingsCard(
+                          children: [
+                            _SettingRow(
+                              icon: Icons.person_outline_rounded,
+                              label: 'Chỉnh thông tin cá nhân',
+                              sub: email.isNotEmpty ? email : null,
+                              onTap: () =>
+                                  context.push(AppRoutes.parentEditInfo),
+                            ),
+                            _SettingRow(
+                              icon: Icons.lock_outline_rounded,
+                              label: 'Bảo mật & Mật khẩu',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      const ParentChangePasswordScreen(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.ink,
+                              foregroundColor: AppColors.cream,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                              ),
+                            ),
+                            onPressed: _confirmLogout,
+                            icon: const Icon(Icons.logout_rounded, size: 18),
+                            label: Text(
+                              'Đăng xuất',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        // Xoá tài khoản — tách riêng, có border đỏ
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.oxblood,
+                              side: const BorderSide(color: AppColors.oxblood),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                              ),
+                            ),
+                            onPressed: _confirmDeactivate,
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                            ),
+                            label: Text(
+                              'Xoá tài khoản',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -545,18 +719,16 @@ class _SettingRow extends StatelessWidget {
     required this.label,
     this.sub,
     this.onTap,
-    this.danger = false,
   });
   final IconData icon;
   final String label;
   final String? sub;
   final VoidCallback? onTap;
-  final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.oxblood : AppColors.ink;
-    final iconBg = danger ? const Color(0xFFFFDEDE) : AppColors.cream2;
+    const color = AppColors.ink;
+    const iconBg = AppColors.cream2;
 
     return InkWell(
       onTap: onTap,
