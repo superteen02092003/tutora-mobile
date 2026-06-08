@@ -37,6 +37,8 @@ abstract final class AppRoutes {
   // Parent shell tabs
   static const parentHome = '/parent/home';
   static const parentSearch = '/parent/search';
+  static const parentInfo = '/parent/info';
+  static const parentMessages = '/parent/messages';
   static const parentProfile = '/parent/profile';
 
   // Parent sub-routes

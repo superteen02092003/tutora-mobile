@@ -18,7 +18,9 @@ import 'package:tutora/features/parent/presentation/screens/parent_bookings_scre
 import 'package:tutora/features/parent/presentation/screens/parent_calendar_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_edit_info_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_info_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_marketplace_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_messages_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_profile_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_student_detail_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_tutor_detail_screen.dart';
@@ -305,7 +307,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, _) => const ParentEditInfoScreen(),
       ),
 
-      // Parent shell (3 tabs)
+      // Parent shell (5 tabs)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => ParentShell(navigationShell: shell),
         branches: [
@@ -330,6 +332,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.parentInfo,
+                builder: (context, _) => const ParentInfoScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.parentMessages,
+                builder: (context, _) => const ParentMessagesScreen(),
               ),
             ],
           ),
