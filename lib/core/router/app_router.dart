@@ -12,6 +12,7 @@ import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_parent_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_calendar_screen.dart';
@@ -47,6 +48,7 @@ const Set<String> _publicPaths = {
   AppRoutes.splash,
   AppRoutes.login,
   AppRoutes.register,
+  AppRoutes.registerParent,
   AppRoutes.forgot,
   AppRoutes.otp,
 };
@@ -126,6 +128,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, _) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.registerParent,
+        builder: (context, _) => const RegisterParentPage(),
       ),
       GoRoute(
         path: AppRoutes.forgot,
