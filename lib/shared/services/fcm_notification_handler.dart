@@ -84,6 +84,10 @@ class FcmNotificationHandler {
           channelDescription: _androidChannel.description,
           importance: Importance.max,
           priority: Priority.high,
+          icon: 'ic_stat_name',
+          largeIcon: const DrawableResourceAndroidBitmap(
+            'ic_notification_logo',
+          ),
         ),
         iOS: const DarwinNotificationDetails(),
       ),
