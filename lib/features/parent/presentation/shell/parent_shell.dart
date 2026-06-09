@@ -113,7 +113,7 @@ class _ParentShellState extends State<ParentShell> {
                             height: 3,
                             child: Center(
                               child: Container(
-                                width: 28,
+                                width: 44,
                                 height: 3,
                                 decoration: BoxDecoration(
                                   color: AppColors.gold,
@@ -155,6 +155,7 @@ class _ParentShellState extends State<ParentShell> {
                                 icon: Icons.chat_bubble_outline_rounded,
                                 activeIcon: Icons.chat_bubble_rounded,
                                 label: 'Tin nhắn',
+                                badge: 2,
                               ),
                               _NavTab(
                                 index: 4,
@@ -253,6 +254,7 @@ class _NavTab extends StatelessWidget {
     required this.icon,
     required this.activeIcon,
     required this.label,
+    this.badge,
   });
 
   final int index;
@@ -261,6 +263,7 @@ class _NavTab extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+  final int? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -275,14 +278,43 @@ class _NavTab extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                child: Icon(
-                  selected ? activeIcon : icon,
-                  key: ValueKey(selected),
-                  size: 22,
-                  color: selected ? accent : AppColors.ink4,
-                ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: Icon(
+                      selected ? activeIcon : icon,
+                      key: ValueKey(selected),
+                      size: 28,
+                      color: selected ? accent : AppColors.ink4,
+                    ),
+                  ),
+                  if (badge != null && badge! > 0)
+                    Positioned(
+                      top: -6,
+                      right: -8,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: AppColors.oxblood,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$badge',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 4),
               AnimatedDefaultTextStyle(
