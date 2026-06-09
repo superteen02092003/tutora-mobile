@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tutora/core/network/interceptors/auth_interceptor.dart'
+    show navigatorKeyProvider;
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
@@ -10,14 +12,19 @@ import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_parent_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_calendar_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_info_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_marketplace_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_profile_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_student_detail_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_messages_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_tutor_detail_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/profile/parent_add_child_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/profile/parent_calendar_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/profile/parent_edit_info_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/profile/parent_profile_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/profile/parent_student_detail_screen.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/features/student/presentation/screens/student_booking_detail_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_booking_screen.dart';
@@ -44,6 +51,7 @@ const Set<String> _publicPaths = {
   AppRoutes.splash,
   AppRoutes.login,
   AppRoutes.register,
+  AppRoutes.registerParent,
   AppRoutes.forgot,
   AppRoutes.otp,
 };
@@ -86,8 +94,10 @@ String _homeForRole(UserRole role) => switch (role) {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final storage = ref.read(secureStorageProvider);
+  final navigatorKey = ref.watch(navigatorKeyProvider);
 
   return GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     redirect: (context, state) async {
@@ -121,6 +131,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         builder: (context, _) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.registerParent,
+        builder: (context, _) => const RegisterParentPage(),
       ),
       GoRoute(
         path: AppRoutes.forgot,
@@ -289,8 +303,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.parentLessonConfirm,
         builder: (context, _) => const ParentHomePage(),
       ),
+      GoRoute(
+        path: AppRoutes.parentEditInfo,
+        builder: (context, _) => const ParentEditInfoScreen(),
+      ),
 
-      // Parent shell (3 tabs)
+      // Parent shell (5 tabs)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => ParentShell(navigationShell: shell),
         branches: [
@@ -321,6 +339,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.parentInfo,
+                builder: (context, _) => const ParentInfoScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.parentMessages,
+                builder: (context, _) => const ParentMessagesScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.parentProfile,
                 builder: (context, _) => const ParentProfilePage(),
                 routes: [
@@ -329,6 +363,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => ParentStudentDetailPage(
                       studentId: state.pathParameters['id'] ?? '',
                     ),
+                  ),
+                  GoRoute(
+                    path: 'add-child',
+                    builder: (context, _) => const ParentAddChildScreen(),
                   ),
                 ],
               ),

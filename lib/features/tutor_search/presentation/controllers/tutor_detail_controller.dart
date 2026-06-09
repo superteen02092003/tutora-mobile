@@ -32,7 +32,7 @@ class TutorDetailController extends StateNotifier<TutorDetailState> {
     try {
       final profile = await _datasource.getFullProfile(_tutorId);
       state = TutorDetailLoaded(profile);
-    } catch (_) {
+    } catch (e) {
       state = TutorDetailError('Không tải được thông tin gia sư.');
     }
   }

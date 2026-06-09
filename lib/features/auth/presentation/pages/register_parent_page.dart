@@ -7,23 +7,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/register_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
 import 'package:tutora/features/auth/presentation/widgets/role_tab.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-class RegisterPage extends ConsumerStatefulWidget {
-  const RegisterPage({super.key});
+/// Trang đăng ký dành riêng cho Phụ huynh — bắt buộc nhập số điện thoại và email.
+class RegisterParentPage extends ConsumerStatefulWidget {
+  const RegisterParentPage({super.key});
 
   @override
-  ConsumerState<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterParentPage> createState() => _RegisterParentPageState();
 }
 
-class _RegisterPageState extends ConsumerState<RegisterPage> {
+class _RegisterParentPageState extends ConsumerState<RegisterParentPage> {
   int _step = 1;
-  AuthRole _role = AuthRole.student;
 
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -34,7 +33,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _agreed = false;
 
   String? _emailError;
+  String? _phoneError;
   String? _confirmError;
+
+  static final _phoneRegex = RegExp(r'^(0|\+84)\d{9,10}$');
 
   @override
   void dispose() {
@@ -47,7 +49,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   bool get _step1Valid =>
-      _nameCtrl.text.trim().isNotEmpty && _emailCtrl.text.trim().isNotEmpty;
+      _nameCtrl.text.trim().isNotEmpty &&
+      _emailCtrl.text.trim().isNotEmpty &&
+      _phoneCtrl.text.trim().isNotEmpty;
 
   bool get _step2Valid =>
       _passCtrl.text.isNotEmpty &&
@@ -69,14 +73,25 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Future<void> _goNext() async {
     if (_step == 1) {
+      var hasError = false;
+
       if (!_emailCtrl.text.contains('@')) {
         setState(() => _emailError = 'Email không hợp lệ');
-        return;
+        hasError = true;
+      } else {
+        setState(() => _emailError = null);
       }
-      setState(() {
-        _emailError = null;
-        _step = 2;
-      });
+
+      if (!_phoneRegex.hasMatch(_phoneCtrl.text.trim())) {
+        setState(() => _phoneError = 'Số điện thoại không hợp lệ');
+        hasError = true;
+      } else {
+        setState(() => _phoneError = null);
+      }
+
+      if (hasError) return;
+
+      setState(() => _step = 2);
       return;
     }
 
@@ -92,8 +107,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           email: _emailCtrl.text,
           password: _passCtrl.text,
           fullName: _nameCtrl.text,
-          role: _role.apiValue,
-          phone: _phoneCtrl.text.isEmpty ? null : _phoneCtrl.text,
+          role: AuthRole.parent.apiValue,
+          phone: _phoneCtrl.text.trim(),
         );
   }
 
@@ -128,9 +143,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         children: [
           const AuthTopDeco(
             bgColor: AppColors.ink,
-            line1: 'Hiểu sâu hơn,',
-            italicWord: 'không chỉ',
-            line2Suffix: 'tìm đáp án',
+            line1: 'Đồng hành cùng con,',
+            italicWord: 'an tâm',
+            line2Suffix: 'từng buổi học',
           ),
           Expanded(
             child: SafeArea(
@@ -153,13 +168,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 22),
 
                     Text(
-                      _step == 1 ? 'Tạo tài khoản' : 'Thiết lập mật khẩu',
+                      _step == 1 ? 'Đăng ký Phụ huynh' : 'Thiết lập mật khẩu',
                       style: AppTextStyles.h2(),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _step == 1
-                          ? 'Bạn là học sinh hay gia sư?'
+                          ? 'Vui lòng nhập đầy đủ thông tin liên hệ để chúng tôi có thể hỗ trợ bạn tốt nhất.'
                           : 'Mật khẩu mạnh bảo vệ tài khoản của bạn.',
                       style: GoogleFonts.inter(
                         fontSize: 13,
@@ -169,25 +184,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 22),
 
                     if (_step == 1) ...[
-                      RoleTab(
-                        active: _role,
-                        onChanged: (r) => setState(() => _role = r),
-                      ),
-                      if (_role == AuthRole.parent) ...[
-                        const SizedBox(height: 14),
-                        _ParentRegisterBanner(
-                          onTap: () => context.push(AppRoutes.registerParent),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
                       _Step1Fields(
                         nameCtrl: _nameCtrl,
                         emailCtrl: _emailCtrl,
                         phoneCtrl: _phoneCtrl,
                         emailError: _emailError,
+                        phoneError: _phoneError,
                         enabled: !isLoading,
                         onEmailChanged: (_) =>
                             setState(() => _emailError = null),
+                        onPhoneChanged: (_) =>
+                            setState(() => _phoneError = null),
                       ),
                     ] else ...[
                       _Step2Fields(
@@ -281,7 +288,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 }
 
-// ── Step header (back button + progress dots) ──────────────────────────────
+// Step header (back button + progress dots)
 
 class _StepHeader extends StatelessWidget {
   const _StepHeader({required this.step, required this.onBack});
@@ -331,7 +338,7 @@ class _StepHeader extends StatelessWidget {
   }
 }
 
-// ── Step 1 fields ──────────────────────────────────────────────────────────
+// Step 1 fields
 
 class _Step1Fields extends StatelessWidget {
   const _Step1Fields({
@@ -340,7 +347,9 @@ class _Step1Fields extends StatelessWidget {
     required this.phoneCtrl,
     required this.enabled,
     this.emailError,
+    this.phoneError,
     this.onEmailChanged,
+    this.onPhoneChanged,
   });
 
   final TextEditingController nameCtrl;
@@ -348,7 +357,9 @@ class _Step1Fields extends StatelessWidget {
   final TextEditingController phoneCtrl;
   final bool enabled;
   final String? emailError;
+  final String? phoneError;
   final ValueChanged<String>? onEmailChanged;
+  final ValueChanged<String>? onPhoneChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -374,11 +385,13 @@ class _Step1Fields extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         AuthInput(
-          label: 'Số điện thoại (tuỳ chọn)',
+          label: 'Số điện thoại',
           controller: phoneCtrl,
           keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.done,
           hint: '09x xxx xxxx',
+          errorText: phoneError,
+          onChanged: onPhoneChanged,
           enabled: enabled,
         ),
       ],
@@ -386,7 +399,7 @@ class _Step1Fields extends StatelessWidget {
   }
 }
 
-// ── Step 2 fields ──────────────────────────────────────────────────────────
+// Step 2 fields
 
 class _Step2Fields extends StatelessWidget {
   const _Step2Fields({
@@ -536,54 +549,6 @@ class _Step2Fields extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Banner gợi ý dùng form đăng ký riêng cho Phụ huynh ──────────────────────
-
-class _ParentRegisterBanner extends StatelessWidget {
-  const _ParentRegisterBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.cream2,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.info_outline_rounded,
-              size: 18,
-              color: AppColors.ink3,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Phụ huynh vui lòng dùng form đăng ký riêng (yêu cầu số điện thoại và email).',
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Chuyển →',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.oxblood,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

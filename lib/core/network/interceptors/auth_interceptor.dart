@@ -142,7 +142,7 @@ class AuthInterceptor extends Interceptor {
     DioException err,
   ) async {
     await storage.clearTokens();
-    final ctx = _ref.read(_navigatorKeyProvider).currentContext;
+    final ctx = _ref.read(navigatorKeyProvider).currentContext;
     if (ctx != null && ctx.mounted) {
       ctx.go(AppRoutes.login);
     }
@@ -150,13 +150,12 @@ class AuthInterceptor extends Interceptor {
   }
 }
 
-final _navigatorKeyProvider = Provider<GlobalKey<NavigatorState>>(
-  (_) => throw UnimplementedError('navigatorKeyProvider must be overridden'),
+/// Khóa navigator dùng chung cho GoRouter, AuthInterceptor (redirect khi
+/// 401) và FCM handler (điều hướng deep-link) — một instance duy nhất cho
+/// toàn bộ vòng đời app, tạo trực tiếp ở đây để tránh phải override thủ công.
+final navigatorKeyProvider = Provider<GlobalKey<NavigatorState>>(
+  (_) => GlobalKey<NavigatorState>(),
 );
-
-// Provider public để app_router / main.dart override
-final Provider<GlobalKey<NavigatorState>> navigatorKeyProvider =
-    _navigatorKeyProvider;
 
 class _PendingRequest {
   _PendingRequest(this.options);

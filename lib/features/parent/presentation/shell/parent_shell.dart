@@ -17,7 +17,7 @@ class ParentShellScrollNotifier extends InheritedNotifier<ValueNotifier<int>> {
       ?.notifier;
 }
 
-// Tab order: Home(0) · Search(1) · Profile(2)
+// Tab order: Home(0) · Search(1) · Info(2) · Messages(3) · Profile(4)
 class ParentShell extends StatefulWidget {
   const ParentShell({required this.navigationShell, super.key});
 
@@ -96,33 +96,79 @@ class _ParentShellState extends State<ParentShell> {
                   right: 0,
                   top: 0,
                   height: _barFlatHeight,
-                  child: Row(
-                    children: [
-                      _NavTab(
-                        index: 0,
-                        current: current,
-                        onTap: _onTap,
-                        icon: Icons.home_outlined,
-                        activeIcon: Icons.home_rounded,
-                        label: 'Trang chủ',
-                      ),
-                      _NavTab(
-                        index: 1,
-                        current: current,
-                        onTap: _onTap,
-                        icon: Icons.search_outlined,
-                        activeIcon: Icons.search_rounded,
-                        label: 'Tìm gia sư',
-                      ),
-                      _NavTab(
-                        index: 2,
-                        current: current,
-                        onTap: _onTap,
-                        icon: Icons.person_outline_rounded,
-                        activeIcon: Icons.person_rounded,
-                        label: 'Cá nhân',
-                      ),
-                    ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      const tabCount = 5;
+                      final tabWidth = constraints.maxWidth / tabCount;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          // sliding track indicator
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            left: tabWidth * current,
+                            top: 0,
+                            width: tabWidth,
+                            height: 3,
+                            child: Center(
+                              child: Container(
+                                width: 44,
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: AppColors.gold,
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              _NavTab(
+                                index: 0,
+                                current: current,
+                                onTap: _onTap,
+                                icon: Icons.home_outlined,
+                                activeIcon: Icons.home_rounded,
+                                label: 'Trang chủ',
+                              ),
+                              _NavTab(
+                                index: 1,
+                                current: current,
+                                onTap: _onTap,
+                                icon: Icons.search_outlined,
+                                activeIcon: Icons.search_rounded,
+                                label: 'Tìm gia sư',
+                              ),
+                              _NavTab(
+                                index: 2,
+                                current: current,
+                                onTap: _onTap,
+                                icon: Icons.menu_book_outlined,
+                                activeIcon: Icons.menu_book_rounded,
+                                label: 'Thông tin',
+                              ),
+                              _NavTab(
+                                index: 3,
+                                current: current,
+                                onTap: _onTap,
+                                icon: Icons.chat_bubble_outline_rounded,
+                                activeIcon: Icons.chat_bubble_rounded,
+                                label: 'Tin nhắn',
+                              ),
+                              _NavTab(
+                                index: 4,
+                                current: current,
+                                onTap: _onTap,
+                                icon: Icons.person_outline_rounded,
+                                activeIcon: Icons.person_rounded,
+                                label: 'Tài khoản',
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -219,29 +265,38 @@ class _NavTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = index == current;
+    const accent = AppColors.oxblood;
     return Expanded(
       child: InkWell(
         onTap: () => onTap(index),
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              selected ? activeIcon : icon,
-              size: 22,
-              color: selected ? AppColors.ink : AppColors.ink4,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 9.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                color: selected ? AppColors.ink : AppColors.ink4,
-                letterSpacing: 0.04,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: Icon(
+                  selected ? activeIcon : icon,
+                  key: ValueKey(selected),
+                  size: 28,
+                  color: selected ? accent : AppColors.ink4,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 220),
+                style: GoogleFonts.inter(
+                  fontSize: 9.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  color: selected ? accent : AppColors.ink4,
+                  letterSpacing: 0.04,
+                ),
+                child: Text(label),
+              ),
+            ],
+          ),
         ),
       ),
     );

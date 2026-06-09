@@ -62,6 +62,16 @@ class _DetailBody extends StatelessWidget {
             _HeroSection(profile: profile),
             const _Divider(),
             _AboutSection(profile: profile),
+            if (profile.subjectGradePrices != null &&
+                profile.subjectGradePrices!.isNotEmpty) ...[
+              const _Divider(),
+              _PricingSection(prices: profile.subjectGradePrices!),
+            ],
+            if (profile.availabilities != null &&
+                profile.availabilities!.isNotEmpty) ...[
+              const _Divider(),
+              _ScheduleSection(availabilities: profile.availabilities!),
+            ],
             if (profile.certificates != null &&
                 profile.certificates!.isNotEmpty) ...[
               const _Divider(),
@@ -146,10 +156,10 @@ class _BookingBar extends StatelessWidget {
   final double bottomPad;
 
   String get _priceText {
-    final rate = profile.hourlyRate;
-    if (rate == null || rate == 0) return 'Thương lượng';
-    if (rate >= 1000) return '${(rate / 1000).round()}.000đ/giờ';
-    return '${rate.toStringAsFixed(0)}đ/giờ';
+    final rate = profile.lowestPrice;
+    if (rate == 0) return 'Thương lượng';
+    final k = (rate / 1000).round();
+    return 'Từ $k.000đ/giờ';
   }
 
   @override
@@ -533,6 +543,208 @@ class _CredentialCard extends StatelessWidget {
               style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink4),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// Pricing section
+class _PricingSection extends StatelessWidget {
+  const _PricingSection({required this.prices});
+  final List<SubjectGradePriceDto> prices;
+
+  @override
+  Widget build(BuildContext context) {
+    final grouped = <String, List<SubjectGradePriceDto>>{};
+    for (final p in prices) {
+      grouped.putIfAbsent(p.subjectName, () => []).add(p);
+    }
+    final subjects = grouped.entries.toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Học phí',
+            style: GoogleFonts.bricolageGrotesque(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.paper,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (int si = 0; si < subjects.length; si++) ...[
+                  if (si > 0) const Divider(height: 1, color: AppColors.line),
+                  // Subject header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+                    child: Text(
+                      subjects[si].key,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  // Grade rows
+                  for (final p in subjects[si].value) _PriceRow(price: p),
+                  const SizedBox(height: 4),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PriceRow extends StatelessWidget {
+  const _PriceRow({required this.price});
+  final SubjectGradePriceDto price;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = (price.pricePerHour / 1000).round();
+    final hasMeta =
+        price.sessionsPerWeek != null ||
+        price.durationMinutesPerSession != null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+      child: Row(
+        children: [
+          // Grade badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.cream2,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Text(
+              price.gradeLevelName,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink2,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Price
+          Text(
+            '$k.000đ/giờ',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+          if (hasMeta) ...[
+            const SizedBox(width: 6),
+            Text(
+              '·',
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink4),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              [
+                if (price.sessionsPerWeek != null)
+                  '${price.sessionsPerWeek}x/tuần',
+                if (price.durationMinutesPerSession != null)
+                  '${price.durationMinutesPerSession}ph',
+              ].join(' '),
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// Schedule section
+
+class _ScheduleSection extends StatelessWidget {
+  const _ScheduleSection({required this.availabilities});
+  final List<AvailabilitySlotDto> availabilities;
+
+  @override
+  Widget build(BuildContext context) {
+    // Sort by dayofweek
+    final sorted = [...availabilities]
+      ..sort((a, b) => a.dayofweek.compareTo(b.dayofweek));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lịch dạy',
+            style: GoogleFonts.bricolageGrotesque(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: sorted.map((slot) => _SlotChip(slot: slot)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SlotChip extends StatelessWidget {
+  const _SlotChip({required this.slot});
+  final AvailabilitySlotDto slot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.paper,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        children: [
+          Text(
+            slot.localDayName,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${slot.starttime} – ${slot.endtime}',
+            style: GoogleFonts.ibmPlexMono(
+              fontSize: 10,
+              color: AppColors.ink3,
+            ),
+          ),
         ],
       ),
     );

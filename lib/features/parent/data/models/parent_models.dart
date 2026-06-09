@@ -25,6 +25,45 @@ class ParentStudentDto {
   final String? birthdate;
 }
 
+class GradeLevelDto {
+  const GradeLevelDto({
+    required this.gradeLevelId,
+    required this.gradeName,
+    required this.levelOrder,
+  });
+
+  factory GradeLevelDto.fromJson(Map<String, dynamic> j) => GradeLevelDto(
+    gradeLevelId: j['gradeLevelId'] as int,
+    gradeName: j['gradeName'] as String? ?? '',
+    levelOrder: j['levelOrder'] as int? ?? 0,
+  );
+
+  final int gradeLevelId;
+  final String gradeName;
+  final int levelOrder;
+}
+
+class AddStudentResult {
+  const AddStudentResult({
+    required this.studentId,
+    required this.fullName,
+    required this.username,
+    required this.temporaryPassword,
+  });
+
+  factory AddStudentResult.fromJson(Map<String, dynamic> j) => AddStudentResult(
+    studentId: j['studentId'] as String? ?? '',
+    fullName: j['fullName'] as String? ?? '',
+    username: j['username'] as String? ?? '',
+    temporaryPassword: j['temporaryPassword'] as String? ?? '',
+  );
+
+  final String studentId;
+  final String fullName;
+  final String username;
+  final String temporaryPassword;
+}
+
 class ParentLessonDto {
   const ParentLessonDto({
     required this.lessonId,

@@ -3,6 +3,7 @@ abstract final class AppRoutes {
   static const splash = '/';
   static const login = '/login';
   static const register = '/register';
+  static const registerParent = '/register/parent';
   static const forgot = '/forgot';
   static const otp = '/otp';
 
@@ -36,13 +37,17 @@ abstract final class AppRoutes {
   // Parent shell tabs
   static const parentHome = '/parent/home';
   static const parentSearch = '/parent/search';
+  static const parentInfo = '/parent/info';
+  static const parentMessages = '/parent/messages';
   static const parentProfile = '/parent/profile';
 
   // Parent sub-routes
   static const parentBookings = '/parent/bookings';
   static const parentNotifications = '/parent/notifications';
   static const parentTutorDetail = '/parent/tutor/:id';
+  static const parentEditInfo = '/parent/edit-info';
   static const parentStudentDetail = '/parent/profile/student/:id';
+  static const parentAddChild = '/parent/profile/add-child';
   static const parentCalendar = '/parent/profile/calendar';
   static const parentLessonConfirm = '/parent/lesson/:id/confirm';
 

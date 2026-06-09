@@ -87,23 +87,17 @@ class _ParentCalendarPageState extends ConsumerState<ParentCalendarPage> {
       appBar: AppBar(
         backgroundColor: AppColors.cream,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
-            size: 18,
+            size: 20,
             color: AppColors.ink,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Lịch học tổng hợp',
-          style: GoogleFonts.bricolageGrotesque(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-          ),
-        ),
-        centerTitle: false,
+        title: const Text('Lịch học tổng hợp'),
+        centerTitle: true,
       ),
       body: dash.isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.ink))
