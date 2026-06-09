@@ -2,10 +2,16 @@ import 'dart:convert';
 
 List<String>? _parseStringOrList(dynamic value) {
   if (value == null) return null;
-  if (value is List) return value.cast<String>();
+  if (value is List) return value.map((e) => e.toString()).toList();
   if (value is String) {
-    final decoded = jsonDecode(value);
-    if (decoded is List) return decoded.cast<String>();
+    if (value.isEmpty) return null;
+    // Try JSON array first
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is List) return decoded.map((e) => e.toString()).toList();
+    } catch (_) {}
+    // Plain string — treat as single-item list
+    return [value];
   }
   return null;
 }
@@ -15,18 +21,73 @@ class AvailabilitySlotDto {
     required this.dayofweek,
     required this.starttime,
     required this.endtime,
+    this.dayName,
   });
 
   factory AvailabilitySlotDto.fromJson(Map<String, dynamic> j) =>
       AvailabilitySlotDto(
-        dayofweek: j['dayofweek'] as int? ?? 0,
-        starttime: j['starttime'] as String? ?? '',
-        endtime: j['endtime'] as String? ?? '',
+        dayofweek: (j['dayofweek'] ?? j['dayOfWeek']) as int? ?? 0,
+        starttime: (j['starttime'] ?? j['startTime']) as String? ?? '',
+        endtime: (j['endtime'] ?? j['endTime']) as String? ?? '',
+        dayName: j['dayName'] as String?,
       );
 
   final int dayofweek;
   final String starttime;
   final String endtime;
+  final String? dayName;
+
+  String get localDayName {
+    const names = [
+      '',
+      'Thứ 2',
+      'Thứ 3',
+      'Thứ 4',
+      'Thứ 5',
+      'Thứ 6',
+      'Thứ 7',
+      'CN',
+    ];
+    if (dayofweek >= 1 && dayofweek <= 7) return names[dayofweek];
+    return dayName ?? '';
+  }
+}
+
+class SubjectGradePriceDto {
+  const SubjectGradePriceDto({
+    required this.id,
+    required this.subjectId,
+    required this.subjectName,
+    required this.gradeLevelId,
+    required this.gradeLevelName,
+    required this.pricePerHour,
+    this.durationMinutesPerSession,
+    this.sessionsPerWeek,
+    this.currency = 'VND',
+  });
+
+  factory SubjectGradePriceDto.fromJson(Map<String, dynamic> j) =>
+      SubjectGradePriceDto(
+        id: j['id'] as int? ?? 0,
+        subjectId: j['subjectId'] as int? ?? 0,
+        subjectName: j['subjectName'] as String? ?? '',
+        gradeLevelId: j['gradeLevelId'] as int? ?? 0,
+        gradeLevelName: j['gradeLevelName'] as String? ?? '',
+        pricePerHour: (j['pricePerHour'] as num?)?.toDouble() ?? 0,
+        durationMinutesPerSession: j['durationMinutesPerSession'] as int?,
+        sessionsPerWeek: j['sessionsPerWeek'] as int?,
+        currency: j['currency'] as String? ?? 'VND',
+      );
+
+  final int id;
+  final int subjectId;
+  final String subjectName;
+  final int gradeLevelId;
+  final String gradeLevelName;
+  final double pricePerHour;
+  final int? durationMinutesPerSession;
+  final int? sessionsPerWeek;
+  final String currency;
 }
 
 class TutorDetailSubjectDto {
@@ -118,6 +179,7 @@ class TutorFullProfileDto {
     this.fullName,
     this.headline,
     this.teachingAreaCity,
+    this.teachingAreaDistrict,
     this.teachingMode,
     this.bio,
     this.education,
@@ -132,6 +194,7 @@ class TutorFullProfileDto {
     this.feedbacks,
     this.subjects,
     this.availabilities,
+    this.subjectGradePrices,
   });
 
   factory TutorFullProfileDto.fromJson(Map<String, dynamic> j) {
@@ -141,6 +204,7 @@ class TutorFullProfileDto {
       fullName: content['fullName'] as String?,
       headline: content['headline'] as String?,
       teachingAreaCity: content['teachingAreaCity'] as String?,
+      teachingAreaDistrict: content['teachingAreaDistrict'] as String?,
       teachingMode: content['teachingMode'] as String?,
       bio: content['bio'] as String?,
       education: content['education'] as String?,
@@ -170,6 +234,11 @@ class TutorFullProfileDto {
       availabilities: (content['availabilities'] as List<dynamic>?)
           ?.map((e) => AvailabilitySlotDto.fromJson(e as Map<String, dynamic>))
           .toList(),
+      subjectGradePrices: (content['subjectGradePrices'] as List<dynamic>?)
+          ?.map(
+            (e) => SubjectGradePriceDto.fromJson(e as Map<String, dynamic>),
+          )
+          .toList(),
     );
   }
 
@@ -177,6 +246,7 @@ class TutorFullProfileDto {
   final String? fullName;
   final String? headline;
   final String? teachingAreaCity;
+  final String? teachingAreaDistrict;
   final String? teachingMode;
   final String? bio;
   final String? education;
@@ -191,9 +261,18 @@ class TutorFullProfileDto {
   final List<TutorDetailFeedbackDto>? feedbacks;
   final List<TutorDetailSubjectDto>? subjects;
   final List<AvailabilitySlotDto>? availabilities;
+  final List<SubjectGradePriceDto>? subjectGradePrices;
 
   String get displayName => fullName ?? 'Gia sư';
-  int get priceInK => ((hourlyRate ?? 0) / 1000).round();
+
+  double get lowestPrice {
+    final prices = subjectGradePrices;
+    if (prices != null && prices.isNotEmpty) {
+      return prices.map((p) => p.pricePerHour).reduce((a, b) => a < b ? a : b);
+    }
+    return hourlyRate ?? 0;
+  }
+
   String get gpaText {
     if (gpa == null) return '';
     final scale = gpaScale != null ? '/${gpaScale!.toStringAsFixed(1)}' : '';
