@@ -306,7 +306,8 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                         _SettingsCard(
                           children: [
                             _SettingRow(
-                              icon: Icons.calendar_month_outlined,
+                              imagePath:
+                                  'assets/images/parent/calendar-profile.png',
                               label: 'Lịch học tổng hợp',
                               sub: 'Toàn bộ lịch học của các con',
                               onTap: () =>
@@ -320,14 +321,14 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                         _SettingsCard(
                           children: [
                             _SettingRow(
-                              icon: Icons.person_outline_rounded,
+                              imagePath: 'assets/images/parent/profile.png',
                               label: 'Chỉnh thông tin cá nhân',
                               sub: email.isNotEmpty ? email : null,
                               onTap: () =>
                                   context.push(AppRoutes.parentEditInfo),
                             ),
                             _SettingRow(
-                              icon: Icons.lock_outline_rounded,
+                              imagePath: 'assets/images/parent/security.png',
                               label: 'Bảo mật & Mật khẩu',
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -676,18 +677,10 @@ class _AddStudentRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: AppColors.cream2,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                size: 16,
-                color: AppColors.ink3,
-              ),
+            Image.asset(
+              'assets/images/parent/childs.png',
+              width: 24,
+              height: 24,
             ),
             const SizedBox(width: 12),
             Text(
@@ -755,12 +748,12 @@ class _SettingsCard extends StatelessWidget {
 
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
-    required this.icon,
+    required this.imagePath,
     required this.label,
     this.sub,
     this.onTap,
   });
-  final IconData icon;
+  final String imagePath;
   final String label;
   final String? sub;
   final VoidCallback? onTap;
@@ -768,7 +761,6 @@ class _SettingRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const color = AppColors.ink;
-    const iconBg = AppColors.cream2;
 
     return InkWell(
       onTap: onTap,
@@ -777,15 +769,7 @@ class _SettingRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         child: Row(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 16, color: color),
-            ),
+            Image.asset(imagePath, width: 24, height: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
