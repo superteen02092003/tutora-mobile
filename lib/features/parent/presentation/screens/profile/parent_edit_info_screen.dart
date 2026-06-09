@@ -1,8 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/parent/data/datasources/parent_profile_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
@@ -22,6 +23,7 @@ class _ParentEditInfoScreenState extends ConsumerState<ParentEditInfoScreen> {
   late final TextEditingController _addressCtrl;
   late final TextEditingController _genderCtrl;
   bool _saving = false;
+  bool _uploadingAvatar = false;
 
   @override
   void initState() {
@@ -40,6 +42,31 @@ class _ParentEditInfoScreenState extends ConsumerState<ParentEditInfoScreen> {
     _addressCtrl.dispose();
     _genderCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 800,
+    );
+    if (file == null) return;
+
+    setState(() => _uploadingAvatar = true);
+    final ok = await ref
+        .read(parentProfileProvider.notifier)
+        .uploadAvatar(file.path);
+    if (!mounted) return;
+    setState(() => _uploadingAvatar = false);
+
+    AppToast.show(
+      context,
+      message: ok
+          ? 'Cập nhật ảnh đại diện thành công'
+          : 'Tải ảnh thất bại, thử lại',
+      type: ok ? AppToastType.success : AppToastType.error,
+    );
   }
 
   Future<void> _save() async {
@@ -79,128 +106,190 @@ class _ParentEditInfoScreenState extends ConsumerState<ParentEditInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    final phone = ref.read(parentProfileProvider).profile?.phone ?? '';
+    final profile = ref.watch(parentProfileProvider).profile;
+    final phone = profile?.phone ?? '';
+    final avatarUrl = profile?.avatarUrl ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.line, width: 0.8),
-                ),
-              ),
-              child: Row(
+      appBar: AppBar(
+        backgroundColor: AppColors.cream,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          color: AppColors.ink,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('Thông tin cá nhân'),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 18,
-                    ),
-                    color: AppColors.ink,
+                  _AvatarPicker(
+                    avatarUrl: avatarUrl,
+                    uploading: _uploadingAvatar,
+                    onTap: _pickAvatar,
                   ),
-                  Expanded(
-                    child: Text(
-                      'Thông tin cá nhân',
-                      style: AppTextStyles.h3(),
-                      textAlign: TextAlign.center,
-                    ),
+                  const SizedBox(height: 24),
+                  _FormField(
+                    label: 'Họ và tên',
+                    controller: _fullNameCtrl,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Không được để trống'
+                        : null,
                   ),
-                  const SizedBox(width: 40),
+                  const SizedBox(height: 20),
+                  _ReadOnlyField(
+                    label: 'Số điện thoại',
+                    value: phone,
+                    hint: 'Chưa cập nhật',
+                  ),
+                  const SizedBox(height: 20),
+                  _DateField(
+                    label: 'Ngày sinh',
+                    controller: _birthdateCtrl,
+                  ),
+                  const SizedBox(height: 20),
+                  _FormField(
+                    label: 'Địa chỉ',
+                    controller: _addressCtrl,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Không được để trống'
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+                  _GenderField(controller: _genderCtrl),
                 ],
               ),
             ),
-
-            // Form
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                  children: [
-                    _FormField(
-                      label: 'Họ và tên',
-                      controller: _fullNameCtrl,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Không được để trống'
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _ReadOnlyField(
-                      label: 'Số điện thoại',
-                      value: phone,
-                      hint: 'Chưa cập nhật',
-                    ),
-                    const SizedBox(height: 20),
-                    _DateField(
-                      label: 'Ngày sinh',
-                      controller: _birthdateCtrl,
-                    ),
-                    const SizedBox(height: 20),
-                    _FormField(
-                      label: 'Địa chỉ',
-                      controller: _addressCtrl,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Không được để trống'
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _GenderField(controller: _genderCtrl),
-                  ],
-                ),
+          ),
+          Container(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomPad),
+            decoration: const BoxDecoration(
+              color: AppColors.cream,
+              border: Border(
+                top: BorderSide(color: AppColors.line, width: 0.8),
               ),
             ),
-
-            // Save button — cố định ở bottom, dễ bấm
-            Container(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomPad),
-              decoration: const BoxDecoration(
-                color: AppColors.cream,
-                border: Border(
-                  top: BorderSide(color: AppColors.line, width: 0.8),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.ink,
-                    disabledBackgroundColor: AppColors.ink3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton(
+                onPressed: (_saving || _uploadingAvatar) ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.ink,
+                  disabledBackgroundColor: AppColors.ink3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          'Lưu thay đổi',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
                 ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        'Lưu thay đổi',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvatarPicker extends StatelessWidget {
+  const _AvatarPicker({
+    required this.avatarUrl,
+    required this.uploading,
+    required this.onTap,
+  });
+
+  final String avatarUrl;
+  final bool uploading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: GestureDetector(
+        onTap: uploading ? null : onTap,
+        child: Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.cream2,
+                border: Border.all(color: AppColors.line, width: 1.5),
+              ),
+              child: uploading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.ink,
+                      ),
+                    )
+                  : ClipOval(
+                      child: avatarUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: avatarUrl,
+                              width: 88,
+                              height: 88,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, _, _) =>
+                                  const _AvatarPlaceholder(),
+                            )
+                          : const _AvatarPlaceholder(),
+                    ),
+            ),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.ink,
+                border: Border.all(color: AppColors.cream, width: 2),
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                size: 14,
+                color: Colors.white,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _AvatarPlaceholder extends StatelessWidget {
+  const _AvatarPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(Icons.person_rounded, size: 44, color: AppColors.ink4);
   }
 }
 

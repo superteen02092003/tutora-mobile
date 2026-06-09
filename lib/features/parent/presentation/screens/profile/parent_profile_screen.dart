@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +13,7 @@ import 'package:tutora/features/auth/presentation/controllers/auth_controller.da
 import 'package:tutora/features/parent/data/models/parent_models.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_change_password_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/profile/parent_change_password_screen.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
@@ -33,6 +34,7 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
     super.initState();
     unawaited(
       Future.microtask(() async {
+        await ref.read(parentProfileProvider.notifier).load();
         await ref.read(parentStudentsProvider.notifier).load();
       }),
     );
@@ -266,6 +268,7 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
     final bottomPad = MediaQuery.of(context).padding.bottom;
     final name = profileState.profile?.fullName ?? '';
     final email = profileState.profile?.email ?? '';
+    final avatarUrl = profileState.profile?.avatarUrl ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -278,7 +281,13 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                 controller: _scrollController,
                 padding: EdgeInsets.only(bottom: bottomPad + AppSpacing.xxl),
                 children: [
-                  _ProfileHeader(name: name, email: email),
+                  _ProfileHeader(
+                    name: name,
+                    email: email,
+                    avatarUrl: avatarUrl,
+                    isLoading:
+                        profileState.isLoading && profileState.profile == null,
+                  ),
                   const SizedBox(height: 14),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -397,9 +406,16 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.name, required this.email});
+  const _ProfileHeader({
+    required this.name,
+    required this.email,
+    required this.avatarUrl,
+    this.isLoading = false,
+  });
   final String name;
   final String email;
+  final String avatarUrl;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -425,21 +441,51 @@ class _ProfileHeader extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              Container(
-                width: 62,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(62 / 3),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  initials,
-                  style: GoogleFonts.inter(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink2,
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(62 / 3),
+                child: SizedBox(
+                  width: 62,
+                  height: 62,
+                  child: isLoading
+                      ? ColoredBox(
+                          color: AppColors.gold.withValues(alpha: 0.3),
+                        )
+                      : avatarUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: avatarUrl,
+                          width: 62,
+                          height: 62,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => ColoredBox(
+                            color: AppColors.gold.withValues(alpha: 0.3),
+                          ),
+                          errorWidget: (_, _, err) => ColoredBox(
+                            color: AppColors.gold.withValues(alpha: 0.3),
+                            child: Center(
+                              child: Text(
+                                initials,
+                                style: GoogleFonts.inter(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : ColoredBox(
+                          color: AppColors.gold.withValues(alpha: 0.3),
+                          child: Center(
+                            child: Text(
+                              initials,
+                              style: GoogleFonts.inter(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink2,
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: 14),

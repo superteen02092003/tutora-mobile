@@ -159,14 +159,7 @@ class _ParentAddChildScreenState extends ConsumerState<ParentAddChildScreen> {
           color: AppColors.ink,
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Thêm con',
-          style: GoogleFonts.bricolageGrotesque(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-          ),
-        ),
+        title: const Text('Thêm con'),
         centerTitle: true,
       ),
       body: gradesAsync.when(

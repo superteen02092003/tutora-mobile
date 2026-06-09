@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
@@ -30,8 +31,7 @@ class ParentProfileDatasource {
   }
 
   Future<StudentProfileDto> getProfile() async {
-    final userId = await _getUserId();
-    final res = await _dio.get<Map<String, dynamic>>('/users/$userId');
+    final res = await _dio.get<Map<String, dynamic>>('/parent/profile');
     return StudentProfileDto.fromJson(res.data!);
   }
 
@@ -41,7 +41,19 @@ class ParentProfileDatasource {
   }
 
   Future<void> changePassword(ChangePasswordRequest request) async {
-    await _dio.put<void>('/passwords/change', data: request.toJson());
+    final res = await _dio.put<Map<String, dynamic>>(
+      '/passwords/change',
+      data: request.toJson(),
+    );
+    debugPrint('[changePassword] status=${res.statusCode} body=${res.data}');
+    final data = res.data;
+    if (data != null) {
+      final success = data['success'] as bool?;
+      final status = data['status'] as int?;
+      if (success == false || (status != null && status >= 400)) {
+        throw Exception('Mật khẩu hiện tại không đúng');
+      }
+    }
   }
 
   Future<void> deactivateAccount() async {

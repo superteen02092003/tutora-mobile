@@ -47,23 +47,17 @@ class _ParentBookingsPageState extends ConsumerState<ParentBookingsPage> {
       appBar: AppBar(
         backgroundColor: AppColors.cream,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
-            size: 18,
+            size: 20,
             color: AppColors.ink,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'Booking của tôi',
-          style: GoogleFonts.bricolageGrotesque(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-          ),
-        ),
-        centerTitle: false,
+        title: const Text('Booking của tôi'),
+        centerTitle: true,
       ),
       body: Column(
         children: [
