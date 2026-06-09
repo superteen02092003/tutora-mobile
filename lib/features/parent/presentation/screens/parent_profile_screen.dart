@@ -624,13 +624,7 @@ class _AddStudentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        AppToast.show(
-          context,
-          message: 'Tính năng thêm con sẽ sớm ra mắt',
-          type: AppToastType.info,
-        );
-      },
+      onTap: () => context.push(AppRoutes.parentAddChild),
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

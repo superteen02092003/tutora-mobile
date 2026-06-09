@@ -149,13 +149,21 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                     isLoading: students.isLoading,
                     selectedId: selectedId,
                     onSelect: (id) => setState(() => _selectedStudentId = id),
-                    onAddChild: () => context.push(AppRoutes.parentProfile),
+                    onAddChild: () async {
+                      context.go(AppRoutes.parentProfile);
+                      await Future<void>.delayed(
+                        const Duration(milliseconds: 300),
+                      );
+                      if (context.mounted) {
+                        unawaited(context.push(AppRoutes.parentAddChild));
+                      }
+                    },
                     onNotif: () => context.push(AppRoutes.parentNotifications),
                     selectedSubject: nextLesson?.subjectName,
                     selectedTutor: nextLesson?.tutorName,
                     onDark: true,
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.xs),
                   if (dash.isLoading) ...[
                     const SizedBox(height: AppSpacing.xxl),
                     const Center(

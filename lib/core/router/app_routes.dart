@@ -47,6 +47,7 @@ abstract final class AppRoutes {
   static const parentTutorDetail = '/parent/tutor/:id';
   static const parentEditInfo = '/parent/edit-info';
   static const parentStudentDetail = '/parent/profile/student/:id';
+  static const parentAddChild = '/parent/profile/add-child';
   static const parentCalendar = '/parent/profile/calendar';
   static const parentLessonConfirm = '/parent/lesson/:id/confirm';
 

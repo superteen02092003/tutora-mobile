@@ -292,7 +292,7 @@ class _ActionButton extends StatelessWidget {
           child: Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
               color: textColor,
             ),

@@ -53,6 +53,38 @@ class ParentDatasource {
     await _dio.put<dynamic>('/parent/lessons/$lessonId/confirm');
   }
 
+  Future<List<GradeLevelDto>> getGradeLevels() async {
+    final res = await _dio.get<dynamic>('/grade-levels');
+    final data = res.data as Map<String, dynamic>;
+    final content = data['content'] as List<dynamic>? ?? [];
+    return content
+        .map((e) => GradeLevelDto.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<AddStudentResult> addStudent({
+    required String fullname,
+    required String birthdate,
+    required String school,
+    required int gradeLevelId,
+    String? learninggoals,
+  }) async {
+    final res = await _dio.post<dynamic>(
+      '/parent/students',
+      data: {
+        'fullname': fullname,
+        'birthdate': birthdate,
+        'school': school,
+        'gradeLevelId': gradeLevelId,
+        if (learninggoals != null && learninggoals.isNotEmpty)
+          'learninggoals': learninggoals,
+      },
+    );
+    final data = res.data as Map<String, dynamic>;
+    final content = data['content'] as Map<String, dynamic>;
+    return AddStudentResult.fromJson(content);
+  }
+
   Future<List<ParentBookingDto>> getBookings({
     int page = 1,
     int pageSize = 20,

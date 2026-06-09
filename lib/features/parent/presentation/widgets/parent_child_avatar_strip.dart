@@ -98,6 +98,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                     0,
                   ),
                   children: [
+                    _AddChildChip(onTap: widget.onAddChild),
                     for (var i = 0; i < widget.students.length; i++)
                       _ChildAvatarChip(
                         student: widget.students[i],
@@ -105,11 +106,9 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                             widget.students[i].studentId == widget.selectedId,
                         onTap: () => _onSelect(i, widget.students[i].studentId),
                       ),
-                    _AddChildChip(onTap: widget.onAddChild),
                   ],
                 ),
               ),
-              // Notification bell — top-aligned, same height as chip area
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 10, 20, 0),
                 child: GestureDetector(
@@ -151,7 +150,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
         ),
         // Selected child info
         if (selectedStudent != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
@@ -174,7 +173,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                     children: [
                       const Icon(
                         Icons.menu_book_outlined,
-                        size: 13,
+                        size: 15,
                         color: Colors.white,
                       ),
                       const SizedBox(width: 5),
@@ -185,7 +184,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                             widget.selectedTutor,
                         ].join(' · '),
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 15,
                           color: Colors.white,
                         ),
                         maxLines: 1,
@@ -197,7 +196,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                   Text(
                     'Chưa có lớp học',
                     style: GoogleFonts.inter(
-                      fontSize: 13,
+                      fontSize: 15,
                       fontStyle: FontStyle.italic,
                       color: Colors.white.withValues(alpha: 0.6),
                     ),
@@ -357,7 +356,7 @@ class _AddChildChip extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Thêm c...',
+                'Thêm con',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,

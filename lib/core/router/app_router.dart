@@ -14,6 +14,7 @@ import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_parent_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_add_child_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_calendar_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_edit_info_screen.dart';
@@ -362,6 +363,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => ParentStudentDetailPage(
                       studentId: state.pathParameters['id'] ?? '',
                     ),
+                  ),
+                  GoRoute(
+                    path: 'add-child',
+                    builder: (context, _) => const ParentAddChildScreen(),
                   ),
                 ],
               ),

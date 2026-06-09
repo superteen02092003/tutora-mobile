@@ -35,7 +35,30 @@ class ParentStudentsNotifier extends StateNotifier<ParentStudentsState> {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
+
+  Future<AddStudentResult> addStudent({
+    required String fullname,
+    required String birthdate,
+    required String school,
+    required int gradeLevelId,
+    String? learninggoals,
+  }) async {
+    final result = await _ds.addStudent(
+      fullname: fullname,
+      birthdate: birthdate,
+      school: school,
+      gradeLevelId: gradeLevelId,
+      learninggoals: learninggoals,
+    );
+    await load();
+    return result;
+  }
 }
+
+// Grade levels
+final gradeLevelsProvider = FutureProvider<List<GradeLevelDto>>((ref) async {
+  return ref.watch(parentDatasourceProvider).getGradeLevels();
+});
 
 final parentStudentsProvider =
     StateNotifierProvider<ParentStudentsNotifier, ParentStudentsState>((ref) {
