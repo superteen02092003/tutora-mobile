@@ -37,14 +37,14 @@ import 'package:tutora/features/student/presentation/screens/student_notificatio
 import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_solution_screen.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
-import 'package:tutora/features/student/presentation/shell/student_shell.dart';
+import 'package:tutora/features/student/presentation/shell/v2/student_shell_v2.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_messages_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
-import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
+import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
 // Auth-only routes — no role guard needed
 const Set<String> _publicPaths = {
@@ -179,7 +179,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Student shell (5 tabs)
       StatefulShellRoute.indexedStack(
-        builder: (context, _, shell) => StudentShell(navigationShell: shell),
+        builder: (context, _, shell) => StudentShellV2(navigationShell: shell),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -241,7 +241,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Tutor shell (5 tabs)
       StatefulShellRoute.indexedStack(
-        builder: (context, _, shell) => TutorShell(navigationShell: shell),
+        builder: (context, _, shell) => TutorShellV2(navigationShell: shell),
         branches: [
           StatefulShellBranch(
             routes: [
