@@ -30,8 +30,9 @@ class ParentProfileDatasource {
     return userId;
   }
 
+  // GET /api/users/profile
   Future<StudentProfileDto> getProfile() async {
-    final res = await _dio.get<Map<String, dynamic>>('/parent/profile');
+    final res = await _dio.get<Map<String, dynamic>>('/users/profile');
     return StudentProfileDto.fromJson(res.data!);
   }
 
