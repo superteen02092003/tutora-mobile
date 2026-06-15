@@ -247,36 +247,6 @@ class _RegisterParentPageState extends ConsumerState<RegisterParentPage> {
                             )
                           : Text(_step == 1 ? 'Tiếp theo →' : 'Tạo tài khoản'),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    Center(
-                      child: Text.rich(
-                        TextSpan(
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.ink3,
-                          ),
-                          children: [
-                            const TextSpan(text: 'Đã có tài khoản? '),
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: GestureDetector(
-                                onTap: () => context.pop(),
-                                child: Text(
-                                  'Đăng nhập',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.oxblood,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

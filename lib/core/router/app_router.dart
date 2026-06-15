@@ -11,8 +11,10 @@ import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
-import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/register_parent_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_role_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_student_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_tutor_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home_screen.dart';
@@ -51,6 +53,8 @@ const Set<String> _publicPaths = {
   AppRoutes.splash,
   AppRoutes.login,
   AppRoutes.register,
+  AppRoutes.registerStudent,
+  AppRoutes.registerTutor,
   AppRoutes.registerParent,
   AppRoutes.forgot,
   AppRoutes.otp,
@@ -130,7 +134,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (context, _) => const RegisterPage(),
+        builder: (context, _) => const RegisterRolePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.registerStudent,
+        builder: (context, _) => const RegisterStudentPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.registerTutor,
+        builder: (context, _) => const RegisterTutorPage(),
       ),
       GoRoute(
         path: AppRoutes.registerParent,
