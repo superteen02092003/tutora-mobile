@@ -154,9 +154,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.otp,
-        builder: (context, state) => OtpPage(
-          email: state.extra as String? ?? '',
-        ),
+        builder: (context, state) {
+          final args = state.extra as OtpArgs?;
+          return OtpPage(
+            phone: args?.phone ?? '',
+            mode: args?.mode ?? OtpMode.register,
+          );
+        },
       ),
 
       // Student-only standalone routes

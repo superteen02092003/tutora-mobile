@@ -25,24 +25,24 @@ class AuthRepositoryImpl implements AuthRepository {
   final SecureStorageService storage;
 
   @override
-  Future<Result<void>> register({
-    required String email,
+  Future<Result<String>> register({
+    required String phone,
     required String password,
     required String fullName,
     required String role,
-    String? phone,
+    String? email,
   }) async {
     try {
       await datasource.register(
         RegisterRequest(
-          email: email,
+          phone: phone,
           password: password,
           fullName: fullName,
           role: role,
-          phone: phone,
+          email: email,
         ),
       );
-      return (data: null, failure: null);
+      return (data: phone, failure: null);
     } on AppException catch (e) {
       return (data: null, failure: _mapException(e));
     } catch (_) {
@@ -59,16 +59,86 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await datasource.login(
         LoginRequest(emailOrPhone: emailOrPhone, password: password),
       );
+      if (response.requiresPhoneVerification) {
+        return (
+          data: null,
+          failure: PhoneVerificationRequiredFailure(
+            response.phone ?? emailOrPhone,
+          ),
+        );
+      }
       final entity = response.toEntity();
-
       await storage.saveTokens(
         access: entity.token,
         refresh: entity.refreshToken,
       );
-
       return (data: entity, failure: null);
     } on AppException catch (e) {
       return (data: null, failure: _mapException(e));
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
+  @override
+  Future<Result<AuthToken>> verifyPhone({
+    required String phone,
+    required String otp,
+  }) async {
+    try {
+      final response = await datasource.verifyPhone(
+        VerifyPhoneRequest(phone: phone, otp: otp),
+      );
+      final entity = response.toEntity();
+      await storage.saveTokens(
+        access: entity.token,
+        refresh: entity.refreshToken,
+      );
+      return (data: entity, failure: null);
+    } on AppException catch (e) {
+      return (data: null, failure: _mapOtpException(e));
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
+  @override
+  Future<Result<void>> resendPhoneOtp({required String phone}) async {
+    try {
+      await datasource.resendPhoneOtp(ResendOtpRequest(phone: phone));
+      return (data: null, failure: null);
+    } on AppException catch (e) {
+      return (data: null, failure: _mapException(e));
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
+  @override
+  Future<Result<void>> forgotPassword({required String phone}) async {
+    try {
+      await datasource.forgotPassword(ForgotPasswordRequest(phone: phone));
+      return (data: null, failure: null);
+    } on AppException catch (e) {
+      return (data: null, failure: _mapException(e));
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
+  @override
+  Future<Result<void>> resetPassword({
+    required String phone,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      await datasource.resetPassword(
+        ResetPasswordRequest(phone: phone, otp: otp, newPassword: newPassword),
+      );
+      return (data: null, failure: null);
+    } on AppException catch (e) {
+      return (data: null, failure: _mapOtpException(e));
     } catch (_) {
       return (data: null, failure: const ServerFailure());
     }
@@ -84,18 +154,6 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
-  @override
-  Future<Result<void>> forgotPassword({required String email}) async {
-    try {
-      await datasource.forgotPassword(email);
-      return (data: null, failure: null);
-    } on AppException catch (e) {
-      return (data: null, failure: _mapForgotException(e));
-    } catch (_) {
-      return (data: null, failure: const ServerFailure());
-    }
-  }
-
   Failure _mapException(AppException e) => switch (e) {
     UnauthorizedException() => const AuthFailure(
       'Email/SĐT hoặc mật khẩu không đúng.',
@@ -105,11 +163,12 @@ class AuthRepositoryImpl implements AuthRepository {
     _ => const ServerFailure(),
   };
 
-  Failure _mapForgotException(AppException e) => switch (e) {
-    NotFoundException() => const ValidationFailure(
-      'Email này chưa được đăng ký trong hệ thống.',
+  Failure _mapOtpException(AppException e) => switch (e) {
+    UnauthorizedException() => const ValidationFailure(
+      'Mã OTP không đúng hoặc đã hết hạn.',
     ),
     NetworkException() => const NetworkFailure(),
-    _ => const ServerFailure('Có lỗi xảy ra. Vui lòng thử lại.'),
+    ServerException() => ServerFailure(e.message),
+    _ => const ServerFailure(),
   };
 }

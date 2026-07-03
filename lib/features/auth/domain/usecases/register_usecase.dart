@@ -6,23 +6,23 @@ class RegisterUseCase {
 
   final AuthRepository _repository;
 
-  Future<Result<void>> call({
-    required String email,
+  Future<Result<String>> call({
+    required String phone,
     required String password,
     required String fullName,
     required String role,
-    String? phone,
+    String? email,
   }) {
-    if (fullName.trim().isEmpty || email.trim().isEmpty || password.isEmpty) {
+    if (fullName.trim().isEmpty || phone.trim().isEmpty || password.isEmpty) {
       return Future.value((
         data: null,
         failure: const ValidationFailure('Vui lòng nhập đầy đủ thông tin.'),
       ));
     }
-    if (!email.contains('@')) {
+    if (!RegExp(r'^(0|\+84)\d{9,10}$').hasMatch(phone.trim())) {
       return Future.value((
         data: null,
-        failure: const ValidationFailure('Email không hợp lệ.'),
+        failure: const ValidationFailure('Số điện thoại không hợp lệ.'),
       ));
     }
     if (password.length < 8) {
@@ -32,11 +32,11 @@ class RegisterUseCase {
       ));
     }
     return _repository.register(
-      email: email.trim(),
+      phone: phone.trim(),
       password: password,
       fullName: fullName.trim(),
       role: role,
-      phone: phone?.trim(),
+      email: (email?.trim().isEmpty ?? true) ? null : email!.trim(),
     );
   }
 }

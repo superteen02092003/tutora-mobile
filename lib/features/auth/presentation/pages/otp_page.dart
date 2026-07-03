@@ -2,29 +2,36 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/features/auth/presentation/controllers/otp_controller.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-class OtpPage extends StatefulWidget {
-  const OtpPage({required this.email, super.key});
+class OtpPage extends ConsumerStatefulWidget {
+  const OtpPage({required this.phone, required this.mode, super.key});
 
-  final String email;
+  final String phone;
+  final OtpMode mode;
 
   @override
-  State<OtpPage> createState() => _OtpPageState();
+  ConsumerState<OtpPage> createState() => _OtpPageState();
 }
 
-class _OtpPageState extends State<OtpPage> {
+class _OtpPageState extends ConsumerState<OtpPage> {
   final List<TextEditingController> _ctrls = List.generate(
     6,
     (_) => TextEditingController(),
   );
   final List<FocusNode> _nodes = List.generate(6, (_) => FocusNode());
+
+  // Forgot password — bước 2: nhập mật khẩu mới
+  final _newPassCtrl = TextEditingController();
+  final _confirmPassCtrl = TextEditingController();
 
   int _resendCd = 59;
   Timer? _timer;
@@ -67,28 +74,49 @@ class _OtpPageState extends State<OtpPage> {
     }
   }
 
-  bool get _isFull => _ctrls.every((c) => c.text.isNotEmpty);
+  String get _otp => _ctrls.map((c) => c.text).join();
 
-  void _onVerify() {
-    AppToast.show(
-      context,
-      message: 'Tính năng xác thực đang được phát triển.',
-      type: AppToastType.info,
-    );
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) context.go(AppRoutes.login);
-    });
+  bool get _otpFull => _ctrls.every((c) => c.text.isNotEmpty);
+
+  bool get _isForgot => widget.mode == OtpMode.forgotPassword;
+
+  bool get _canSubmit {
+    if (!_otpFull) return false;
+    if (_isForgot) {
+      return _newPassCtrl.text.length >= 8 &&
+          _newPassCtrl.text == _confirmPassCtrl.text;
+    }
+    return true;
   }
 
-  void _onResend() {
-    setState(() => _resendCd = 59);
+  Future<void> _onVerify() async {
+    if (_isForgot) {
+      await ref
+          .read(otpControllerProvider.notifier)
+          .verify(
+            phone: widget.phone,
+            otp: _otp,
+          );
+    } else {
+      await ref
+          .read(otpControllerProvider.notifier)
+          .verify(
+            phone: widget.phone,
+            otp: _otp,
+          );
+    }
+  }
+
+  Future<void> _onResend() async {
+    setState(() {
+      _resendCd = 59;
+      for (final c in _ctrls) {
+        c.clear();
+      }
+    });
     _timer?.cancel();
     _startTimer();
-    AppToast.show(
-      context,
-      message: 'Tính năng gửi lại đang được phát triển.',
-      type: AppToastType.info,
-    );
+    await ref.read(otpControllerProvider.notifier).resend(phone: widget.phone);
   }
 
   @override
@@ -100,11 +128,46 @@ class _OtpPageState extends State<OtpPage> {
     for (final n in _nodes) {
       n.dispose();
     }
+    _newPassCtrl.dispose();
+    _confirmPassCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(otpControllerProvider, (_, state) {
+      if (!context.mounted) return;
+      if (state is OtpSuccess) {
+        AppToast.show(
+          context,
+          message: _isForgot
+              ? 'Đặt lại mật khẩu thành công!'
+              : 'Xác minh thành công!',
+          type: AppToastType.success,
+        );
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (!context.mounted) return;
+          context.go(AppRoutes.login);
+        });
+      } else if (state is OtpResent) {
+        AppToast.show(
+          context,
+          message: 'Đã gửi lại mã OTP.',
+          type: AppToastType.success,
+        );
+        ref.read(otpControllerProvider.notifier).reset();
+      } else if (state is OtpError) {
+        AppToast.show(
+          context,
+          message: state.message,
+          type: AppToastType.error,
+        );
+        ref.read(otpControllerProvider.notifier).reset();
+      }
+    });
+
+    final isLoading = ref.watch(otpControllerProvider) is OtpLoading;
+
     return Scaffold(
       backgroundColor: AppColors.cream2,
       body: SafeArea(
@@ -152,7 +215,6 @@ class _OtpPageState extends State<OtpPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Icon
                     Container(
                       width: 56,
                       height: 56,
@@ -161,7 +223,7 @@ class _OtpPageState extends State<OtpPage> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Icon(
-                        Icons.mail_outline_rounded,
+                        Icons.phone_android_rounded,
                         color: AppColors.gold,
                         size: 26,
                       ),
@@ -169,7 +231,7 @@ class _OtpPageState extends State<OtpPage> {
                     const SizedBox(height: 20),
 
                     Text(
-                      'Xác thực email',
+                      _isForgot ? 'Đặt lại mật khẩu' : 'Xác minh số điện thoại',
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w800,
                         fontSize: 24,
@@ -188,13 +250,14 @@ class _OtpPageState extends State<OtpPage> {
                         children: [
                           const TextSpan(text: 'Nhập mã 6 chữ số đã gửi đến\n'),
                           TextSpan(
-                            text: widget.email,
+                            text: widget.phone,
                             style: GoogleFonts.ibmPlexMono(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: AppColors.ink,
                             ),
                           ),
+                          const TextSpan(text: ' qua Zalo.'),
                         ],
                       ),
                     ),
@@ -239,7 +302,7 @@ class _OtpPageState extends State<OtpPage> {
                               ),
                             )
                           : GestureDetector(
-                              onTap: _onResend,
+                              onTap: isLoading ? null : _onResend,
                               child: Text(
                                 'Gửi lại mã →',
                                 style: GoogleFonts.inter(
@@ -250,6 +313,92 @@ class _OtpPageState extends State<OtpPage> {
                               ),
                             ),
                     ),
+
+                    // Forgot password: thêm field nhập mật khẩu mới
+                    if (_isForgot) ...[
+                      const SizedBox(height: 28),
+                      const Divider(color: AppColors.line),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Mật khẩu mới',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _newPassCtrl,
+                        obscureText: true,
+                        enabled: !isLoading,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Tối thiểu 8 ký tự',
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppColors.ink3,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.paper,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: const BorderSide(
+                              color: AppColors.ink,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _confirmPassCtrl,
+                        obscureText: true,
+                        enabled: !isLoading,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Xác nhận mật khẩu',
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppColors.ink3,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.paper,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            borderSide: const BorderSide(
+                              color: AppColors.ink,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 28),
 
                     ElevatedButton(
@@ -263,8 +412,17 @@ class _OtpPageState extends State<OtpPage> {
                           fontSize: 14,
                         ),
                       ),
-                      onPressed: _isFull ? _onVerify : null,
-                      child: const Text('Xác nhận'),
+                      onPressed: isLoading || !_canSubmit ? null : _onVerify,
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.cream,
+                              ),
+                            )
+                          : Text(_isForgot ? 'Đặt lại mật khẩu' : 'Xác nhận'),
                     ),
                   ],
                 ),

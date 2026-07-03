@@ -16,7 +16,7 @@ class ParentHomeGradientPanel extends StatelessWidget {
         bottomRight: Radius.circular(36),
       ),
       child: ColoredBox(
-        color: const Color(0xFF5B8DEF),
+        color: AppColors.ink,
         child: child,
       ),
     );
