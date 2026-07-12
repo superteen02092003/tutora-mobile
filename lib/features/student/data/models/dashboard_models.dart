@@ -22,7 +22,7 @@ class LessonSummaryDto {
   });
 
   factory LessonSummaryDto.fromJson(Map<String, dynamic> j) => LessonSummaryDto(
-    lessonId: j['lessonId'] as int? ?? 0,
+    lessonId: (j['classSessionId'] ?? j['lessonId']) as int? ?? 0,
     subjectName: j['subjectName'] as String? ?? '',
     tutorName: j['tutorName'] as String? ?? 'Gia sư',
     status: j['status'] as String? ?? '',

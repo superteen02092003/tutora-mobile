@@ -24,6 +24,12 @@ final class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
 
+final class PhoneVerificationRequiredFailure extends Failure {
+  const PhoneVerificationRequiredFailure(this.phone)
+    : super('Vui lòng xác minh số điện thoại.');
+  final String phone;
+}
+
 // Dart 3 sealed — use switch for exhaustive matching in domain/presentation
 typedef Result<T> = ({T? data, Failure? failure});
 

@@ -17,7 +17,8 @@ final class MarketplaceLoaded extends MarketplaceState {
     required this.totalCount,
     this.searchTerm = '',
     this.selectedCity,
-    this.selectedMode,
+    this.selectedGrade,
+    this.selectedSubjectId,
     this.selectedSortBy,
     this.minRating,
     this.selectedBudget,
@@ -28,14 +29,16 @@ final class MarketplaceLoaded extends MarketplaceState {
   final int totalCount;
   final String searchTerm;
   final String? selectedCity;
-  final String? selectedMode;
+  final String? selectedGrade;
+  final int? selectedSubjectId;
   final String? selectedSortBy;
   final double? minRating;
   final String? selectedBudget; // e.g. 'under_50', '50_100', etc.
 
   bool get hasActiveFilter =>
       selectedCity != null ||
-      selectedMode != null ||
+      selectedGrade != null ||
+      selectedSubjectId != null ||
       selectedSortBy != null ||
       minRating != null ||
       selectedBudget != null;
@@ -46,7 +49,8 @@ final class MarketplaceLoaded extends MarketplaceState {
     int? totalCount,
     String? searchTerm,
     Object? selectedCity = _sentinel,
-    Object? selectedMode = _sentinel,
+    Object? selectedGrade = _sentinel,
+    Object? selectedSubjectId = _sentinel,
     Object? selectedSortBy = _sentinel,
     Object? minRating = _sentinel,
     Object? selectedBudget = _sentinel,
@@ -59,9 +63,12 @@ final class MarketplaceLoaded extends MarketplaceState {
       selectedCity: selectedCity == _sentinel
           ? this.selectedCity
           : selectedCity as String?,
-      selectedMode: selectedMode == _sentinel
-          ? this.selectedMode
-          : selectedMode as String?,
+      selectedGrade: selectedGrade == _sentinel
+          ? this.selectedGrade
+          : selectedGrade as String?,
+      selectedSubjectId: selectedSubjectId == _sentinel
+          ? this.selectedSubjectId
+          : selectedSubjectId as int?,
       selectedSortBy: selectedSortBy == _sentinel
           ? this.selectedSortBy
           : selectedSortBy as String?,
@@ -109,7 +116,10 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     try {
       final result = await _datasource.search(
         searchTerm: current.searchTerm,
-        teachingMode: current.selectedMode,
+        gradeLevel: current.selectedGrade,
+        subjectIds: current.selectedSubjectId == null
+            ? null
+            : [current.selectedSubjectId!],
         teachingAreaCity: current.selectedCity,
         sortBy: current.selectedSortBy,
         minRating: current.minRating,
@@ -135,7 +145,10 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     try {
       final result = await _datasource.search(
         searchTerm: term,
-        teachingMode: current.selectedMode,
+        gradeLevel: current.selectedGrade,
+        subjectIds: current.selectedSubjectId == null
+            ? null
+            : [current.selectedSubjectId!],
         teachingAreaCity: current.selectedCity,
         sortBy: current.selectedSortBy,
         minRating: current.minRating,
@@ -155,7 +168,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
   }
 
   Future<void> applyFilter({
-    Object? teachingMode = _MarketplaceSentinel.value,
+    Object? gradeLevel = _MarketplaceSentinel.value,
+    Object? subjectId = _MarketplaceSentinel.value,
     Object? city = _MarketplaceSentinel.value,
     Object? sortBy = _MarketplaceSentinel.value,
     Object? minRating = _MarketplaceSentinel.value,
@@ -163,9 +177,12 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
   }) async {
     _page = 1;
     final current = _currentOrEmpty;
-    final newMode = teachingMode == _MarketplaceSentinel.value
-        ? current.selectedMode
-        : teachingMode as String?;
+    final newGrade = gradeLevel == _MarketplaceSentinel.value
+        ? current.selectedGrade
+        : gradeLevel as String?;
+    final newSubject = subjectId == _MarketplaceSentinel.value
+        ? current.selectedSubjectId
+        : subjectId as int?;
     final newCity = city == _MarketplaceSentinel.value
         ? current.selectedCity
         : city as String?;
@@ -184,7 +201,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     try {
       final result = await _datasource.search(
         searchTerm: current.searchTerm,
-        teachingMode: newMode,
+        gradeLevel: newGrade,
+        subjectIds: newSubject == null ? null : [newSubject],
         teachingAreaCity: newCity,
         sortBy: newSort,
         minRating: newRating,
@@ -197,7 +215,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
         hasNext: result.hasNext,
         totalCount: result.totalCount,
         searchTerm: current.searchTerm,
-        selectedMode: newMode,
+        selectedGrade: newGrade,
+        selectedSubjectId: newSubject,
         selectedCity: newCity,
         selectedSortBy: newSort,
         minRating: newRating,
@@ -209,7 +228,8 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
   }
 
   Future<void> clearFilters() => applyFilter(
-    teachingMode: null,
+    gradeLevel: null,
+    subjectId: null,
     city: null,
     sortBy: null,
     minRating: null,
@@ -224,7 +244,10 @@ class MarketplaceController extends StateNotifier<MarketplaceState> {
     try {
       final result = await _datasource.search(
         searchTerm: current.searchTerm,
-        teachingMode: current.selectedMode,
+        gradeLevel: current.selectedGrade,
+        subjectIds: current.selectedSubjectId == null
+            ? null
+            : [current.selectedSubjectId!],
         teachingAreaCity: current.selectedCity,
         sortBy: current.selectedSortBy,
         minRating: current.minRating,

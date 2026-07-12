@@ -29,10 +29,9 @@ class ProfileDatasource {
     return userId;
   }
 
-  // GET /api/users/{id}
+  // GET /api/users/profile
   Future<StudentProfileDto> getProfile() async {
-    final userId = await _getUserId();
-    final res = await _dio.get<Map<String, dynamic>>('/users/$userId');
+    final res = await _dio.get<Map<String, dynamic>>('/users/profile');
     return StudentProfileDto.fromJson(res.data!);
   }
 

@@ -92,9 +92,12 @@ class _HomeContentState extends ConsumerState<_HomeContent>
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
+        bottom: false,
         child: ListView(
           controller: _scrollController,
-          padding: EdgeInsets.zero,
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom,
+          ),
           children: [
             _TopBar(name: widget.firstName),
             _Greeting(firstName: widget.firstName),

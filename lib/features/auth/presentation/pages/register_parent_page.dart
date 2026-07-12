@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/register_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
@@ -104,28 +105,24 @@ class _RegisterParentPageState extends ConsumerState<RegisterParentPage> {
     await ref
         .read(registerControllerProvider.notifier)
         .register(
-          email: _emailCtrl.text,
-          password: _passCtrl.text,
-          fullName: _nameCtrl.text,
-          role: AuthRole.parent.apiValue,
           phone: _phoneCtrl.text.trim(),
+          password: _passCtrl.text,
+          fullName: _nameCtrl.text.trim(),
+          role: AuthRole.parent.apiValue,
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
         );
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(registerControllerProvider, (_, state) {
+      if (!context.mounted) return;
       if (state is RegisterSuccess) {
-        AppToast.show(
-          context,
-          message: 'Đăng ký thành công! Vui lòng đăng nhập.',
-          type: AppToastType.success,
+        context.go(
+          AppRoutes.otp,
+          extra: OtpArgs(phone: state.phone, mode: OtpMode.register),
         );
-        Future.delayed(const Duration(milliseconds: 1200), () {
-          if (context.mounted) context.pop();
-        });
-      }
-      if (state is RegisterError) {
+      } else if (state is RegisterError) {
         AppToast.show(
           context,
           message: state.message,
@@ -246,36 +243,6 @@ class _RegisterParentPageState extends ConsumerState<RegisterParentPage> {
                               ),
                             )
                           : Text(_step == 1 ? 'Tiếp theo →' : 'Tạo tài khoản'),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Center(
-                      child: Text.rich(
-                        TextSpan(
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.ink3,
-                          ),
-                          children: [
-                            const TextSpan(text: 'Đã có tài khoản? '),
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: GestureDetector(
-                                onTap: () => context.pop(),
-                                child: Text(
-                                  'Đăng nhập',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.oxblood,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
                   ],
                 ),

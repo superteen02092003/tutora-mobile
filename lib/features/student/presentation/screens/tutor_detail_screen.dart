@@ -15,7 +15,7 @@ import 'package:tutora/features/student/presentation/screens/tutor_detail/tutor_
 import 'package:tutora/features/student/presentation/widgets/booking_bottom_sheet.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/tutor_detail_controller.dart';
-import 'package:tutora/shared/widgets/status_chip.dart';
+import 'package:tutora/shared/widgets/skeletons.dart';
 import 'package:video_player/video_player.dart';
 
 class TutorDetailPage extends ConsumerWidget {
@@ -27,12 +27,12 @@ class TutorDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(tutorDetailControllerProvider(tutorId));
 
+    final loaded = state is TutorDetailLoaded ? state.profile : null;
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: switch (state) {
-        TutorDetailLoading() => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        TutorDetailLoading() => const TutorDetailSkeleton(),
         TutorDetailError(:final message) => _ErrorView(
           message: message,
           onRetry: () =>
@@ -43,11 +43,17 @@ class TutorDetailPage extends ConsumerWidget {
           profile: profile,
         ),
       },
+      // Fixed booking button pinned to the bottom.
+      bottomNavigationBar: loaded == null
+          ? null
+          : _BookingBar(tutorId: tutorId, profile: loaded),
     );
   }
 }
 
-// Loaded body
+// Loaded body — layout order:
+// top bar (back + share/wishlist) → video → avatar+name → key info
+// → about → certificates → reviews → inline booking button at the bottom.
 class _DetailBody extends StatelessWidget {
   const _DetailBody({required this.tutorId, required this.profile});
   final String tutorId;
@@ -56,46 +62,26 @@ class _DetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    // Height of sticky bar: 72 + safe area
-    final stickyBarHeight = 72.0 + bottomPad;
 
-    return Stack(
+    return ListView(
+      padding: EdgeInsets.only(bottom: bottomPad + 8),
       children: [
-        ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _TopBar(tutorId: tutorId, profile: profile),
-            TutorHeroSection(profile: profile),
-            const _Divider(),
-            const _Divider(),
-            TutorAboutSection(profile: profile),
-            if (profile.videoIntroUrl != null) ...[
-              const _Divider(),
-              _VideoSection(videoUrl: profile.videoIntroUrl!),
-            ],
-            if (profile.certificates != null &&
-                profile.certificates!.isNotEmpty) ...[
-              const _Divider(),
-              TutorCertificatesSection(certificates: profile.certificates!),
-            ],
-            const _Divider(),
-            TutorReviewsSection(
-              feedbacks: profile.feedbacks ?? [],
-              averageRating: profile.averageRating,
-              totalFeedbacks: profile.totalFeedbacks,
-            ),
-            SizedBox(height: stickyBarHeight + 16),
-          ],
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _StickyBookingBar(
-            tutorId: tutorId,
-            profile: profile,
-            bottomPad: bottomPad,
-          ),
+        _TopBar(tutorId: tutorId, profile: profile),
+        if (profile.videoIntroUrl != null)
+          _VideoSection(videoUrl: profile.videoIntroUrl!),
+        TutorHeroSection(profile: profile),
+        const _Divider(),
+        TutorAboutSection(profile: profile),
+        if (profile.certificates != null &&
+            profile.certificates!.isNotEmpty) ...[
+          const _Divider(),
+          TutorCertificatesSection(certificates: profile.certificates!),
+        ],
+        const _Divider(),
+        TutorReviewsSection(
+          feedbacks: profile.feedbacks ?? [],
+          averageRating: profile.averageRating,
+          totalFeedbacks: profile.totalFeedbacks,
         ),
       ],
     );
@@ -114,7 +100,7 @@ class _Divider extends StatelessWidget {
   );
 }
 
-// Top ba
+// Top bar: back (left), share + wishlist (right).
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.tutorId, required this.profile});
   final String tutorId;
@@ -128,26 +114,59 @@ class _TopBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
+          _CircleIconBtn(
+            icon: Icons.arrow_back_ios_new_rounded,
             onTap: () => context.pop(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 14,
-                color: AppColors.ink,
-              ),
-            ),
           ),
-          if (profile.teachingMode != null)
-            StatusChip(label: profile.teachingMode!, tone: ChipTone.moss),
+          Row(
+            children: [
+              _CircleIconBtn(
+                icon: Icons.ios_share_rounded,
+                onTap: () => _onShare(context),
+              ),
+              const SizedBox(width: 10),
+              _CircleIconBtn(
+                icon: Icons.favorite_border_rounded,
+                onTap: () => _onWishlist(context),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  void _onShare(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Chia sẻ hồ sơ ${profile.displayName}')),
+    );
+  }
+
+  void _onWishlist(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã lưu vào danh sách yêu thích')),
+    );
+  }
+}
+
+class _CircleIconBtn extends StatelessWidget {
+  const _CircleIconBtn({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.paper,
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Icon(icon, size: 15, color: AppColors.ink),
       ),
     );
   }
@@ -380,82 +399,40 @@ class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
   }
 }
 
-// Sticky booking
-class _StickyBookingBar extends StatelessWidget {
-  const _StickyBookingBar({
-    required this.tutorId,
-    required this.profile,
-    required this.bottomPad,
-  });
+// Booking button pinned to the bottom of the screen (no price — pricing is
+// shown per subject/grade in the "cấp lớp giảng dạy" section).
+class _BookingBar extends StatelessWidget {
+  const _BookingBar({required this.tutorId, required this.profile});
   final String tutorId;
   final TutorFullProfileDto profile;
-  final double bottomPad;
-
-  String get _priceText {
-    final rate = profile.hourlyRate;
-    if (rate == null || rate == 0) return 'Thương lượng';
-    if (rate >= 1000) return '${(rate / 1000).round()}.000đ/giờ';
-    return '${rate.toStringAsFixed(0)}đ/giờ';
-  }
 
   @override
   Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.cream,
-        border: const Border(top: BorderSide(color: AppColors.line)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      child: Row(
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _priceText,
-                style: GoogleFonts.bricolageGrotesque(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.ink,
-                ),
-              ),
-              Text(
-                'qua Tutora Escrow',
-                style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink3),
-              ),
-            ],
+      child: GestureDetector(
+        onTap: () => showBookingSheet(context, profile, tutorId),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          decoration: BoxDecoration(
+            color: AppColors.gold,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => showBookingSheet(context, profile, tutorId),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: AppColors.gold,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Text(
-                  'Đặt lịch học ngay',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-              ),
+          child: Text(
+            'Đặt lịch học ngay',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
             ),
           ),
-        ],
+        ),
       ),
     );
   }

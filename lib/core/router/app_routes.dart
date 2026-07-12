@@ -1,8 +1,18 @@
+enum OtpMode { register, forgotPassword }
+
+class OtpArgs {
+  const OtpArgs({required this.phone, required this.mode});
+  final String phone;
+  final OtpMode mode;
+}
+
 abstract final class AppRoutes {
   // Auth
   static const splash = '/';
   static const login = '/login';
-  static const register = '/register';
+  static const register = '/register'; // role selection screen
+  static const registerStudent = '/register/student';
+  static const registerTutor = '/register/tutor';
   static const registerParent = '/register/parent';
   static const forgot = '/forgot';
   static const otp = '/otp';

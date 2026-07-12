@@ -10,7 +10,7 @@ class DashboardDatasource {
 
   Future<List<LessonSummaryDto>> getLessons() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/student/lessons',
+      '/student/class-sessions',
       queryParameters: {'page': 1, 'pageSize': 50},
     );
     final content = res.data?['content'];
@@ -24,7 +24,7 @@ class DashboardDatasource {
 
   Future<int> getPendingLessonsCount() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/student/lessons/pending',
+      '/student/class-sessions/pending',
     );
     final content = res.data?['content'];
     return content is List ? content.length : 0;
@@ -32,7 +32,7 @@ class DashboardDatasource {
 
   Future<List<BookingSummaryDto>> getBookings() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/bookings',
+      '/student/bookings',
       queryParameters: {'page': 1, 'pageSize': 10},
     );
     final content = res.data?['content'];

@@ -15,7 +15,9 @@ import 'package:tutora/features/auth/presentation/widgets/role_tab.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
-  const RegisterPage({super.key});
+  const RegisterPage({required this.role, super.key});
+
+  final AuthRole role;
 
   @override
   ConsumerState<RegisterPage> createState() => _RegisterPageState();
@@ -23,7 +25,7 @@ class RegisterPage extends ConsumerStatefulWidget {
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
   int _step = 1;
-  AuthRole _role = AuthRole.student;
+  AuthRole get _role => widget.role;
 
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -34,6 +36,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _agreed = false;
 
   String? _emailError;
+  String? _phoneError;
   String? _confirmError;
 
   @override
@@ -47,7 +50,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   bool get _step1Valid =>
-      _nameCtrl.text.trim().isNotEmpty && _emailCtrl.text.trim().isNotEmpty;
+      _nameCtrl.text.trim().isNotEmpty && _phoneCtrl.text.trim().isNotEmpty;
 
   bool get _step2Valid =>
       _passCtrl.text.isNotEmpty &&
@@ -69,12 +72,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Future<void> _goNext() async {
     if (_step == 1) {
-      if (!_emailCtrl.text.contains('@')) {
-        setState(() => _emailError = 'Email không hợp lệ');
+      final phone = _phoneCtrl.text.trim();
+      if (!RegExp(r'^(0|\+84)\d{9,10}$').hasMatch(phone)) {
+        setState(() => _phoneError = 'Số điện thoại không hợp lệ');
         return;
       }
       setState(() {
-        _emailError = null;
+        _phoneError = null;
         _step = 2;
       });
       return;
@@ -89,28 +93,24 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     await ref
         .read(registerControllerProvider.notifier)
         .register(
-          email: _emailCtrl.text,
+          phone: _phoneCtrl.text.trim(),
           password: _passCtrl.text,
-          fullName: _nameCtrl.text,
+          fullName: _nameCtrl.text.trim(),
           role: _role.apiValue,
-          phone: _phoneCtrl.text.isEmpty ? null : _phoneCtrl.text,
+          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
         );
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen(registerControllerProvider, (_, state) {
+      if (!context.mounted) return;
       if (state is RegisterSuccess) {
-        AppToast.show(
-          context,
-          message: 'Đăng ký thành công! Vui lòng đăng nhập.',
-          type: AppToastType.success,
+        context.go(
+          AppRoutes.otp,
+          extra: OtpArgs(phone: state.phone, mode: OtpMode.register),
         );
-        Future.delayed(const Duration(milliseconds: 1200), () {
-          if (context.mounted) context.pop();
-        });
-      }
-      if (state is RegisterError) {
+      } else if (state is RegisterError) {
         AppToast.show(
           context,
           message: state.message,
@@ -126,11 +126,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Scaffold(
       body: Column(
         children: [
-          const AuthTopDeco(
+          AuthTopDeco(
             bgColor: AppColors.ink,
-            line1: 'Hiểu sâu hơn,',
-            italicWord: 'không chỉ',
-            line2Suffix: 'tìm đáp án',
+            line1: _role == AuthRole.tutor
+                ? 'Chia sẻ tri thức,'
+                : 'Hiểu sâu hơn,',
+            italicWord: _role == AuthRole.tutor ? 'truyền' : 'không chỉ',
+            line2Suffix: _role == AuthRole.tutor
+                ? 'cảm hứng học tập'
+                : 'tìm đáp án',
           ),
           Expanded(
             child: SafeArea(
@@ -159,7 +163,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 4),
                     Text(
                       _step == 1
-                          ? 'Bạn là học sinh hay gia sư?'
+                          ? 'Đăng ký với vai trò ${_role.label}.'
                           : 'Mật khẩu mạnh bảo vệ tài khoản của bạn.',
                       style: GoogleFonts.inter(
                         fontSize: 13,
@@ -169,25 +173,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     const SizedBox(height: 22),
 
                     if (_step == 1) ...[
-                      RoleTab(
-                        active: _role,
-                        onChanged: (r) => setState(() => _role = r),
-                      ),
-                      if (_role == AuthRole.parent) ...[
-                        const SizedBox(height: 14),
-                        _ParentRegisterBanner(
-                          onTap: () => context.push(AppRoutes.registerParent),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
                       _Step1Fields(
                         nameCtrl: _nameCtrl,
                         emailCtrl: _emailCtrl,
                         phoneCtrl: _phoneCtrl,
                         emailError: _emailError,
+                        phoneError: _phoneError,
                         enabled: !isLoading,
                         onEmailChanged: (_) =>
                             setState(() => _emailError = null),
+                        onPhoneChanged: (_) =>
+                            setState(() => _phoneError = null),
                       ),
                     ] else ...[
                       _Step2Fields(
@@ -240,36 +236,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             )
                           : Text(_step == 1 ? 'Tiếp theo →' : 'Tạo tài khoản'),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    Center(
-                      child: Text.rich(
-                        TextSpan(
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.ink3,
-                          ),
-                          children: [
-                            const TextSpan(text: 'Đã có tài khoản? '),
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: GestureDetector(
-                                onTap: () => context.pop(),
-                                child: Text(
-                                  'Đăng nhập',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.oxblood,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -280,8 +246,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 }
-
-// ── Step header (back button + progress dots) ──────────────────────────────
 
 class _StepHeader extends StatelessWidget {
   const _StepHeader({required this.step, required this.onBack});
@@ -331,8 +295,6 @@ class _StepHeader extends StatelessWidget {
   }
 }
 
-// ── Step 1 fields ──────────────────────────────────────────────────────────
-
 class _Step1Fields extends StatelessWidget {
   const _Step1Fields({
     required this.nameCtrl,
@@ -340,7 +302,9 @@ class _Step1Fields extends StatelessWidget {
     required this.phoneCtrl,
     required this.enabled,
     this.emailError,
+    this.phoneError,
     this.onEmailChanged,
+    this.onPhoneChanged,
   });
 
   final TextEditingController nameCtrl;
@@ -348,7 +312,9 @@ class _Step1Fields extends StatelessWidget {
   final TextEditingController phoneCtrl;
   final bool enabled;
   final String? emailError;
+  final String? phoneError;
   final ValueChanged<String>? onEmailChanged;
+  final ValueChanged<String>? onPhoneChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -363,30 +329,30 @@ class _Step1Fields extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         AuthInput(
-          label: 'Email',
-          controller: emailCtrl,
-          keyboardType: TextInputType.emailAddress,
+          label: 'Số điện thoại',
+          controller: phoneCtrl,
+          keyboardType: TextInputType.phone,
           textInputAction: TextInputAction.next,
-          hint: 'ten@email.com',
-          errorText: emailError,
-          onChanged: onEmailChanged,
+          hint: '09x xxx xxxx',
+          errorText: phoneError,
+          onChanged: onPhoneChanged,
           enabled: enabled,
         ),
         const SizedBox(height: 14),
         AuthInput(
-          label: 'Số điện thoại (tuỳ chọn)',
-          controller: phoneCtrl,
-          keyboardType: TextInputType.phone,
+          label: 'Email (tuỳ chọn)',
+          controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.done,
-          hint: '09x xxx xxxx',
+          hint: 'ten@email.com',
+          errorText: emailError,
+          onChanged: onEmailChanged,
           enabled: enabled,
         ),
       ],
     );
   }
 }
-
-// ── Step 2 fields ──────────────────────────────────────────────────────────
 
 class _Step2Fields extends StatelessWidget {
   const _Step2Fields({
@@ -536,54 +502,6 @@ class _Step2Fields extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Banner gợi ý dùng form đăng ký riêng cho Phụ huynh ──────────────────────
-
-class _ParentRegisterBanner extends StatelessWidget {
-  const _ParentRegisterBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.cream2,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.info_outline_rounded,
-              size: 18,
-              color: AppColors.ink3,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Phụ huynh vui lòng dùng form đăng ký riêng (yêu cầu số điện thoại và email).',
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Chuyển →',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.oxblood,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

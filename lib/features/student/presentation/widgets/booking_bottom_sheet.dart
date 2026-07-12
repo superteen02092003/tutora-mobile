@@ -60,6 +60,14 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
 
   String get _draftKey => 'booking_draft_${widget.tutorId}';
 
+  SubjectGradePriceDto? _resolveGradePrice(int subjectId) {
+    final prices = widget.profile.subjectGradePrices ?? [];
+    for (final p in prices) {
+      if (p.subjectId == subjectId) return p;
+    }
+    return null;
+  }
+
   Future<void> _saveDraft() async {
     if (_success) return;
     final prefs = await SharedPreferences.getInstance();
@@ -95,11 +103,15 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       final schedule = scheduleRaw
           .map((e) => ScheduleSlotDto.fromJson(e as Map<String, dynamic>))
           .toList();
+      final subjectId = map['subjectId'] as int;
+      final gradePrice = _resolveGradePrice(subjectId);
       setState(() {
         _step = (map['step'] as int).clamp(0, 2); // max step 2, not 3
         _form = BookingForm(
           studentId: map['studentId'] as String,
-          subjectId: map['subjectId'] as int,
+          subjectId: subjectId,
+          tutorSubjectGradePriceId: gradePrice?.id ?? 0,
+          selectedGradePrice: gradePrice,
           teachingMode: map['teachingMode'] as String,
           startDate: map['startDate'] as String,
           schedule: schedule,
@@ -217,12 +229,61 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
     AppToast.show(context, message: msg, type: AppToastType.error);
   }
 
+  List<FlexibleSlotDto> _buildFlexibleSlots() {
+    final slots = <FlexibleSlotDto>[];
+    final start = DateTime.tryParse(_form.startDate);
+    if (start == null) return slots;
+    final windowEnd = DateTime(start.year, start.month + 1, start.day);
+
+    for (final s in _form.schedule) {
+      final startParts = s.startTime.split(':');
+      final endParts = s.endTime.split(':');
+      if (startParts.length < 2 || endParts.length < 2) continue;
+      final sh = int.tryParse(startParts[0]) ?? 0;
+      final sm = int.tryParse(startParts[1]) ?? 0;
+      final eh = int.tryParse(endParts[0]) ?? 0;
+      final em = int.tryParse(endParts[1]) ?? 0;
+
+      // Walk each day in the window; emit a session when the weekday matches.
+      for (
+        var d = start;
+        !d.isAfter(windowEnd);
+        d = d.add(const Duration(days: 1))
+      ) {
+        // DateTime.weekday: Mon=1..Sun=7 → convert to 0=Sun..6=Sat.
+        final dow = d.weekday == DateTime.sunday ? 0 : d.weekday;
+        if (dow != s.dayOfWeek) continue;
+        final localStart = DateTime(d.year, d.month, d.day, sh, sm);
+        final localEnd = DateTime(d.year, d.month, d.day, eh, em);
+        slots.add(
+          FlexibleSlotDto(
+            scheduledStart: localStart.toUtc().toIso8601String(),
+            scheduledEnd: localEnd.toUtc().toIso8601String(),
+          ),
+        );
+      }
+    }
+    slots.sort((a, b) => a.scheduledStart.compareTo(b.scheduledStart));
+    return slots;
+  }
+
   Future<void> _submit() async {
+    // Guard the backend-required fields before sending a broken payload.
+    final packageId = widget.profile.flexiblePackageId;
+    if (_form.tutorSubjectGradePriceId == 0 || packageId == null) {
+      setState(
+        () => _error =
+            'Gia sư chưa cấu hình đủ giá/gói cho môn học này. Vui lòng chọn lại.',
+      );
+      return;
+    }
+
     setState(() {
       _submitting = true;
       _error = null;
     });
     try {
+      final flexibleSlots = _buildFlexibleSlots();
       final res = await ref
           .read(bookingDatasourceProvider)
           .createBooking(
@@ -230,9 +291,12 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
               studentId: _form.studentId,
               tutorId: widget.tutorId,
               subjectId: _form.subjectId,
-              teachingMode: _form.teachingMode,
+              tutorSubjectGradePriceId: _form.tutorSubjectGradePriceId,
+              packageId: packageId,
               startDate: _form.startDate,
-              schedule: _form.schedule,
+              teachingMode: _form.teachingMode,
+              totalSessions: flexibleSlots.length,
+              flexibleSlots: flexibleSlots,
               locationCity: _form.locationCity.isEmpty
                   ? null
                   : _form.locationCity,

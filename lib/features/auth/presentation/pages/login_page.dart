@@ -64,8 +64,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     ref.listen(loginControllerProvider, (_, state) {
-      if (state is LoginSuccess) unawaited(_navigateByRole());
-      if (state is LoginError) {
+      if (!context.mounted) return;
+      if (state is LoginSuccess) {
+        unawaited(_navigateByRole());
+      } else if (state is LoginRequiresOtp) {
+        context.go(
+          AppRoutes.otp,
+          extra: OtpArgs(phone: state.phone, mode: OtpMode.register),
+        );
+      } else if (state is LoginError) {
         AppToast.show(
           context,
           message: state.message,

@@ -2,37 +2,45 @@ import 'package:tutora/features/auth/domain/entities/auth_token.dart';
 
 class RegisterRequest {
   const RegisterRequest({
-    required this.email,
+    required this.phone,
     required this.password,
     required this.fullName,
     required this.role,
-    this.phone,
+    this.email,
   });
 
-  final String email;
+  final String phone;
   final String password;
   final String fullName;
   final String role;
-  final String? phone;
+  final String? email;
 
   Map<String, dynamic> toJson() => {
-    'email': email,
+    'phone': phone,
     'password': password,
     'fullName': fullName,
     'role': role,
-    if (phone != null && phone!.isNotEmpty) 'phone': phone,
+    if (email != null && email!.isNotEmpty) 'email': email,
   };
 }
 
 class RegisterResponse {
-  const RegisterResponse({required this.message});
+  const RegisterResponse({
+    required this.message,
+    required this.requiresPhoneVerification,
+  });
 
-  factory RegisterResponse.fromJson(Map<String, dynamic> json) =>
-      RegisterResponse(
-        message: (json['message'] as String?) ?? 'Đăng ký thành công',
-      );
+  factory RegisterResponse.fromJson(Map<String, dynamic> json) {
+    final content = json['content'] as Map<String, dynamic>? ?? {};
+    return RegisterResponse(
+      message: (json['message'] as String?) ?? 'Đăng ký thành công',
+      requiresPhoneVerification:
+          (content['requiresPhoneVerification'] as bool?) ?? true,
+    );
+  }
 
   final String message;
+  final bool requiresPhoneVerification;
 }
 
 class LoginRequest {
@@ -48,13 +56,62 @@ class LoginRequest {
 }
 
 class LoginResponse {
-  const LoginResponse({required this.token, required this.refreshToken});
+  const LoginResponse({
+    required this.token,
+    required this.refreshToken,
+    this.requiresPhoneVerification = false,
+    this.phone,
+  });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    final content = json['content'] as Map<String, dynamic>;
+    final content = json['content'] as Map<String, dynamic>? ?? {};
+    final requiresVerify =
+        (content['requiresPhoneVerification'] as bool?) ?? false;
+    if (requiresVerify) {
+      return LoginResponse(
+        token: '',
+        refreshToken: '',
+        requiresPhoneVerification: true,
+        phone: content['phone'] as String?,
+      );
+    }
     return LoginResponse(
-      token: content['token'] as String,
-      refreshToken: content['refreshToken'] as String,
+      token:
+          (content['accessToken'] as String?) ??
+          (content['token'] as String?) ??
+          '',
+      refreshToken: (content['refreshToken'] as String?) ?? '',
+    );
+  }
+
+  final String token;
+  final String refreshToken;
+  final bool requiresPhoneVerification;
+  final String? phone;
+
+  AuthToken toEntity() => AuthToken(token: token, refreshToken: refreshToken);
+}
+
+class VerifyPhoneRequest {
+  const VerifyPhoneRequest({required this.phone, required this.otp});
+
+  final String phone;
+  final String otp;
+
+  Map<String, dynamic> toJson() => {'phone': phone, 'otp': otp};
+}
+
+class VerifyPhoneResponse {
+  const VerifyPhoneResponse({required this.token, required this.refreshToken});
+
+  factory VerifyPhoneResponse.fromJson(Map<String, dynamic> json) {
+    final content = json['content'] as Map<String, dynamic>? ?? {};
+    return VerifyPhoneResponse(
+      token:
+          (content['accessToken'] as String?) ??
+          (content['token'] as String?) ??
+          '',
+      refreshToken: (content['refreshToken'] as String?) ?? '',
     );
   }
 
@@ -62,4 +119,38 @@ class LoginResponse {
   final String refreshToken;
 
   AuthToken toEntity() => AuthToken(token: token, refreshToken: refreshToken);
+}
+
+class ResendOtpRequest {
+  const ResendOtpRequest({required this.phone});
+
+  final String phone;
+
+  Map<String, dynamic> toJson() => {'phone': phone};
+}
+
+class ForgotPasswordRequest {
+  const ForgotPasswordRequest({required this.phone});
+
+  final String phone;
+
+  Map<String, dynamic> toJson() => {'phone': phone};
+}
+
+class ResetPasswordRequest {
+  const ResetPasswordRequest({
+    required this.phone,
+    required this.otp,
+    required this.newPassword,
+  });
+
+  final String phone;
+  final String otp;
+  final String newPassword;
+
+  Map<String, dynamic> toJson() => {
+    'phone': phone,
+    'otp': otp,
+    'newPassword': newPassword,
+  };
 }

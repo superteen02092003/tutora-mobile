@@ -66,6 +66,7 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -371,7 +372,12 @@ class _SessionListView extends StatelessWidget {
     }
     return ListView.separated(
       controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, AppSpacing.xxl),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        16 + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: lessons.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) => _SessionCard(lesson: lessons[i]),

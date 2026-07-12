@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutora/core/errors/failure.dart';
 import 'package:tutora/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:tutora/features/auth/domain/usecases/login_usecase.dart';
 
-// State
 sealed class LoginState {}
 
 final class LoginIdle extends LoginState {}
@@ -11,12 +11,17 @@ final class LoginLoading extends LoginState {}
 
 final class LoginSuccess extends LoginState {}
 
+// Phone chưa verify — cần navigate sang OTP
+final class LoginRequiresOtp extends LoginState {
+  LoginRequiresOtp(this.phone);
+  final String phone;
+}
+
 final class LoginError extends LoginState {
   LoginError(this.message);
   final String message;
 }
 
-// Controller
 class LoginController extends StateNotifier<LoginState> {
   LoginController(this._useCase) : super(LoginIdle());
 
@@ -28,8 +33,9 @@ class LoginController extends StateNotifier<LoginState> {
       emailOrPhone: emailOrPhone,
       password: password,
     );
-
-    if (result.failure != null) {
+    if (result.failure case final PhoneVerificationRequiredFailure f) {
+      state = LoginRequiresOtp(f.phone);
+    } else if (result.failure != null) {
       state = LoginError(result.failure!.message);
     } else {
       state = LoginSuccess();

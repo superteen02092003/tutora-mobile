@@ -1,12 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:tutora/features/auth/domain/usecases/forgot_password_usecase.dart';
+import 'package:tutora/features/auth/domain/usecases/reset_password_usecase.dart';
 
 sealed class ForgotState {}
 
 final class ForgotIdle extends ForgotState {}
 
 final class ForgotLoading extends ForgotState {}
+
+final class ForgotOtpSent extends ForgotState {
+  ForgotOtpSent(this.phone);
+  final String phone;
+}
 
 final class ForgotSuccess extends ForgotState {}
 
@@ -16,13 +22,33 @@ final class ForgotError extends ForgotState {
 }
 
 class ForgotController extends StateNotifier<ForgotState> {
-  ForgotController(this._useCase) : super(ForgotIdle());
+  ForgotController(this._forgotUseCase, this._resetUseCase)
+    : super(ForgotIdle());
 
-  final ForgotPasswordUseCase _useCase;
+  final ForgotPasswordUseCase _forgotUseCase;
+  final ResetPasswordUseCase _resetUseCase;
 
-  Future<void> send({required String email}) async {
+  Future<void> sendOtp({required String phone}) async {
     state = ForgotLoading();
-    final result = await _useCase(email: email);
+    final result = await _forgotUseCase(phone: phone);
+    if (result.failure != null) {
+      state = ForgotError(result.failure!.message);
+    } else {
+      state = ForgotOtpSent(phone);
+    }
+  }
+
+  Future<void> resetPassword({
+    required String phone,
+    required String otp,
+    required String newPassword,
+  }) async {
+    state = ForgotLoading();
+    final result = await _resetUseCase(
+      phone: phone,
+      otp: otp,
+      newPassword: newPassword,
+    );
     if (result.failure != null) {
       state = ForgotError(result.failure!.message);
     } else {
@@ -36,7 +62,9 @@ class ForgotController extends StateNotifier<ForgotState> {
 final AutoDisposeStateNotifierProvider<ForgotController, ForgotState>
 forgotControllerProvider =
     StateNotifierProvider.autoDispose<ForgotController, ForgotState>((ref) {
+      final repo = ref.read(authRepositoryProvider);
       return ForgotController(
-        ForgotPasswordUseCase(ref.read(authRepositoryProvider)),
+        ForgotPasswordUseCase(repo),
+        ResetPasswordUseCase(repo),
       );
     });
