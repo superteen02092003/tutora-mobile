@@ -815,9 +815,9 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
           const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(
-              onTap: _busy ? null : _joinRoom,
+              onTap: (_busy || !lesson.canJoinNow) ? null : _joinRoom,
               child: Opacity(
-                opacity: _busy ? 0.5 : 1.0,
+                opacity: (_busy || !lesson.canJoinNow) ? 0.5 : 1.0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
@@ -825,7 +825,7 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
-                    _busy ? 'Đang vào…' : 'Vào phòng học',
+                    _joinLabel,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13,
@@ -840,6 +840,15 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
         ],
       ),
     );
+  }
+
+  String get _joinLabel {
+    if (_busy) return 'Đang vào…';
+    if (lesson.canJoinNow) return 'Vào phòng học';
+    final mins = lesson.minutesUntilOpen;
+    if (mins <= 0) return 'Buổi học đã kết thúc';
+    if (mins >= 60) return 'Mở trước giờ học 15 phút';
+    return 'Mở sau $mins phút nữa';
   }
 
   Future<void> _joinRoom() async {
