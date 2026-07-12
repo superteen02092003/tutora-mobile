@@ -50,6 +50,19 @@ class StudentLessonDto {
         startDt.day == now.day;
   }
 
+  bool get canJoinNow {
+    final now = DateTime.now();
+    final opensAt = startDt.subtract(const Duration(minutes: 15));
+    final closesAt = endDt.add(const Duration(hours: 4));
+    return now.isAfter(opensAt) && now.isBefore(closesAt);
+  }
+
+  int get minutesUntilOpen {
+    final opensAt = startDt.subtract(const Duration(minutes: 15));
+    final diff = opensAt.difference(DateTime.now());
+    return diff.isNegative ? 0 : diff.inMinutes + 1;
+  }
+
   LessonStatusType get statusType => switch (status.toLowerCase()) {
     'scheduled' => LessonStatusType.scheduled,
     'pending_confirmation' => LessonStatusType.pending,

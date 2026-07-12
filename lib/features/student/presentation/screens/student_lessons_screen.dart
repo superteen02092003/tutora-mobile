@@ -52,16 +52,19 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
   Widget build(BuildContext context) {
     final state = ref.watch(lessonListProvider);
     final todayLessons = state.items.where((l) => l.isToday).toList();
-    final upcomingLessons = state.items
-        .where(
-          (l) =>
-              l.statusType != LessonStatusType.done &&
-              l.statusType != LessonStatusType.cancelled,
-        )
-        .toList();
-    final doneLessons = state.items
-        .where((l) => l.statusType == LessonStatusType.done)
-        .toList();
+    final upcomingLessons =
+        state.items
+            .where(
+              (l) =>
+                  l.statusType != LessonStatusType.done &&
+                  l.statusType != LessonStatusType.cancelled,
+            )
+            .toList()
+          ..sort((a, b) => a.startDt.compareTo(b.startDt));
+    // Done: most recent first (descending).
+    final doneLessons =
+        state.items.where((l) => l.statusType == LessonStatusType.done).toList()
+          ..sort((a, b) => b.startDt.compareTo(a.startDt));
 
     return Scaffold(
       backgroundColor: AppColors.cream,
