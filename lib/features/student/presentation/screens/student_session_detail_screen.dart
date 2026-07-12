@@ -6,8 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/student/data/datasources/class_session_datasource.dart';
 import 'package:tutora/features/student/data/models/lesson_models.dart';
 import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
+import 'package:tutora/features/student/presentation/screens/agora_call_screen.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
 
@@ -92,7 +94,7 @@ class StudentSessionDetailPage extends ConsumerWidget {
   }
 }
 
-// ── Main scaffold ──────────────────────────────────────────────────────────
+// Main scaffold
 
 class _DetailScaffold extends StatelessWidget {
   const _DetailScaffold({required this.lesson});
@@ -736,15 +738,58 @@ class _DoneActions extends StatelessWidget {
 }
 
 // Active actions
-class _ActiveActions extends StatelessWidget {
+class _ActiveActions extends ConsumerStatefulWidget {
   const _ActiveActions({required this.lesson, required this.bottomInset});
   final StudentLessonDetailDto lesson;
   final double bottomInset;
 
   @override
+  ConsumerState<_ActiveActions> createState() => _ActiveActionsState();
+}
+
+class _ActiveActionsState extends ConsumerState<_ActiveActions> {
+  bool _busy = false;
+
+  StudentLessonDetailDto get lesson => widget.lesson;
+
+  bool get _awaitingConfirm => lesson.statusType == LessonStatusType.pending;
+
+  @override
   Widget build(BuildContext context) {
+    // When the tutor has submitted the report the session sits in
+    // pending_confirmation — the student's action is to confirm, not to join.
+    if (_awaitingConfirm) {
+      return Container(
+        padding: EdgeInsets.fromLTRB(16, 10, 16, widget.bottomInset + 12),
+        color: AppColors.cream,
+        child: GestureDetector(
+          onTap: _busy ? null : _confirmLesson,
+          child: Opacity(
+            opacity: _busy ? 0.5 : 1,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.moss,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                _busy ? 'Đang xác nhận…' : 'Xác nhận đã học xong',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, bottomInset + 12),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, widget.bottomInset + 12),
       color: AppColors.cream,
       child: Row(
         children: [
@@ -770,9 +815,9 @@ class _ActiveActions extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(
-              onTap: lesson.meetingLink != null ? () {} : null,
+              onTap: _busy ? null : _joinRoom,
               child: Opacity(
-                opacity: lesson.meetingLink != null ? 1.0 : 0.5,
+                opacity: _busy ? 0.5 : 1.0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
@@ -780,7 +825,7 @@ class _ActiveActions extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
-                    'Vào phòng học',
+                    _busy ? 'Đang vào…' : 'Vào phòng học',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 13,
@@ -795,6 +840,56 @@ class _ActiveActions extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _joinRoom() async {
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      final ds = ref.read(classSessionDatasourceProvider);
+      final room = await ds.getAgoraRoom(lesson.lessonId);
+      if (!room.isValid) {
+        throw Exception('Phòng học chưa sẵn sàng, vui lòng thử lại.');
+      }
+      if (!mounted) return;
+      await navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => AgoraCallScreen(
+            room: room,
+            tutorName: lesson.tutorName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _confirmLesson() async {
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final ds = ref.read(classSessionDatasourceProvider);
+      await ds.confirmClassSession(lesson.lessonId);
+      if (!mounted) return;
+      ref.invalidate(lessonDetailProvider(lesson.lessonId));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Đã xác nhận buổi học. Cảm ơn bạn!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   void _showCancelSheet(BuildContext context) {
