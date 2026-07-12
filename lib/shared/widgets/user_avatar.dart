@@ -9,11 +9,14 @@ class UserAvatar extends StatelessWidget {
     super.key,
     this.size = 36,
     this.imageUrl,
+    this.square = false,
   });
 
   final String name;
   final double size;
   final String? imageUrl;
+
+  final bool square;
 
   static const _palette = [
     Color(0xFFE8DCC4),
@@ -38,8 +41,10 @@ class UserAvatar extends StatelessWidget {
   bool get _isSvg {
     final url = imageUrl;
     if (url == null) return false;
-    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
-    return path.endsWith('.svg');
+    final lower = url.toLowerCase();
+    return lower.contains('.svg') ||
+        lower.contains('/svg') ||
+        lower.contains('dicebear');
   }
 
   @override
@@ -50,7 +55,10 @@ class UserAvatar extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: _bg),
+      decoration: BoxDecoration(
+        shape: square ? BoxShape.rectangle : BoxShape.circle,
+        color: _bg,
+      ),
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
       child: hasImage ? _buildImage(url) : _fallback(),

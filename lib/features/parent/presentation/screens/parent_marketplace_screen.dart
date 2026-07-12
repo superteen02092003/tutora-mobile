@@ -13,6 +13,7 @@ import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/marketplace_controller.dart';
+import 'package:tutora/shared/data/lookup_datasource.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
@@ -58,7 +59,28 @@ class _ParentMarketplacePageState extends ConsumerState<ParentMarketplacePage>
     unawaited(ref.read(marketplaceControllerProvider.notifier).search(term));
   }
 
-  Future<void> _openFilter(MarketplaceLoaded current) async {
+  List<FilterOption> _subjectOptions() => ref
+      .watch(subjectsProvider)
+      .maybeWhen(
+        data: (list) => list
+            .map((s) => (key: s.subjectId.toString(), label: s.subjectName))
+            .toList(),
+        orElse: () => const <FilterOption>[],
+      );
+
+  List<FilterOption> _gradeOptions() => ref
+      .watch(gradeLevelsProvider)
+      .maybeWhen(
+        data: (list) =>
+            list.map((g) => (key: g.gradeName, label: g.gradeName)).toList(),
+        orElse: () => const <FilterOption>[],
+      );
+
+  Future<void> _openFilter(
+    MarketplaceLoaded current,
+    List<FilterOption> subjectOptions,
+    List<FilterOption> gradeOptions,
+  ) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -66,12 +88,15 @@ class _ParentMarketplacePageState extends ConsumerState<ParentMarketplacePage>
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterSheet(
         current: current,
-        onApply: (mode, city, sort, rating, budget) {
+        subjectOptions: subjectOptions,
+        gradeOptions: gradeOptions,
+        onApply: (subjectId, grade, city, sort, rating, budget) {
           unawaited(
             ref
                 .read(marketplaceControllerProvider.notifier)
                 .applyFilter(
-                  teachingMode: mode,
+                  subjectId: subjectId,
+                  gradeLevel: grade,
                   city: city,
                   sortBy: sort,
                   minRating: rating,
@@ -86,6 +111,8 @@ class _ParentMarketplacePageState extends ConsumerState<ParentMarketplacePage>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(marketplaceControllerProvider);
+    final subjectOpts = _subjectOptions();
+    final gradeOpts = _gradeOptions();
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -98,18 +125,23 @@ class _ParentMarketplacePageState extends ConsumerState<ParentMarketplacePage>
               onSearch: _onSearch,
               activeFilter: state is MarketplaceLoaded && state.hasActiveFilter,
               onFilterTap: state is MarketplaceLoaded
-                  ? () => _openFilter(state)
+                  ? () => _openFilter(state, subjectOpts, gradeOpts)
                   : null,
             ),
             if (state is MarketplaceLoaded && state.hasActiveFilter)
               _ActiveFilterChips(
                 state: state,
+                subjectOptions: subjectOpts,
+                gradeOptions: gradeOpts,
                 onClearAll: () => ref
                     .read(marketplaceControllerProvider.notifier)
                     .clearFilters(),
-                onRemoveMode: () => ref
+                onRemoveSubject: () => ref
                     .read(marketplaceControllerProvider.notifier)
-                    .applyFilter(teachingMode: null),
+                    .applyFilter(subjectId: null),
+                onRemoveGrade: () => ref
+                    .read(marketplaceControllerProvider.notifier)
+                    .applyFilter(gradeLevel: null),
                 onRemoveCity: () => ref
                     .read(marketplaceControllerProvider.notifier)
                     .applyFilter(city: null),
@@ -299,16 +331,22 @@ class _TopBar extends StatelessWidget {
 class _ActiveFilterChips extends StatelessWidget {
   const _ActiveFilterChips({
     required this.state,
+    required this.subjectOptions,
+    required this.gradeOptions,
     required this.onClearAll,
-    required this.onRemoveMode,
+    required this.onRemoveSubject,
+    required this.onRemoveGrade,
     required this.onRemoveCity,
     required this.onRemoveSort,
     required this.onRemoveRating,
     required this.onRemoveBudget,
   });
   final MarketplaceLoaded state;
+  final List<FilterOption> subjectOptions;
+  final List<FilterOption> gradeOptions;
   final VoidCallback onClearAll;
-  final VoidCallback onRemoveMode;
+  final VoidCallback onRemoveSubject;
+  final VoidCallback onRemoveGrade;
   final VoidCallback onRemoveCity;
   final VoidCallback onRemoveSort;
   final VoidCallback onRemoveRating;
@@ -321,10 +359,18 @@ class _ActiveFilterChips extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
         children: [
-          if (state.selectedMode != null)
+          if (state.selectedSubjectId != null)
             _Chip(
-              label: filterLabel(teachingModeOptions, state.selectedMode),
-              onRemove: onRemoveMode,
+              label: filterLabel(
+                subjectOptions,
+                state.selectedSubjectId.toString(),
+              ),
+              onRemove: onRemoveSubject,
+            ),
+          if (state.selectedGrade != null)
+            _Chip(
+              label: filterLabel(gradeOptions, state.selectedGrade),
+              onRemove: onRemoveGrade,
             ),
           if (state.selectedBudget != null)
             _Chip(
@@ -405,10 +451,18 @@ class _Chip extends StatelessWidget {
 }
 
 class _FilterSheet extends StatefulWidget {
-  const _FilterSheet({required this.current, required this.onApply});
+  const _FilterSheet({
+    required this.current,
+    required this.subjectOptions,
+    required this.gradeOptions,
+    required this.onApply,
+  });
   final MarketplaceLoaded current;
+  final List<FilterOption> subjectOptions;
+  final List<FilterOption> gradeOptions;
   final void Function(
-    String? mode,
+    int? subjectId,
+    String? grade,
     String? city,
     String? sort,
     double? rating,
@@ -421,7 +475,8 @@ class _FilterSheet extends StatefulWidget {
 }
 
 class _FilterSheetState extends State<_FilterSheet> {
-  String? _mode;
+  int? _subjectId;
+  String? _grade;
   String? _city;
   String? _sort;
   double? _rating;
@@ -430,7 +485,8 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   void initState() {
     super.initState();
-    _mode = widget.current.selectedMode;
+    _subjectId = widget.current.selectedSubjectId;
+    _grade = widget.current.selectedGrade;
     _city = widget.current.selectedCity;
     _sort = widget.current.selectedSortBy;
     _rating = widget.current.minRating;
@@ -475,7 +531,8 @@ class _FilterSheetState extends State<_FilterSheet> {
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _mode = null;
+                    _subjectId = null;
+                    _grade = null;
                     _city = null;
                     _sort = null;
                     _rating = null;
@@ -490,19 +547,36 @@ class _FilterSheetState extends State<_FilterSheet> {
             ],
           ),
           const SizedBox(height: 20),
-          const _FilterLabel('Hình thức học'),
+          const _FilterLabel('Môn học'),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: teachingModeOptions.map((m) {
-              final sel = _mode == m.key;
+            children: widget.subjectOptions.map((s) {
+              final sel = _subjectId == int.parse(s.key);
               return GestureDetector(
-                onTap: () => setState(() => _mode = sel ? null : m.key),
-                child: _FilterOption(label: m.label, selected: sel),
+                onTap: () => setState(
+                  () => _subjectId = sel ? null : int.parse(s.key),
+                ),
+                child: _FilterOption(label: s.label, selected: sel),
               );
             }).toList(),
           ),
+          const SizedBox(height: 16),
+          const _FilterLabel('Cấp học'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: widget.gradeOptions.map((g) {
+              final sel = _grade == g.key;
+              return GestureDetector(
+                onTap: () => setState(() => _grade = sel ? null : g.key),
+                child: _FilterOption(label: g.label, selected: sel),
+              );
+            }).toList(),
+          ),
+          // Teaching-mode filter temporarily disabled — kept for future use.
           const SizedBox(height: 16),
           const _FilterLabel('Ngân sách'),
           const SizedBox(height: 8),
@@ -566,7 +640,14 @@ class _FilterSheetState extends State<_FilterSheet> {
           GestureDetector(
             onTap: () {
               Navigator.pop(context);
-              widget.onApply(_mode, _city, _sort, _rating, _budget);
+              widget.onApply(
+                _subjectId,
+                _grade,
+                _city,
+                _sort,
+                _rating,
+                _budget,
+              );
             },
             child: Container(
               width: double.infinity,

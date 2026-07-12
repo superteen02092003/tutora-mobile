@@ -12,7 +12,8 @@ class TutorSearchDatasource {
     String? searchTerm,
     String? category,
     String? gradeLevel,
-    String? teachingMode,
+    List<int>? subjectIds,
+    // String? teachingMode, // disabled in UI, kept for future use
     String? teachingAreaCity,
     String? budgetRange,
     double? minHourlyRate,
@@ -29,7 +30,9 @@ class TutorSearchDatasource {
         if (searchTerm?.isNotEmpty ?? false) 'searchTerm': searchTerm,
         if (category?.isNotEmpty ?? false) 'category': category,
         if (gradeLevel?.isNotEmpty ?? false) 'gradeLevel': gradeLevel,
-        if (teachingMode?.isNotEmpty ?? false) 'teachingMode': teachingMode,
+        if (subjectIds != null && subjectIds.isNotEmpty)
+          'subjectIds': subjectIds.join(','),
+        // if (teachingMode?.isNotEmpty ?? false) 'teachingMode': teachingMode,
         if (teachingAreaCity?.isNotEmpty ?? false)
           'teachingAreaCity': teachingAreaCity,
         if (budgetRange?.isNotEmpty ?? false) 'budgetRange': budgetRange,
