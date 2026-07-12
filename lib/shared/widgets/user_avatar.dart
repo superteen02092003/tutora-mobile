@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 
@@ -34,29 +35,55 @@ class UserAvatar extends StatelessWidget {
     return _palette[idx];
   }
 
+  bool get _isSvg {
+    final url = imageUrl;
+    if (url == null) return false;
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    return path.endsWith('.svg');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final url = imageUrl;
+    final hasImage = url != null && url.isNotEmpty;
+
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: _bg,
-        image: imageUrl != null
-            ? DecorationImage(image: NetworkImage(imageUrl!), fit: BoxFit.cover)
-            : null,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: _bg),
+      clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
-      child: imageUrl == null
-          ? Text(
-              _initials,
-              style: GoogleFonts.bricolageGrotesque(
-                fontWeight: FontWeight.w700,
-                fontSize: size * 0.36,
-                color: AppColors.ink,
-              ),
-            )
-          : null,
+      child: hasImage ? _buildImage(url) : _fallback(),
+    );
+  }
+
+  Widget _buildImage(String url) {
+    if (_isSvg) {
+      return SvgPicture.network(
+        url,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        placeholderBuilder: (_) => _fallback(),
+      );
+    }
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stack) => _fallback(),
+    );
+  }
+
+  Widget _fallback() {
+    return Text(
+      _initials,
+      style: GoogleFonts.bricolageGrotesque(
+        fontWeight: FontWeight.w700,
+        fontSize: size * 0.36,
+        color: AppColors.ink,
+      ),
     );
   }
 }

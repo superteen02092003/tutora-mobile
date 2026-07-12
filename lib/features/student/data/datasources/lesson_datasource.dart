@@ -18,7 +18,7 @@ class LessonDatasource {
       if (status != null && status.isNotEmpty) 'status': status,
     };
     final response = await _dio.get<dynamic>(
-      '/student/lessons',
+      '/student/class-sessions',
       queryParameters: params,
     );
     return StudentLessonPagedResult.fromJson(
@@ -27,7 +27,9 @@ class LessonDatasource {
   }
 
   Future<StudentLessonDetailDto> getStudentLessonDetail(int lessonId) async {
-    final response = await _dio.get<dynamic>('/student/lessons/$lessonId');
+    final response = await _dio.get<dynamic>(
+      '/student/class-sessions/$lessonId',
+    );
     final data = response.data as Map<String, dynamic>;
     final content = data['content'] as Map<String, dynamic>? ?? data;
     return StudentLessonDetailDto.fromJson(content);
@@ -38,7 +40,7 @@ class LessonDatasource {
     required String endDate,
   }) async {
     final response = await _dio.get<dynamic>(
-      '/student/lessons/calendar',
+      '/student/class-sessions/calendar',
       queryParameters: {'startDate': startDate, 'endDate': endDate},
     );
     final data = response.data as Map<String, dynamic>;
@@ -48,7 +50,7 @@ class LessonDatasource {
       final lessons = <StudentLessonDto>[];
       for (final day in rawContent) {
         final dayMap = day as Map<String, dynamic>;
-        final dayLessons = dayMap['lessons'] as List<dynamic>? ?? [];
+        final dayLessons = dayMap['classSessions'] as List<dynamic>? ?? [];
         lessons.addAll(
           dayLessons.map(
             (e) => StudentLessonDto.fromJson(e as Map<String, dynamic>),

@@ -28,6 +28,7 @@ class TutorSearchResult {
   });
 
   factory TutorSearchResult.fromJson(Map<String, dynamic> json) {
+    final rawRate = json['minPricePerHour'] ?? json['hourlyRate'];
     return TutorSearchResult(
       tutorId: json['tutorId'] as String,
       fullName: json['fullName'] as String?,
@@ -42,7 +43,7 @@ class TutorSearchResult {
       subjects: (json['subjects'] as List<dynamic>?)
           ?.map((e) => TutorSubjectInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
-      hourlyRate: (json['hourlyRate'] as num?)?.toDouble(),
+      hourlyRate: (rawRate as num?)?.toDouble(),
       trialLessonPrice: (json['trialLessonPrice'] as num?)?.toDouble(),
       allowPriceNegotiation: json['allowPriceNegotiation'] as bool?,
       teachingAreaCity: json['teachingAreaCity'] as String?,

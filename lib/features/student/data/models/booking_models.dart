@@ -22,14 +22,33 @@ class ScheduleSlotDto {
   };
 }
 
+/// One concrete dated session for a flexible booking, sent as absolute
+class FlexibleSlotDto {
+  const FlexibleSlotDto({
+    required this.scheduledStart,
+    required this.scheduledEnd,
+  });
+
+  final String scheduledStart;
+  final String scheduledEnd;
+
+  Map<String, dynamic> toJson() => {
+    'scheduledStart': scheduledStart,
+    'scheduledEnd': scheduledEnd,
+  };
+}
+
 class CreateBookingRequest {
   const CreateBookingRequest({
     required this.studentId,
     required this.tutorId,
     required this.subjectId,
-    required this.teachingMode,
+    required this.tutorSubjectGradePriceId,
+    required this.packageId,
     required this.startDate,
-    required this.schedule,
+    this.teachingMode = 'online',
+    this.totalSessions,
+    this.flexibleSlots,
     this.locationCity,
     this.locationDistrict,
     this.locationWard,
@@ -40,9 +59,15 @@ class CreateBookingRequest {
   final String studentId;
   final String tutorId;
   final int subjectId;
-  final String teachingMode;
+  final int tutorSubjectGradePriceId;
+
+  final int packageId;
   final String startDate;
-  final List<ScheduleSlotDto> schedule;
+  final String teachingMode;
+  final int? totalSessions;
+
+  /// Concrete dated sessions (flexible mode only).
+  final List<FlexibleSlotDto>? flexibleSlots;
   final String? locationCity;
   final String? locationDistrict;
   final String? locationWard;
@@ -51,13 +76,17 @@ class CreateBookingRequest {
 
   Map<String, dynamic> toJson() {
     final m = <String, dynamic>{
-      'studentId': studentId,
       'tutorId': tutorId,
-      'subjectId': subjectId,
-      'teachingMode': teachingMode,
+      'tutorSubjectGradePriceId': tutorSubjectGradePriceId,
+      'packageId': packageId,
       'startDate': startDate,
-      'schedule': schedule.map((s) => s.toJson()).toList(),
     };
+    if (studentId.isNotEmpty) m['studentId'] = studentId;
+    if (subjectId != 0) m['subjectId'] = subjectId;
+    if (totalSessions != null) m['totalSessions'] = totalSessions;
+    if (flexibleSlots != null && flexibleSlots!.isNotEmpty) {
+      m['flexibleSlots'] = flexibleSlots!.map((s) => s.toJson()).toList();
+    }
     if (locationCity?.isNotEmpty ?? false) m['locationCity'] = locationCity;
     if (locationDistrict?.isNotEmpty ?? false) {
       m['locationDistrict'] = locationDistrict;
@@ -111,6 +140,8 @@ class BookingDetailDto {
     this.escrowStatus,
     this.refundAmount,
     this.refundStatus,
+    this.cancellationReason,
+    this.cancelledBy,
     this.schedule = const [],
   });
 
@@ -133,7 +164,7 @@ class BookingDetailDto {
       tutorAvatarUrl: tutor?['avatarUrl'] as String?,
       tutorHourlyRate: (tutor?['hourlyRate'] as num?)?.toDouble(),
       subjectName: subject?['subjectName'] as String?,
-      packageType: j['packageType'] as String?,
+      packageType: (j['packageType'] as num?)?.toInt(),
       startDate: j['startDate'] as String?,
       paymentDueAt: j['paymentDueAt'] as String?,
       depositAmount: (j['depositAmount'] as num?)?.toDouble(),
@@ -142,6 +173,8 @@ class BookingDetailDto {
       escrowStatus: j['escrowStatus'] as String?,
       refundAmount: (j['refundAmount'] as num?)?.toDouble(),
       refundStatus: j['refundStatus'] as String?,
+      cancellationReason: j['cancellationReason'] as String?,
+      cancelledBy: j['cancelledBy'] as String?,
       schedule: rawSchedule
           .map((e) => ScheduleSlotDto.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -162,7 +195,7 @@ class BookingDetailDto {
   final String? tutorAvatarUrl;
   final double? tutorHourlyRate;
   final String? subjectName;
-  final String? packageType;
+  final int? packageType;
   final String? startDate;
   final String? paymentDueAt;
   final double? depositAmount;
@@ -171,6 +204,8 @@ class BookingDetailDto {
   final String? escrowStatus;
   final double? refundAmount;
   final String? refundStatus;
+  final String? cancellationReason;
+  final String? cancelledBy;
   final List<ScheduleSlotDto> schedule;
 
   DateTime get createdAtDt =>
@@ -178,16 +213,28 @@ class BookingDetailDto {
 
   BookingStatusType get statusType => switch (status.toLowerCase()) {
     'pending_tutor' => BookingStatusType.pendingTutor,
-    'accepted' => BookingStatusType.accepted,
-    'active' => BookingStatusType.active,
-    'completed' => BookingStatusType.completed,
-    'cancelled' => BookingStatusType.cancelled,
+    'accepted' ||
+    'pending_payment' ||
+    'deposit_paid' => BookingStatusType.accepted,
+    'paid' ||
+    'ongoing' ||
+    'active' ||
+    'pending_remaining_payment' => BookingStatusType.active,
+    'completed' || 'closed' => BookingStatusType.completed,
+    'cancelled' ||
+    'cancelled_noshow' ||
+    'refunded' => BookingStatusType.cancelled,
     'payment_timeout' => BookingStatusType.paymentTimeout,
     _ => BookingStatusType.pendingTutor,
   };
 
-  bool get canCancel =>
-      status == 'pending_tutor' || status == 'accepted' || status == 'active';
+  bool get canCancel => const {
+    'pending_tutor',
+    'accepted',
+    'pending_payment',
+    'deposit_paid',
+    'active',
+  }.contains(status);
 }
 
 // Booking list
@@ -248,10 +295,17 @@ class StudentBookingDto {
 
   BookingStatusType get statusType => switch (status.toLowerCase()) {
     'pending_tutor' => BookingStatusType.pendingTutor,
-    'accepted' => BookingStatusType.accepted,
-    'active' => BookingStatusType.active,
-    'completed' => BookingStatusType.completed,
-    'cancelled' => BookingStatusType.cancelled,
+    'accepted' ||
+    'pending_payment' ||
+    'deposit_paid' => BookingStatusType.accepted,
+    'paid' ||
+    'ongoing' ||
+    'active' ||
+    'pending_remaining_payment' => BookingStatusType.active,
+    'completed' || 'closed' => BookingStatusType.completed,
+    'cancelled' ||
+    'cancelled_noshow' ||
+    'refunded' => BookingStatusType.cancelled,
     'payment_timeout' => BookingStatusType.paymentTimeout,
     _ => BookingStatusType.pendingTutor,
   };
