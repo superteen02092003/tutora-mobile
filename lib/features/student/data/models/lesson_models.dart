@@ -13,16 +13,14 @@ class StudentLessonDto {
   });
 
   factory StudentLessonDto.fromJson(Map<String, dynamic> j) {
-    final tutor = j['tutor'] as Map<String, dynamic>?;
-    final subject = j['subject'] as Map<String, dynamic>?;
     return StudentLessonDto(
-      lessonId: j['lessonId'] as int,
+      lessonId: (j['classSessionId'] ?? j['lessonId']) as int,
       scheduledStart: j['scheduledStart'] as String,
       scheduledEnd: j['scheduledEnd'] as String,
       status: j['status'] as String? ?? '',
-      tutorName: tutor?['fullName'] as String?,
-      subjectName: subject?['subjectName'] as String?,
-      lessonPrice: (j['lessonPrice'] as num?)?.toDouble(),
+      tutorName: j['tutorName'] as String?,
+      subjectName: j['subjectName'] as String?,
+      lessonPrice: (j['classSessionPrice'] as num?)?.toDouble(),
       meetingLink: j['meetingLink'] as String?,
     );
   }
@@ -81,22 +79,21 @@ class StudentLessonDetailDto extends StudentLessonDto {
   });
 
   factory StudentLessonDetailDto.fromJson(Map<String, dynamic> j) {
-    final tutor = j['tutor'] as Map<String, dynamic>?;
-    final subject = j['subject'] as Map<String, dynamic>?;
     final reportRaw = j['report'] as Map<String, dynamic>?;
     return StudentLessonDetailDto(
-      lessonId: j['lessonId'] as int,
+      lessonId: (j['classSessionId'] ?? j['lessonId']) as int,
       scheduledStart: j['scheduledStart'] as String,
       scheduledEnd: j['scheduledEnd'] as String,
       status: j['status'] as String? ?? '',
-      tutorName: tutor?['fullName'] as String?,
-      tutorAvatarUrl: tutor?['avatarUrl'] as String?,
-      subjectName: subject?['subjectName'] as String?,
-      lessonPrice: (j['lessonPrice'] as num?)?.toDouble(),
+      tutorName: j['tutorName'] as String?,
+      tutorAvatarUrl: j['tutorAvatar'] as String?,
+      subjectName: j['subjectName'] as String?,
+      lessonPrice: (j['classSessionPrice'] as num?)?.toDouble(),
       meetingLink: j['meetingLink'] as String?,
-      lessonContent: j['lessonContent'] as String?,
-      homework: j['homework'] as String?,
-      tutorNotes: j['tutorNotes'] as String?,
+      lessonContent:
+          (reportRaw?['topicsCovered'] ?? j['lessonContent']) as String?,
+      homework: reportRaw?['homeworkAssigned'] as String?,
+      tutorNotes: reportRaw?['tutorNotes'] as String?,
       isTutorPresent: j['isTutorPresent'] as bool?,
       isStudentPresent: j['isStudentPresent'] as bool?,
       report: reportRaw != null ? LessonReportDto.fromJson(reportRaw) : null,
@@ -114,16 +111,17 @@ class StudentLessonDetailDto extends StudentLessonDto {
 
 class LessonReportDto {
   const LessonReportDto({
-    required this.reportId,
     required this.contentCovered,
+    this.reportId = 0,
     this.homeworkAssigned,
     this.studentPerformanceRating,
     this.createdAt,
   });
 
   factory LessonReportDto.fromJson(Map<String, dynamic> j) => LessonReportDto(
-    reportId: j['reportId'] as int,
-    contentCovered: j['contentCovered'] as String? ?? '',
+    reportId: j['reportId'] as int? ?? 0,
+    contentCovered:
+        (j['topicsCovered'] ?? j['contentCovered']) as String? ?? '',
     homeworkAssigned: j['homeworkAssigned'] as String?,
     studentPerformanceRating: (j['studentPerformanceRating'] as num?)?.toInt(),
     createdAt: j['createdAt'] as String?,

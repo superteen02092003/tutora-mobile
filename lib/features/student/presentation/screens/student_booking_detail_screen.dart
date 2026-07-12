@@ -8,8 +8,10 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/datasources/booking_datasource.dart';
+import 'package:tutora/features/student/data/datasources/payment_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/booking_detail_provider.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StudentBookingDetailScreen extends ConsumerWidget {
   const StudentBookingDetailScreen({required this.bookingId, super.key});
@@ -71,7 +73,7 @@ class StudentBookingDetailScreen extends ConsumerWidget {
   }
 }
 
-// ── Scaffold ──────────────────────────────────────────────────────────────────
+// Scaffold
 
 class _DetailScaffold extends StatelessWidget {
   const _DetailScaffold({required this.booking});
@@ -110,7 +112,6 @@ class _DetailScaffold extends StatelessWidget {
 }
 
 // Nav bar
-
 class _NavBar extends StatelessWidget {
   const _NavBar({required this.title});
   final String title;
@@ -157,7 +158,6 @@ class _NavBar extends StatelessWidget {
 }
 
 // Status banner
-
 class _StatusBanner extends StatelessWidget {
   const _StatusBanner({required this.booking});
   final BookingDetailDto booking;
@@ -175,7 +175,7 @@ class _StatusBanner extends StatelessWidget {
         const Color(0xFFDBEAFE),
         const Color(0xFF1E40AF),
         Icons.payments_outlined,
-        'Gia sư đã xác nhận · Chờ đặt cọc',
+        'Gia sư đã xác nhận · Chờ thanh toán buổi đầu',
       ),
       BookingStatusType.active => (
         const Color(0xFFD1FAE5),
@@ -203,6 +203,12 @@ class _StatusBanner extends StatelessWidget {
       ),
     };
 
+    final reason = booking.cancellationReason;
+    final showReason =
+        booking.statusType == BookingStatusType.cancelled &&
+        reason != null &&
+        reason.isNotEmpty;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -210,30 +216,50 @@ class _StatusBanner extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: fg),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: fg,
+          Row(
+            children: [
+              Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  text,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
               ),
-            ),
+              if (booking.paymentDueAt != null &&
+                  booking.statusType == BookingStatusType.accepted)
+                Text(
+                  'Hạn: ${_fmtDate(booking.paymentDueAt!)}',
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 10.5,
+                    color: fg,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
           ),
-          if (booking.paymentDueAt != null &&
-              booking.statusType == BookingStatusType.accepted)
-            Text(
-              'Hạn: ${_fmtDate(booking.paymentDueAt!)}',
-              style: GoogleFonts.ibmPlexMono(
-                fontSize: 10.5,
-                color: fg,
-                fontWeight: FontWeight.w600,
+          if (showReason) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 26),
+              child: Text(
+                'Lý do: $reason'
+                '${booking.cancelledBy == 'system' ? ' (tự động)' : ''}',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: fg,
+                  height: 1.4,
+                ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -332,7 +358,6 @@ class _TutorCard extends StatelessWidget {
 }
 
 // Info card
-
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.booking});
   final BookingDetailDto booking;
@@ -397,7 +422,6 @@ class _InfoCard extends StatelessWidget {
 }
 
 // Schedule card
-
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({required this.booking});
   final BookingDetailDto booking;
@@ -518,17 +542,15 @@ class _PaymentCard extends StatelessWidget {
               const Divider(height: 1, color: AppColors.line),
               const SizedBox(height: 10),
               _PayRow(
-                label: '→ Đặt cọc (50%)',
+                label: '→ Phí buổi học đầu tiên',
                 value: _vnd(booking.depositAmount!),
-                sub:
-                    booking.depositAmount != null &&
-                        booking.statusType == BookingStatusType.active
+                sub: booking.statusType == BookingStatusType.active
                     ? 'Đã thanh toán'
                     : null,
               ),
               if (booking.remainingAmount != null)
                 _PayRow(
-                  label: '→ Còn lại (50%)',
+                  label: '→ Các buổi còn lại',
                   value: _vnd(booking.remainingAmount!),
                 ),
             ],
@@ -595,7 +617,6 @@ class _PayRow extends StatelessWidget {
 }
 
 // Timeline card
-
 class _TimelineCard extends StatelessWidget {
   const _TimelineCard({required this.booking});
   final BookingDetailDto booking;
@@ -628,7 +649,7 @@ class _TimelineCard extends StatelessWidget {
       ),
       _StepData(label: 'Chờ gia sư', state: _stepState(1, idx)),
       _StepData(label: 'Gia sư xác nhận', state: _stepState(2, idx)),
-      _StepData(label: 'Đặt cọc (50%)', state: _stepState(3, idx)),
+      _StepData(label: 'Thanh toán buổi đầu', state: _stepState(3, idx)),
       _StepData(label: 'Bắt đầu học', state: _stepState(4, idx)),
       _StepData(label: 'Hoàn thành', state: _stepState(5, idx)),
     ];
@@ -765,7 +786,7 @@ class _TimelineRow extends StatelessWidget {
 
 // Bottom actions
 
-class _BottomActions extends StatelessWidget {
+class _BottomActions extends ConsumerStatefulWidget {
   const _BottomActions({
     required this.booking,
     required this.bottomPad,
@@ -774,9 +795,18 @@ class _BottomActions extends StatelessWidget {
   final double bottomPad;
 
   @override
+  ConsumerState<_BottomActions> createState() => _BottomActionsState();
+}
+
+class _BottomActionsState extends ConsumerState<_BottomActions> {
+  bool _paying = false;
+
+  BookingDetailDto get booking => widget.booking;
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, bottomPad + 12),
+      padding: EdgeInsets.fromLTRB(16, 10, 16, widget.bottomPad + 12),
       decoration: const BoxDecoration(
         color: AppColors.paper,
         border: Border(top: BorderSide(color: AppColors.line)),
@@ -788,15 +818,15 @@ class _BottomActions extends StatelessWidget {
                   child: _OutlineBtn(
                     label: 'Hủy booking',
                     color: AppColors.oxblood,
-                    onTap: () => _showCancelSheet(context),
+                    onTap: _paying ? null : () => _showCancelSheet(context),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   flex: 2,
                   child: _PrimaryBtn(
-                    label: 'Thanh toán đặt cọc',
-                    onTap: () {},
+                    label: _paying ? 'Đang xử lý…' : 'Thanh toán buổi học đầu',
+                    onTap: _paying ? null : _startDepositPayment,
                   ),
                 ),
               ],
@@ -807,6 +837,58 @@ class _BottomActions extends StatelessWidget {
               onTap: () => _showCancelSheet(context),
             ),
     );
+  }
+
+  /// Fetch the PayOS checkout link for the deposit phase,
+  /// open it in the external browser,
+  /// then poll payment status when the user returns and
+  /// refresh the booking detail on success.
+  Future<void> _startDepositPayment() async {
+    setState(() => _paying = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final ds = ref.read(paymentDatasourceProvider);
+      final info = await ds.getPaymentInfo(booking.bookingId);
+
+      if (!info.hasCheckoutUrl) {
+        throw Exception('Không nhận được liên kết thanh toán từ máy chủ.');
+      }
+
+      final uri = Uri.parse(info.checkoutUrl);
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('Không mở được trang thanh toán.');
+      }
+
+      // User is on the PayOS page; when they come back, verify.
+      final status = await ds.getPaymentStatus(booking.bookingId);
+      if (!mounted) return;
+
+      if (status.depositSettled) {
+        ref.invalidate(bookingDetailProvider(booking.bookingId));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Thanh toán buổi học đầu thành công.')),
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Chưa ghi nhận thanh toán. Nếu bạn đã trả, vui lòng đợi giây lát rồi mở lại.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
   }
 
   void _showCancelSheet(BuildContext context) {
@@ -985,26 +1067,29 @@ class _InfoRow extends StatelessWidget {
 class _PrimaryBtn extends StatelessWidget {
   const _PrimaryBtn({required this.label, required this.onTap});
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: AppColors.cream,
+      child: Opacity(
+        opacity: onTap == null ? 0.5 : 1,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.ink,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.cream,
+            ),
           ),
         ),
       ),
@@ -1019,27 +1104,30 @@ class _OutlineBtn extends StatelessWidget {
     this.color = AppColors.ink,
   });
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: color,
+      child: Opacity(
+        opacity: onTap == null ? 0.5 : 1,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ),
       ),

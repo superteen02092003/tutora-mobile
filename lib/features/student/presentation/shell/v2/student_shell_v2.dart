@@ -92,9 +92,21 @@ class _StudentShellV2State extends State<StudentShellV2> {
         notifier: _scrollNotifier,
         child: Scaffold(
           extendBody: true,
-          body: HideOnScroll(
-            visible: _navVisible,
-            child: AuthListener(child: widget.navigationShell),
+          body: Builder(
+            builder: (context) {
+              final mq = MediaQuery.of(context);
+              return MediaQuery(
+                data: mq.copyWith(
+                  padding: mq.padding.copyWith(
+                    bottom: mq.padding.bottom + kFloatingNavHeight,
+                  ),
+                ),
+                child: HideOnScroll(
+                  visible: _navVisible,
+                  child: AuthListener(child: widget.navigationShell),
+                ),
+              );
+            },
           ),
           bottomNavigationBar: ValueListenableBuilder<bool>(
             valueListenable: _navVisible,

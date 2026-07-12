@@ -10,6 +10,7 @@ class TutorSearchResult {
     this.degreeLevel,
     this.averageRating,
     this.totalReviews,
+    this.totalClassSessions,
     this.yearsOfExperience,
     this.completedHours,
     this.subjects,
@@ -28,6 +29,7 @@ class TutorSearchResult {
   });
 
   factory TutorSearchResult.fromJson(Map<String, dynamic> json) {
+    final rawRate = json['minPricePerHour'] ?? json['hourlyRate'];
     return TutorSearchResult(
       tutorId: json['tutorId'] as String,
       fullName: json['fullName'] as String?,
@@ -37,12 +39,13 @@ class TutorSearchResult {
       degreeLevel: json['degreeLevel'] as String?,
       averageRating: (json['averageRating'] as num?)?.toDouble(),
       totalReviews: json['totalReviews'] as int?,
+      totalClassSessions: json['totalClassSessions'] as int?,
       yearsOfExperience: json['yearsOfExperience'] as int?,
       completedHours: (json['completedHours'] as num?)?.toDouble(),
       subjects: (json['subjects'] as List<dynamic>?)
           ?.map((e) => TutorSubjectInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
-      hourlyRate: (json['hourlyRate'] as num?)?.toDouble(),
+      hourlyRate: (rawRate as num?)?.toDouble(),
       trialLessonPrice: (json['trialLessonPrice'] as num?)?.toDouble(),
       allowPriceNegotiation: json['allowPriceNegotiation'] as bool?,
       teachingAreaCity: json['teachingAreaCity'] as String?,
@@ -65,6 +68,7 @@ class TutorSearchResult {
   final String? degreeLevel;
   final double? averageRating;
   final int? totalReviews;
+  final int? totalClassSessions;
   final int? yearsOfExperience;
   final double? completedHours;
   final List<TutorSubjectInfo>? subjects;
@@ -85,10 +89,13 @@ class TutorSearchResult {
 
   String get subjectSummary {
     if (subjects == null || subjects!.isEmpty) return '';
-    return subjects!
-        .map((s) => s.subjectName ?? '')
-        .where((s) => s.isNotEmpty)
-        .join(' · ');
+    final seen = <String>{};
+    final names = <String>[];
+    for (final s in subjects!) {
+      final name = s.subjectName ?? '';
+      if (name.isNotEmpty && seen.add(name)) names.add(name);
+    }
+    return names.join(' · ');
   }
 
   String get locationSummary {

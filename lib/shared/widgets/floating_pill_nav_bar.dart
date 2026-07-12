@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 
+const double kFloatingNavHeight = 64 + 16;
+
 class PillNavItem {
   const PillNavItem({
     required this.index,
@@ -68,85 +70,96 @@ class FloatingPillNavBar extends StatelessWidget {
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
       offset: visible ? Offset.zero : const Offset(0, 1.6),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad > 0 ? 8 : 16),
-          child: SizedBox(
-            height: _barHeight,
-            child: Row(
-              children: [
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(_barHeight / 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.14),
-                          blurRadius: 28,
-                          spreadRadius: -2,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(_barHeight / 2),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                        child: Container(
-                          height: _barHeight,
-                          decoration: BoxDecoration(
-                            // Vertical sheen: brighter at the top edge, like glass.
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.white.withValues(alpha: 0.88),
-                                AppColors.paper.withValues(alpha: 0.70),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              _barHeight / 2,
-                            ),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              width: 1.2,
-                            ),
-                          ),
-                          child: _PillContent(
-                            items: items,
-                            currentIndex: currentIndex,
-                            onTap: onTap,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: _gap),
-                // Separate floating round action button (far right).
-                _ActionButton(
-                  size: _actionSize,
-                  onTap: onActionTap,
-                  fill: actionChild == null
-                      ? (actionIsActive ? AppColors.oxblood : AppColors.ink)
-                      : null,
-                  child:
-                      actionChild ??
-                      Icon(
-                        actionIsActive
-                            ? (actionActiveIcon ?? actionIcon!)
-                            : actionIcon!,
-                        size: 24,
-                        color: actionIsActive
-                            ? const Color(0xFFFFF1E6)
-                            : AppColors.cream,
-                      ),
-                ),
-              ],
+      child: Stack(
+        children: [
+          // Solid background behind the pill so content scrolling underneath
+          // is covered by the app background instead of leaving a gap.
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: ColoredBox(color: AppColors.cream),
             ),
           ),
-        ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad > 0 ? 8 : 16),
+              child: SizedBox(
+                height: _barHeight,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(_barHeight / 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.14),
+                              blurRadius: 28,
+                              spreadRadius: -2,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(_barHeight / 2),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                            child: Container(
+                              height: _barHeight,
+                              decoration: BoxDecoration(
+                                // Vertical sheen: brighter at the top edge, like glass.
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.88),
+                                    AppColors.paper.withValues(alpha: 0.70),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  _barHeight / 2,
+                                ),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: _PillContent(
+                                items: items,
+                                currentIndex: currentIndex,
+                                onTap: onTap,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: _gap),
+                    // Separate floating round action button (far right).
+                    _ActionButton(
+                      size: _actionSize,
+                      onTap: onActionTap,
+                      fill: actionChild == null
+                          ? (actionIsActive ? AppColors.oxblood : AppColors.ink)
+                          : null,
+                      child:
+                          actionChild ??
+                          Icon(
+                            actionIsActive
+                                ? (actionActiveIcon ?? actionIcon!)
+                                : actionIcon!,
+                            size: 24,
+                            color: actionIsActive
+                                ? const Color(0xFFFFF1E6)
+                                : AppColors.cream,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -90,6 +90,28 @@ class SubjectGradePriceDto {
   final String currency;
 }
 
+/// A tutor booking package. packageType 1 = flexible; packageType 2 = fixed combo.
+class TutorPackageDto {
+  const TutorPackageDto({
+    required this.packageId,
+    required this.packageType,
+    this.name,
+    this.isActive = true,
+  });
+
+  factory TutorPackageDto.fromJson(Map<String, dynamic> j) => TutorPackageDto(
+    packageId: (j['packageId'] as num?)?.toInt() ?? 0,
+    packageType: (j['packageType'] as num?)?.toInt() ?? 0,
+    name: j['name'] as String?,
+    isActive: j['isActive'] as bool? ?? true,
+  );
+
+  final int packageId;
+  final int packageType;
+  final String? name;
+  final bool isActive;
+}
+
 class TutorDetailSubjectDto {
   const TutorDetailSubjectDto({
     this.subjectId,
@@ -195,10 +217,26 @@ class TutorFullProfileDto {
     this.subjects,
     this.availabilities,
     this.subjectGradePrices,
+    this.packages,
   });
 
   factory TutorFullProfileDto.fromJson(Map<String, dynamic> j) {
     final content = j['content'] as Map<String, dynamic>? ?? j;
+
+    final subjectGradePrices = (content['subjectGradePrices'] as List<dynamic>?)
+        ?.map((e) => SubjectGradePriceDto.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final rawSubjects = content['subjects'] as List<dynamic>?;
+    final subjects = rawSubjects != null
+        ? rawSubjects
+              .map(
+                (e) =>
+                    TutorDetailSubjectDto.fromJson(e as Map<String, dynamic>),
+              )
+              .toList()
+        : _subjectsFromPrices(subjectGradePrices);
+
     return TutorFullProfileDto(
       avatarUrl: content['avatarUrl'] as String?,
       fullName: content['fullName'] as String?,
@@ -226,20 +264,35 @@ class TutorFullProfileDto {
             (e) => TutorDetailFeedbackDto.fromJson(e as Map<String, dynamic>),
           )
           .toList(),
-      subjects: (content['subjects'] as List<dynamic>?)
-          ?.map(
-            (e) => TutorDetailSubjectDto.fromJson(e as Map<String, dynamic>),
-          )
-          .toList(),
+      subjects: subjects,
       availabilities: (content['availabilities'] as List<dynamic>?)
           ?.map((e) => AvailabilitySlotDto.fromJson(e as Map<String, dynamic>))
           .toList(),
-      subjectGradePrices: (content['subjectGradePrices'] as List<dynamic>?)
-          ?.map(
-            (e) => SubjectGradePriceDto.fromJson(e as Map<String, dynamic>),
-          )
+      subjectGradePrices: subjectGradePrices,
+      packages: (content['packages'] as List<dynamic>?)
+          ?.map((e) => TutorPackageDto.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
+  }
+
+  static List<TutorDetailSubjectDto>? _subjectsFromPrices(
+    List<SubjectGradePriceDto>? prices,
+  ) {
+    if (prices == null || prices.isEmpty) return null;
+    final bySubject = <int, TutorDetailSubjectDto>{};
+    final grades = <int, List<String>>{};
+    for (final p in prices) {
+      final names = grades.putIfAbsent(p.subjectId, () => <String>[]);
+      if (p.gradeLevelName.isNotEmpty && !names.contains(p.gradeLevelName)) {
+        names.add(p.gradeLevelName);
+      }
+      bySubject[p.subjectId] = TutorDetailSubjectDto(
+        subjectId: p.subjectId,
+        subjectName: p.subjectName,
+        gradeLevels: grades[p.subjectId],
+      );
+    }
+    return bySubject.values.toList();
   }
 
   final String? avatarUrl;
@@ -262,6 +315,17 @@ class TutorFullProfileDto {
   final List<TutorDetailSubjectDto>? subjects;
   final List<AvailabilitySlotDto>? availabilities;
   final List<SubjectGradePriceDto>? subjectGradePrices;
+  final List<TutorPackageDto>? packages;
+
+  /// Null if the tutor has no flexible package.
+  int? get flexiblePackageId {
+    final pkgs = packages;
+    if (pkgs == null) return null;
+    for (final p in pkgs) {
+      if (p.isActive && p.packageType == 1) return p.packageId;
+    }
+    return null;
+  }
 
   String get displayName => fullName ?? 'Gia sư';
 

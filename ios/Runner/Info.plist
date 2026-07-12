@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Tutora cần truy cập camera để bạn tham gia buổi học trực tuyến.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Tutora cần truy cập micro để bạn trao đổi trong buổi học trực tuyến.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

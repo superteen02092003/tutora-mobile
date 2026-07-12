@@ -13,61 +13,74 @@ class TutorHeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+      child: Row(
         children: [
           UserAvatar(
             name: profile.displayName,
-            size: 88,
+            size: 76,
             imageUrl: profile.avatarUrl,
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                profile.displayName,
-                style: GoogleFonts.bricolageGrotesque(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 24,
-                  color: AppColors.ink,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        profile.displayName,
+                        style: GoogleFonts.bricolageGrotesque(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const VerifyPip(),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              const VerifyPip(),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.star_rounded, size: 11, color: AppColors.gold),
-              const SizedBox(width: 4),
-              Text(
-                profile.averageRating.toStringAsFixed(2),
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
-              ),
-              Text(
-                ' · ',
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-              ),
-              Text(
-                '${profile.totalFeedbacks} đánh giá',
-                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
-              ),
-              if (profile.teachingAreaCity != null) ...[
-                Text(
-                  ' · ',
-                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-                ),
-                Text(
-                  filterLabel(cityOptions, profile.teachingAreaCity),
-                  style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink2),
+                const SizedBox(height: 8),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 13,
+                      color: AppColors.gold,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      profile.averageRating.toStringAsFixed(2),
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink2,
+                      ),
+                    ),
+                    Text(
+                      '  ·  ${profile.totalFeedbacks} đánh giá',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: AppColors.ink2,
+                      ),
+                    ),
+                    if (profile.teachingAreaCity != null)
+                      Text(
+                        '  ·  ${filterLabel(cityOptions, profile.teachingAreaCity)}',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          color: AppColors.ink2,
+                        ),
+                      ),
+                  ],
                 ),
               ],
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );
