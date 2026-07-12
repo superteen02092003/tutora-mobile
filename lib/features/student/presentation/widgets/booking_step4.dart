@@ -36,7 +36,7 @@ class BookingStep4 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rate = profile.hourlyRate ?? 0;
+    final rate = profile.lowestPrice;
     final totalH = form.totalHoursPerMonth;
     final estimate = rate * totalH;
     final fee = estimate * 0.05;

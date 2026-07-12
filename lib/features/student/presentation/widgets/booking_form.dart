@@ -1,10 +1,13 @@
 import 'package:tutora/features/student/data/models/booking_models.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_constants.dart';
+import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 
 class BookingForm {
   BookingForm({
     this.studentId = '',
     this.subjectId = 0,
+    this.tutorSubjectGradePriceId = 0,
+    this.selectedGradePrice,
     this.teachingMode = 'online',
     String? startDate,
     this.schedule = const [],
@@ -18,6 +21,10 @@ class BookingForm {
 
   final String studentId;
   final int subjectId;
+
+  final int tutorSubjectGradePriceId;
+
+  final SubjectGradePriceDto? selectedGradePrice;
   final String teachingMode;
   final String startDate;
   final List<ScheduleSlotDto> schedule;
@@ -30,6 +37,8 @@ class BookingForm {
   BookingForm copyWith({
     String? studentId,
     int? subjectId,
+    int? tutorSubjectGradePriceId,
+    SubjectGradePriceDto? selectedGradePrice,
     String? teachingMode,
     String? startDate,
     List<ScheduleSlotDto>? schedule,
@@ -41,6 +50,9 @@ class BookingForm {
   }) => BookingForm(
     studentId: studentId ?? this.studentId,
     subjectId: subjectId ?? this.subjectId,
+    tutorSubjectGradePriceId:
+        tutorSubjectGradePriceId ?? this.tutorSubjectGradePriceId,
+    selectedGradePrice: selectedGradePrice ?? this.selectedGradePrice,
     teachingMode: teachingMode ?? this.teachingMode,
     startDate: startDate ?? this.startDate,
     schedule: schedule ?? this.schedule,

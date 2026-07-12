@@ -14,6 +14,7 @@ import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_search_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/marketplace_controller.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/skeletons.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
@@ -125,9 +126,7 @@ class _StudentMarketplacePageState extends ConsumerState<StudentMarketplacePage>
               ),
             Expanded(
               child: switch (state) {
-                MarketplaceLoading() => const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                MarketplaceLoading() => const TutorSearchSkeleton(),
                 MarketplaceError(:final message) => _ErrorView(
                   message: message,
                   onRetry: () => ref

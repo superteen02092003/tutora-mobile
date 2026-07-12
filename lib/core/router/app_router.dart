@@ -192,6 +192,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           imageBytes: state.extra as Uint8List?,
         ),
       ),
+      GoRoute(
+        path: AppRoutes.tutorDetail,
+        builder: (context, state) => TutorDetailPage(
+          tutorId: state.pathParameters['id'] ?? '0',
+        ),
+      ),
 
       // Student shell (5 tabs)
       StatefulShellRoute.indexedStack(
@@ -210,14 +216,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.studentSearch,
                 builder: (context, _) => const StudentMarketplacePage(),
-                routes: [
-                  GoRoute(
-                    path: 'tutor/:id',
-                    builder: (context, state) => TutorDetailPage(
-                      tutorId: state.pathParameters['id'] ?? '0',
-                    ),
-                  ),
-                ],
               ),
             ],
           ),

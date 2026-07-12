@@ -26,6 +26,32 @@ class BookingStep1 extends StatelessWidget {
   final String userRole;
   final ValueChanged<BookingForm> onChanged;
 
+  BookingForm _selectSubject(int subjectId) {
+    final prices = profile.subjectGradePrices ?? [];
+    final forSubject = prices.where((p) => p.subjectId == subjectId).toList();
+
+    SubjectGradePriceDto? match;
+    final student = students.where((s) => s.studentId == form.studentId);
+    final gradeName = student.isEmpty ? null : student.first.displayGrade;
+    if (gradeName != null && gradeName.isNotEmpty) {
+      for (final p in forSubject) {
+        if (p.gradeLevelName == gradeName) {
+          match = p;
+          break;
+        }
+      }
+    }
+    match ??= forSubject.isNotEmpty ? forSubject.first : null;
+
+    final duration = match?.durationMinutesPerSession;
+    return form.copyWith(
+      subjectId: subjectId,
+      tutorSubjectGradePriceId: match?.id ?? 0,
+      selectedGradePrice: match,
+      slotDurationHours: duration != null ? duration / 60.0 : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final subjects = profile.subjects ?? [];
@@ -132,7 +158,7 @@ class BookingStep1 extends StatelessWidget {
               final sid = s.subjectId ?? 0;
               final selected = form.subjectId == sid;
               return GestureDetector(
-                onTap: () => onChanged(form.copyWith(subjectId: sid)),
+                onTap: () => onChanged(_selectSubject(sid)),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,

@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 
 class TutorAboutSection extends StatefulWidget {
@@ -17,6 +16,25 @@ class TutorAboutSection extends StatefulWidget {
 class _TutorAboutSectionState extends State<TutorAboutSection> {
   static const int _collapsedLines = 4;
   bool _expanded = false;
+
+  Map<String, List<SubjectGradePriceDto>> _pricesBySubject(
+    List<SubjectGradePriceDto> prices,
+  ) {
+    final map = <String, List<SubjectGradePriceDto>>{};
+    for (final p in prices) {
+      final name = p.subjectName.isEmpty ? 'Môn học' : p.subjectName;
+      map.putIfAbsent(name, () => []).add(p);
+    }
+    return map;
+  }
+
+  String _priceLabel(double pricePerHour) {
+    if (pricePerHour <= 0) return 'Thương lượng';
+    if (pricePerHour >= 1000) {
+      return '${(pricePerHour / 1000).round()}.000đ/giờ';
+    }
+    return '${pricePerHour.toStringAsFixed(0)}đ/giờ';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,108 +114,69 @@ class _TutorAboutSectionState extends State<TutorAboutSection> {
                 ),
             ],
           ),
-          if (profile.subjects != null && profile.subjects!.isNotEmpty) ...[
+          if (profile.subjectGradePrices != null &&
+              profile.subjectGradePrices!.isNotEmpty) ...[
             const SizedBox(height: 18),
             Text(
-              'CẤP LỚP GIẢNG DẠY',
+              'CẤP LỚP GIẢNG DẠY & HỌC PHÍ',
               style: AppTextStyles.eyebrow(),
             ),
             const SizedBox(height: 10),
-            ...profile.subjects!
-                .where((s) => s.subjectName != null)
-                .map(
-                  (s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 72,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              '${s.subjectName}:',
+            ..._pricesBySubject(profile.subjectGradePrices!).entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.key,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...entry.value.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.cream2,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                p.gradeLevelName,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.ink3,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              _priceLabel(p.pricePerHour),
                               style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
                                 color: AppColors.ink,
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children:
-                                    formatGradeLevels(
-                                          s.gradeLevels ?? [],
-                                        )
-                                        .map(
-                                          (g) => Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 9,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.cream2,
-                                              borderRadius:
-                                                  BorderRadius.circular(999),
-                                            ),
-                                            child: Text(
-                                              g,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w500,
-                                                color: AppColors.ink3,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                              ),
-                              if ((s.tags ?? []).isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: (s.tags ?? [])
-                                      .map(
-                                        (t) => Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 9,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF0E3CA),
-                                            borderRadius: BorderRadius.circular(
-                                              999,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            t,
-                                            style: GoogleFonts.inter(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.ink2,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
+              ),
+            ),
           ],
         ],
       ),
