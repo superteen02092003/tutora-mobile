@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/student/presentation/screens/student_crop_screen.dart';
 
 const _kBg = Color(0xFF0B0E18);
@@ -216,6 +217,7 @@ class _StudentCapturePageState extends State<StudentCapturePage>
               enabled: !_capturing,
               onShutter: _onShutter,
               onGallery: _onGallery,
+              onHistory: () => context.push(AppRoutes.studentSolveHistory),
             ),
           ),
         ],
@@ -474,10 +476,12 @@ class _BottomControls extends StatelessWidget {
     required this.enabled,
     required this.onShutter,
     required this.onGallery,
+    required this.onHistory,
   });
   final bool enabled;
   final VoidCallback onShutter;
   final VoidCallback onGallery;
+  final VoidCallback onHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -543,7 +547,29 @@ class _BottomControls extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          const SizedBox(width: 48, height: 48),
+          GestureDetector(
+            onTap: enabled ? onHistory : null,
+            child: AnimatedOpacity(
+              opacity: enabled ? 1 : 0.4,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: Colors.white.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.history_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -568,7 +594,7 @@ class _ThinkingOverlayState extends State<_ThinkingOverlay>
   static const _labels = [
     'Đang nhận diện bài toán…',
     'Đang phân tích cấu trúc…',
-    'Đang kết nối Tora AI…',
+    'Đang kết nối Tutora…',
   ];
 
   @override
