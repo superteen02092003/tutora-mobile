@@ -30,6 +30,8 @@ abstract final class AppRoutes {
   static const studentMessages = '/student/messages';
   static const studentCapturePlaceholder = '/student/capture-stub';
   static const studentSolution = '/student/solution';
+  static const studentSolveHistory = '/student/solve-history';
+  static const studentSolveSession = '/student/solve-session/:sessionId';
   static const tutorDetail = '/student/search/tutor/:id';
   static const booking = '/student/search/booking/:tutorId';
 
@@ -59,6 +61,7 @@ abstract final class AppRoutes {
   static const parentStudentDetail = '/parent/profile/student/:id';
   static const parentAddChild = '/parent/profile/add-child';
   static const parentCalendar = '/parent/profile/calendar';
+  static const parentWallet = '/parent/profile/wallet';
   static const parentLessonConfirm = '/parent/lesson/:id/confirm';
 
   // Shared

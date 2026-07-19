@@ -1,159 +1,211 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/student/data/datasources/ai_solve_datasource.dart';
-import 'package:uuid/uuid.dart';
 
-// State
-enum SolveStatus { idle, loading, streaming, done, error }
+enum ChatStatus { idle, loadingSession, sending, streaming, ready, error }
 
-class SolveState {
-  const SolveState({
-    this.status = SolveStatus.idle,
-    this.rawText = '',
-    this.steps = const [],
-    this.finalAnswer = '',
+class SolveChatState {
+  const SolveChatState({
+    this.status = ChatStatus.idle,
+    this.sessionId,
+    this.messages = const [],
     this.error,
-    this.chatId,
   });
 
-  final SolveStatus status;
-  final String rawText;
-  final List<SolveStep> steps;
-  final String finalAnswer;
+  final ChatStatus status;
+  final String? sessionId;
+  final List<AiChatMessage> messages;
   final String? error;
-  final String? chatId;
 
-  bool get isLoading => status == SolveStatus.loading;
-  bool get isStreaming => status == SolveStatus.streaming;
-  bool get isDone => status == SolveStatus.done;
+  bool get isBusy =>
+      status == ChatStatus.sending || status == ChatStatus.streaming;
 
-  SolveState copyWith({
-    SolveStatus? status,
-    String? rawText,
-    List<SolveStep>? steps,
-    String? finalAnswer,
+  /// Cho phép nhập/gửi khi không bận và đã có phiên.
+  bool get canSend => !isBusy && sessionId != null;
+
+  SolveChatState copyWith({
+    ChatStatus? status,
+    String? sessionId,
+    List<AiChatMessage>? messages,
     String? error,
-    String? chatId,
-  }) => SolveState(
+  }) => SolveChatState(
     status: status ?? this.status,
-    rawText: rawText ?? this.rawText,
-    steps: steps ?? this.steps,
-    finalAnswer: finalAnswer ?? this.finalAnswer,
-    error: error ?? this.error,
-    chatId: chatId ?? this.chatId,
+    sessionId: sessionId ?? this.sessionId,
+    messages: messages ?? this.messages,
+    error: error,
   );
 }
 
-class SolveStep {
-  const SolveStep({required this.title, required this.content});
-  final String title;
-  final String content;
-}
+class SolveChatNotifier extends StateNotifier<SolveChatState> {
+  SolveChatNotifier(this._ds) : super(const SolveChatState());
 
-class _StreamParser {
-  final _stepRe = RegExp(r'\*\*Bước\s+\d+\s*[:\-–]\s*(.+?)\*\*');
-  final _answerRe = RegExp(r'\*\*Kết quả là:\*\*\s*(.+)$', multiLine: true);
+  final AiSolveDatasource _ds;
+  StreamSubscription<SolveDelta>? _sub;
+  int _tmpCounter = 0;
 
-  List<SolveStep> parseSteps(String text) {
-    final steps = <SolveStep>[];
-    final matches = _stepRe.allMatches(text).toList();
-
-    for (var i = 0; i < matches.length; i++) {
-      final title = matches[i].group(1)?.trim() ?? '';
-      final start = matches[i].end;
-      final end = i + 1 < matches.length ? matches[i + 1].start : text.length;
-      var content = text.substring(start, end).trim();
-
-      final answerMatch = _answerRe.firstMatch(content);
-      if (answerMatch != null) {
-        content = content.substring(0, answerMatch.start).trim();
-      }
-      if (title.isNotEmpty) {
-        steps.add(SolveStep(title: title, content: content));
-      }
+  /// Bắt đầu phiên mới từ ảnh đề bài (camera/thư viện). Tạo session -> gửi ảnh.
+  Future<void> startWithImage(String imageBase64, {String? grade}) async {
+    state = const SolveChatState(status: ChatStatus.loadingSession);
+    try {
+      final session = await _ds.createSession();
+      state = state.copyWith(
+        status: ChatStatus.idle,
+        sessionId: session.sessionId,
+      );
+      await _send(
+        imageBase64: imageBase64,
+        imageBytes: base64Decode(imageBase64),
+        grade: grade,
+        displayText: null,
+      );
+    } catch (e) {
+      state = state.copyWith(status: ChatStatus.error, error: e.toString());
     }
-    return steps;
   }
 
-  String parseFinalAnswer(String text) {
-    final match = _answerRe.firstMatch(text);
-    return match?.group(1)?.trim() ?? '';
+  /// Bắt đầu phiên mới từ đề bài gõ tay.
+  Future<void> startWithText(String text, {String? grade}) async {
+    state = const SolveChatState(status: ChatStatus.loadingSession);
+    try {
+      final session = await _ds.createSession();
+      state = state.copyWith(
+        status: ChatStatus.idle,
+        sessionId: session.sessionId,
+      );
+      await _send(text: text, grade: grade, displayText: text);
+    } catch (e) {
+      state = state.copyWith(status: ChatStatus.error, error: e.toString());
+    }
   }
-}
 
-// Notifier
-class AiSolveNotifier extends StateNotifier<SolveState> {
-  AiSolveNotifier(this._datasource) : super(const SolveState());
+  /// Mở lại phiên cũ từ màn lịch sử — nạp toàn bộ tin nhắn.
+  Future<void> openSession(String sessionId) async {
+    state = SolveChatState(
+      status: ChatStatus.loadingSession,
+      sessionId: sessionId,
+    );
+    try {
+      final msgs = await _ds.getMessages(sessionId);
+      state = state.copyWith(status: ChatStatus.ready, messages: msgs);
+    } catch (e) {
+      state = state.copyWith(status: ChatStatus.error, error: e.toString());
+    }
+  }
 
-  final AiSolveDatasource _datasource;
-  final _parser = _StreamParser();
-  final _uuid = const Uuid();
-  StreamSubscription<String>? _sub;
+  /// Gửi câu hỏi follow-up (gõ tay hoặc quick-action). BE tự nạp history.
+  Future<void> sendFollowUp(String text) async {
+    if (!state.canSend || text.trim().isEmpty) return;
+    await _send(text: text.trim(), displayText: text.trim());
+  }
 
-  Future<void> solve(String imageBase64) async {
+  Future<void> _send({
+    required String? displayText,
+    String? text,
+    String? imageBase64,
+    Uint8List? imageBytes,
+    String? grade,
+  }) async {
+    final sessionId = state.sessionId;
+    if (sessionId == null) return;
+
     await _sub?.cancel();
 
-    final chatId = _uuid.v4();
-    final messageId = _uuid.v4();
-
-    state = SolveState(status: SolveStatus.loading, chatId: chatId);
-
-    try {
-      final stream = await _datasource.solveStream(
-        chatId: chatId,
-        messageId: messageId,
-        imageBase64: imageBase64,
-      );
-
-      var buffer = '';
-
-      _sub = stream.listen(
-        (delta) {
-          buffer += delta;
-          state = state.copyWith(
-            status: SolveStatus.streaming,
-            rawText: buffer,
-            steps: _parser.parseSteps(buffer),
-            finalAnswer: _parser.parseFinalAnswer(buffer),
+    // 1. Optimistic: thêm bubble user (text hoặc ảnh vừa chụp) + bubble AI rỗng.
+    final userMsg = (displayText == null && imageBytes == null)
+        ? null
+        : AiChatMessage(
+            messageId: 'tmp-u-${_tmpCounter++}',
+            role: ChatRole.user,
+            content: displayText ?? '',
+            localImage: imageBytes,
           );
+    final aiMsg = AiChatMessage(
+      messageId: 'tmp-a-${_tmpCounter++}',
+      role: ChatRole.assistant,
+      content: '',
+      isStreaming: true,
+    );
+
+    state = state.copyWith(
+      status: ChatStatus.streaming,
+      messages: [
+        ...state.messages,
+        ?userMsg,
+        aiMsg,
+      ],
+    );
+
+    // 2. Stream lời giải, cập nhật bubble AI cuối cùng theo từng delta.
+    var buffer = '';
+    try {
+      final stream = await _ds.solveStream(
+        sessionId: sessionId,
+        text: text,
+        imageBase64: imageBase64,
+        grade: grade,
+      );
+      _sub = stream.listen(
+        (chunk) {
+          buffer += chunk.delta;
+          _updateLastAssistant(buffer, streaming: !chunk.done);
         },
         onDone: () {
-          state = state.copyWith(
-            status: SolveStatus.done,
-            steps: _parser.parseSteps(buffer),
-            finalAnswer: _parser.parseFinalAnswer(buffer),
-          );
+          _updateLastAssistant(buffer, streaming: false);
+          state = state.copyWith(status: ChatStatus.ready);
         },
         onError: (Object e) {
-          state = state.copyWith(
-            status: SolveStatus.error,
-            error: e.toString(),
+          _updateLastAssistant(
+            buffer.isEmpty
+                ? 'Xin lỗi, có lỗi khi tải lời giải. Bạn thử lại nhé!'
+                : buffer,
+            streaming: false,
           );
+          state = state.copyWith(status: ChatStatus.ready);
         },
       );
     } catch (e) {
-      state = state.copyWith(
-        status: SolveStatus.error,
-        error: e.toString(),
+      _updateLastAssistant(
+        'Xin lỗi, không kết nối được máy chủ. Bạn thử lại nhé!',
+        streaming: false,
       );
+      state = state.copyWith(status: ChatStatus.error, error: e.toString());
     }
   }
 
+  void _updateLastAssistant(String content, {required bool streaming}) {
+    final msgs = [...state.messages];
+    for (var i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role == ChatRole.assistant) {
+        msgs[i] = msgs[i].copyWith(content: content, isStreaming: streaming);
+        break;
+      }
+    }
+    state = state.copyWith(messages: msgs);
+  }
+
   void reset() {
-    unawaited(_sub?.cancel() ?? Future.value());
-    state = const SolveState();
+    unawaited(_sub?.cancel());
+    state = const SolveChatState();
   }
 
   @override
   void dispose() {
-    unawaited(_sub?.cancel() ?? Future.value());
+    unawaited(_sub?.cancel());
     super.dispose();
   }
 }
 
-final AutoDisposeStateNotifierProvider<AiSolveNotifier, SolveState>
-aiSolveProvider =
-    StateNotifierProvider.autoDispose<AiSolveNotifier, SolveState>(
-      (ref) => AiSolveNotifier(ref.watch(aiSolveDatasourceProvider)),
+final AutoDisposeStateNotifierProvider<SolveChatNotifier, SolveChatState>
+solveChatProvider =
+    StateNotifierProvider.autoDispose<SolveChatNotifier, SolveChatState>(
+      (ref) => SolveChatNotifier(ref.watch(aiSolveDatasourceProvider)),
+    );
+
+// Danh sách phiên lịch sử (màn history).
+final AutoDisposeFutureProvider<List<AiChatSession>> solveHistoryProvider =
+    FutureProvider.autoDispose<List<AiChatSession>>(
+      (ref) => ref.watch(aiSolveDatasourceProvider).getSessions(),
     );

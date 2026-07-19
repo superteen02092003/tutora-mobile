@@ -22,6 +22,7 @@ import 'package:tutora/features/parent/presentation/screens/parent_info_screen.d
 import 'package:tutora/features/parent/presentation/screens/parent_marketplace_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_messages_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_tutor_detail_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_wallet_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/profile/parent_add_child_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/profile/parent_calendar_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/profile/parent_edit_info_screen.dart';
@@ -37,7 +38,8 @@ import 'package:tutora/features/student/presentation/screens/student_marketplace
 import 'package:tutora/features/student/presentation/screens/student_messages_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_notifications_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_solution_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_solve_chat_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_solve_history_screen.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/v2/student_shell_v2.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
@@ -188,8 +190,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.studentSolution,
-        builder: (context, state) => StudentSolutionPage(
+        builder: (context, state) => StudentSolveChatPage(
           imageBytes: state.extra as Uint8List?,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.studentSolveHistory,
+        builder: (context, state) => StudentSolveHistoryPage(
+          onOpenSession: (sessionId) => context.push(
+            AppRoutes.studentSolveSession.replaceFirst(':sessionId', sessionId),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.studentSolveSession,
+        builder: (context, state) => StudentSolveChatPage(
+          openSessionId: state.pathParameters['sessionId'],
         ),
       ),
       GoRoute(
@@ -308,6 +324,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.parentCalendar,
         builder: (context, _) => const ParentCalendarPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.parentWallet,
+        builder: (context, _) => const ParentWalletScreen(),
       ),
       GoRoute(
         path: AppRoutes.parentBookings,

@@ -69,6 +69,12 @@ class ProfileSettingsSection extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.studentBookings),
             ),
             SettingRow(
+              icon: Icons.auto_stories_outlined,
+              label: 'Lịch sử giải toán',
+              sub: 'Các bài đã hỏi Tutora',
+              onTap: () => context.push(AppRoutes.studentSolveHistory),
+            ),
+            SettingRow(
               icon: Icons.menu_book_outlined,
               label: 'Môn học quan tâm',
               onTap: () {},
