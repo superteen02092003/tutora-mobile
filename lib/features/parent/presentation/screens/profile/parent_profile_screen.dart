@@ -10,9 +10,12 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:tutora/features/parent/data/datasources/wallet_datasource.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_wallet_screen.dart'
+    show formatVnd;
 import 'package:tutora/features/parent/presentation/screens/profile/parent_change_password_screen.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
@@ -300,6 +303,10 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                           students: students.students,
                           isLoading: students.isLoading,
                         ),
+                        const SizedBox(height: 14),
+                        const _SectionLabel('Ví của tôi'),
+                        const SizedBox(height: 6),
+                        const _WalletCard(),
                         const SizedBox(height: 14),
                         const _SectionLabel('Tiện ích'),
                         const SizedBox(height: 6),
@@ -802,6 +809,77 @@ class _SettingRow extends StatelessWidget {
                 size: 16,
                 color: AppColors.ink4,
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Wallet summary card — shows available balance, taps into the full wallet.
+class _WalletCard extends ConsumerWidget {
+  const _WalletCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(parentWalletProvider);
+    final available = async.maybeWhen(
+      data: (s) => s.balance.availableBalance,
+      orElse: () => null,
+    );
+
+    return GestureDetector(
+      onTap: () => context.push(AppRoutes.parentWallet),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.ink,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.gold.withValues(alpha: 0.18),
+              ),
+              child: const Icon(
+                Icons.account_balance_wallet_outlined,
+                size: 20,
+                color: AppColors.gold,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Số dư khả dụng',
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: Colors.white60,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    available == null ? '—' : formatVnd(available),
+                    style: GoogleFonts.bricolageGrotesque(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.cream,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white54,
+              size: 22,
+            ),
           ],
         ),
       ),
