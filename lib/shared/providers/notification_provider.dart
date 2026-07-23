@@ -28,9 +28,13 @@ class NotificationState {
 }
 
 class NotificationNotifier extends StateNotifier<NotificationState> {
-  NotificationNotifier(this._ds) : super(const NotificationState());
+  NotificationNotifier(this._ds, this._ref) : super(const NotificationState());
 
   final NotificationDatasource _ds;
+  final Ref _ref;
+
+  /// Đồng bộ badge sau khi trạng thái đọc thay đổi.
+  void _refreshBadge() => _ref.invalidate(unreadCountProvider);
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
@@ -53,6 +57,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
     try {
       await _ds.markAsRead(id);
+      _refreshBadge();
     } catch (_) {
       // Revert on failure
       updated[idx] = updated[idx].copyWith(isRead: false);
@@ -69,6 +74,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
     try {
       await _ds.markAllAsRead();
+      _refreshBadge();
     } catch (_) {
       await load();
     }
@@ -77,5 +83,14 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
 final notificationProvider =
     StateNotifierProvider<NotificationNotifier, NotificationState>((ref) {
-      return NotificationNotifier(ref.read(notificationDatasourceProvider));
+      return NotificationNotifier(
+        ref.read(notificationDatasourceProvider),
+        ref,
+      );
+    });
+
+/// Số thông báo chưa đọc — dùng cho badge chấm đỏ trên icon chuông.
+final AutoDisposeFutureProvider<int> unreadCountProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+      return ref.read(notificationDatasourceProvider).getUnreadCount();
     });

@@ -9,7 +9,9 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/datasources/class_session_datasource.dart';
 import 'package:tutora/features/student/data/models/lesson_models.dart';
 import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
-import 'package:tutora/features/student/presentation/screens/agora_call_screen.dart';
+import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
+import 'package:tutora/shared/live_session/live_session_call_screen.dart';
+import 'package:tutora/shared/widgets/class_interaction_sheets.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
 
@@ -759,31 +761,61 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
     // When the tutor has submitted the report the session sits in
     // pending_confirmation — the student's action is to confirm, not to join.
     if (_awaitingConfirm) {
+      final canFeedback =
+          ref.watch(canLeaveFeedbackProvider(lesson.lessonId)).valueOrNull ??
+          false;
       return Container(
         padding: EdgeInsets.fromLTRB(16, 10, 16, widget.bottomInset + 12),
         color: AppColors.cream,
-        child: GestureDetector(
-          onTap: _busy ? null : _confirmLesson,
-          child: Opacity(
-            opacity: _busy ? 0.5 : 1,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: AppColors.moss,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                _busy ? 'Đang xác nhận…' : 'Xác nhận đã học xong',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: _busy ? null : _confirmLesson,
+              child: Opacity(
+                opacity: _busy ? 0.5 : 1,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.moss,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    _busy ? 'Đang xác nhận…' : 'Xác nhận đã học xong',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (canFeedback) ...[
+                  Expanded(
+                    child: _InteractionBtn(
+                      icon: Icons.star_outline_rounded,
+                      label: 'Đánh giá',
+                      onTap: () => _openFeedback(lesson.lessonId),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: _InteractionBtn(
+                    icon: Icons.flag_outlined,
+                    label: 'Khiếu nại',
+                    onTap: () => _openDispute(lesson.lessonId),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       );
     }
@@ -815,9 +847,9 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
           const SizedBox(width: 8),
           Expanded(
             child: GestureDetector(
-              onTap: (_busy || !lesson.canJoinNow) ? null : _joinRoom,
+              onTap: _canJoin ? _joinRoom : null,
               child: Opacity(
-                opacity: (_busy || !lesson.canJoinNow) ? 0.5 : 1.0,
+                opacity: _canJoin ? 1.0 : 0.5,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
@@ -842,8 +874,12 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
     );
   }
 
+  bool get _canJoin =>
+      !_busy && lesson.canJoinNow && !lesson.requiresRemainingPayment;
+
   String get _joinLabel {
     if (_busy) return 'Đang vào…';
+    if (lesson.requiresRemainingPayment) return 'Chờ phụ huynh thanh toán';
     if (lesson.canJoinNow) return 'Vào phòng học';
     final mins = lesson.minutesUntilOpen;
     if (mins <= 0) return 'Buổi học đã kết thúc';
@@ -852,32 +888,18 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
   }
 
   Future<void> _joinRoom() async {
-    setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-    try {
-      final ds = ref.read(classSessionDatasourceProvider);
-      final room = await ds.getAgoraRoom(lesson.lessonId);
-      if (!room.isValid) {
-        throw Exception('Phòng học chưa sẵn sàng, vui lòng thử lại.');
-      }
-      if (!mounted) return;
-      await navigator.push(
+    // Việc join thật (lease/token/heartbeat) do LiveSessionCallScreen tự lo.
+    // Ở đây chỉ mở màn phòng học; gating hiển thị đã chặn khi chưa đủ điều kiện.
+    unawaited(
+      Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => AgoraCallScreen(
-            room: room,
+          builder: (_) => LiveSessionCallScreen(
+            classSessionId: lesson.lessonId,
             tutorName: lesson.tutorName,
           ),
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+      ),
+    );
   }
 
   Future<void> _confirmLesson() async {
@@ -898,6 +920,30 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
       );
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openFeedback(int id) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showFeedbackSheet(context, id);
+    if ((ok ?? false) && mounted) {
+      ref.invalidate(canLeaveFeedbackProvider(id));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Cảm ơn đánh giá của bạn!')),
+      );
+    }
+  }
+
+  Future<void> _openDispute(int id) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDisputeSheet(context, id);
+    if ((ok ?? false) && mounted) {
+      ref.invalidate(lessonDetailProvider(id));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã gửi khiếu nại. Chúng tôi sẽ xem xét sớm.'),
+        ),
+      );
     }
   }
 
@@ -1022,6 +1068,47 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InteractionBtn extends StatelessWidget {
+  const _InteractionBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.paper,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: AppColors.ink),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
+            ),
+          ],
         ),
       ),
     );

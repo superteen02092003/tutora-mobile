@@ -11,8 +11,8 @@ import 'package:tutora/features/student/presentation/screens/student_profile/pro
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_settings_section.dart';
 // TODO: student wallet — ẩn tạm, chưa phát triển
 // import 'package:tutora/features/student/presentation/screens/student_profile/profile_recent_history.dart';
-// import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_card.dart';
-// import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_detail_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_card.dart';
+import 'package:tutora/features/student/presentation/screens/student_profile/profile_wallet_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 
 class StudentProfilePage extends ConsumerStatefulWidget {
@@ -82,15 +82,15 @@ class _StudentProfilePageState extends ConsumerState<StudentProfilePage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // TODO: student wallet — ẩn tạm, chưa phát triển
-                  // ProfileWalletCard(
-                  //   onDetailTap: () => Navigator.of(context).push(
-                  //     MaterialPageRoute<void>(
-                  //       builder: (_) => const ProfileWalletDetailScreen(),
-                  //     ),
-                  //   ),
-                  // ),
-                  // const SizedBox(height: 14),
+                  ProfileWalletCard(
+                    onDetailTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ProfileWalletDetailScreen(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // TODO: "Lịch sử học gần đây" — chờ endpoint riêng, tạm ẩn.
                   // const ProfileSectionLabel('Lịch sử học gần đây'),
                   // ProfileRecentHistory(onViewAll: () {}),
                   // const SizedBox(height: 14),
