@@ -17,7 +17,7 @@ class ParentShellScrollNotifier extends InheritedNotifier<ValueNotifier<int>> {
       ?.notifier;
 }
 
-// Tab order: Home(0) · Search(1) · Info(2) · Messages(3) · Profile(4)
+// Tab order: Home(0) · Search(1) · Classes(2) · Messages(3) · Profile(4)
 class ParentShell extends StatefulWidget {
   const ParentShell({required this.navigationShell, super.key});
 
@@ -144,9 +144,9 @@ class _ParentShellState extends State<ParentShell> {
                                 index: 2,
                                 current: current,
                                 onTap: _onTap,
-                                icon: Icons.menu_book_outlined,
-                                activeIcon: Icons.menu_book_rounded,
-                                label: 'Thông tin',
+                                icon: Icons.school_outlined,
+                                activeIcon: Icons.school_rounded,
+                                label: 'Lớp học',
                               ),
                               _NavTab(
                                 index: 3,

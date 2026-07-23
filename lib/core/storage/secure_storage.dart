@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 const _keyAccessToken = 'access_token';
 const _keyRefreshToken = 'refresh_token';
+const _keyLiveSessionDeviceId = 'live_session_device_id';
 
 final secureStorageProvider = Provider<SecureStorageService>(
   (_) => SecureStorageService(),
@@ -25,6 +26,14 @@ class SecureStorageService {
       _storage.write(key: _keyRefreshToken, value: refresh),
     ]);
   }
+
+  /// Persistent device id cho phiên học trực tuyến (UUID .NET "N", 32 hex).
+  /// Không xóa khi logout — nhận diện thiết bị, không phải dữ liệu nhạy cảm.
+  Future<String?> getLiveSessionDeviceId() =>
+      _storage.read(key: _keyLiveSessionDeviceId);
+
+  Future<void> saveLiveSessionDeviceId(String value) =>
+      _storage.write(key: _keyLiveSessionDeviceId, value: value);
 
   Future<void> clearTokens() async {
     await Future.wait([

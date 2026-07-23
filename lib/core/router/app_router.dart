@@ -17,8 +17,8 @@ import 'package:tutora/features/auth/presentation/pages/register_student_page.da
 import 'package:tutora/features/auth/presentation/pages/register_tutor_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_classes_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_info_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_marketplace_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_messages_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_tutor_detail_screen.dart';
@@ -374,7 +374,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.parentInfo,
-                builder: (context, _) => const ParentInfoScreen(),
+                builder: (context, _) => const ParentClassesScreen(),
               ),
             ],
           ),
