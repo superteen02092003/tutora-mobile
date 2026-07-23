@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/shared/providers/notification_provider.dart';
 
 class ParentHomeGradientPanel extends StatelessWidget {
   const ParentHomeGradientPanel({required this.child, super.key});
@@ -52,17 +54,24 @@ class ParentHomeHeader extends StatelessWidget {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFFFD166),
-                        border: Border.all(
-                          color: const Color(0xFF2F5FBF),
-                          width: 1.5,
-                        ),
-                      ),
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final count =
+                            ref.watch(unreadCountProvider).valueOrNull ?? 0;
+                        if (count <= 0) return const SizedBox.shrink();
+                        return Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFFFD166),
+                            border: Border.all(
+                              color: const Color(0xFF2F5FBF),
+                              width: 1.5,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

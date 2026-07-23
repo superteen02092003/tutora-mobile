@@ -12,6 +12,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_pro
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/notification_bell.dart';
 
 class TutorHomeScreen extends ConsumerStatefulWidget {
   const TutorHomeScreen({super.key});
@@ -124,35 +125,21 @@ class _TopBar extends StatelessWidget {
           const Spacer(),
           GestureDetector(
             onTap: () => context.push(AppRoutes.tutorNotifications),
-            child: Stack(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.paper,
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_outlined,
-                    size: 18,
-                    color: AppColors.ink,
-                  ),
+            child: NotificationBadge(
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.paper,
+                  border: Border.all(color: AppColors.line),
                 ),
-                Positioned(
-                  top: 7,
-                  right: 7,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.oxblood,
-                    ),
-                  ),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  size: 18,
+                  color: AppColors.ink,
                 ),
-              ],
+              ),
             ),
           ),
         ],

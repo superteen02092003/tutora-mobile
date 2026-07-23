@@ -13,6 +13,7 @@ import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/student/presentation/providers/dashboard_provider.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/notification_bell.dart';
 
 class StudentHomePage extends ConsumerWidget {
   const StudentHomePage({super.key});
@@ -148,35 +149,20 @@ class _TopBar extends StatelessWidget {
           // Bell icon
           GestureDetector(
             onTap: () => context.push(AppRoutes.notifications),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Icon(
-                    Icons.notifications_outlined,
-                    size: 18,
-                    color: AppColors.ink,
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.oxblood,
-                      ),
-                    ),
-                  ),
-                ],
+            child: NotificationBadge(
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.paper,
+                  border: Border.all(color: AppColors.line),
+                ),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  size: 18,
+                  color: AppColors.ink,
+                ),
               ),
             ),
           ),

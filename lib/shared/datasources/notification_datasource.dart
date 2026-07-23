@@ -26,6 +26,24 @@ class NotificationDatasource {
         .toList();
   }
 
+  // GET /api/notifications/mine/unread-count
+  Future<int> getUnreadCount() async {
+    final res = await _dio.get<dynamic>('/notifications/mine/unread-count');
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      // Ưu tiên `unreadCount`, fallback `total`, hoặc `content.unreadCount`.
+      final direct = data['unreadCount'] ?? data['total'];
+      if (direct is num) return direct.toInt();
+      final content = data['content'];
+      if (content is Map<String, dynamic>) {
+        final c = content['unreadCount'] ?? content['total'];
+        if (c is num) return c.toInt();
+      }
+    }
+    if (data is num) return data.toInt();
+    return 0;
+  }
+
   // PUT /api/notifications/{id}/read
   Future<void> markAsRead(int id) async {
     await _dio.put<void>('/notifications/$id/read');
