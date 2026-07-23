@@ -10,15 +10,23 @@ class TutorLessonDto {
     this.teachingMode,
   });
 
-  factory TutorLessonDto.fromJson(Map<String, dynamic> j) => TutorLessonDto(
-    lessonId: j['lessonId'] as int? ?? 0,
-    studentName: j['studentName'] as String? ?? 'Học sinh',
-    subjectName: j['subjectName'] as String? ?? '',
-    scheduledStart: j['scheduledStart'] as String? ?? '',
-    scheduledEnd: j['scheduledEnd'] as String? ?? '',
-    status: j['status'] as String? ?? '',
-    teachingMode: j['teachingMode'] as String?,
-  );
+  factory TutorLessonDto.fromJson(Map<String, dynamic> j) {
+    // Hỗ trợ cả list (ClassSessionResponse: có student/subject lồng nhau)
+    // lẫn calendar (CalendarClassSessionResponse: studentName/subjectName phẳng).
+    final student = j['student'] as Map<String, dynamic>?;
+    final subject = j['subject'] as Map<String, dynamic>?;
+    return TutorLessonDto(
+      lessonId: (j['classSessionId'] ?? j['lessonId']) as int? ?? 0,
+      studentName:
+          (j['studentName'] ?? student?['fullName']) as String? ?? 'Học sinh',
+      subjectName:
+          (j['subjectName'] ?? subject?['subjectName']) as String? ?? '',
+      scheduledStart: j['scheduledStart'] as String? ?? '',
+      scheduledEnd: j['scheduledEnd'] as String? ?? '',
+      status: j['status'] as String? ?? '',
+      teachingMode: j['teachingMode'] as String?,
+    );
+  }
 
   final int lessonId;
   final String studentName;

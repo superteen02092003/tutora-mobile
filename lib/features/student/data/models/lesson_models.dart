@@ -10,6 +10,8 @@ class StudentLessonDto {
     this.subjectName,
     this.lessonPrice,
     this.meetingLink,
+    this.confirmDeadline,
+    this.bookingId,
   });
 
   factory StudentLessonDto.fromJson(Map<String, dynamic> j) {
@@ -22,6 +24,8 @@ class StudentLessonDto {
       subjectName: j['subjectName'] as String?,
       lessonPrice: (j['classSessionPrice'] as num?)?.toDouble(),
       meetingLink: j['meetingLink'] as String?,
+      confirmDeadline: j['confirmDeadline'] as String?,
+      bookingId: j['bookingId'] as int?,
     );
   }
 
@@ -33,6 +37,12 @@ class StudentLessonDto {
   final String? subjectName;
   final double? lessonPrice;
   final String? meetingLink;
+
+  /// Hạn xác nhận buổi đã hoàn tất (đếm ngược); null nếu chưa cần.
+  final String? confirmDeadline;
+
+  /// Id booking chứa buổi — điều hướng sang chi tiết gói.
+  final int? bookingId;
 
   DateTime get startDt => DateTime.parse(scheduledStart).toLocal();
   DateTime get endDt => DateTime.parse(scheduledEnd).toLocal();
@@ -89,6 +99,7 @@ class StudentLessonDetailDto extends StudentLessonDto {
     this.report,
     this.isTutorPresent,
     this.isStudentPresent,
+    this.requiresRemainingPayment = false,
   });
 
   factory StudentLessonDetailDto.fromJson(Map<String, dynamic> j) {
@@ -109,6 +120,7 @@ class StudentLessonDetailDto extends StudentLessonDto {
       tutorNotes: reportRaw?['tutorNotes'] as String?,
       isTutorPresent: j['isTutorPresent'] as bool?,
       isStudentPresent: j['isStudentPresent'] as bool?,
+      requiresRemainingPayment: j['requiresRemainingPayment'] as bool? ?? false,
       report: reportRaw != null ? LessonReportDto.fromJson(reportRaw) : null,
     );
   }
@@ -119,6 +131,9 @@ class StudentLessonDetailDto extends StudentLessonDto {
   final String? tutorNotes;
   final bool? isTutorPresent;
   final bool? isStudentPresent;
+
+  /// Buổi tiếp theo bị khóa do phụ huynh chưa thanh toán các buổi còn lại.
+  final bool requiresRemainingPayment;
   final LessonReportDto? report;
 }
 

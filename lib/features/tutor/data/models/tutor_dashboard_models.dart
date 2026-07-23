@@ -1,4 +1,4 @@
-// GET /api/tutorlesson/dashboard
+// GET /api/tutor/class-sessions/dashboard → TutorDashboardStatsResponse
 class TutorDashboardDto {
   const TutorDashboardDto({
     required this.upcomingSessions,
@@ -13,16 +13,18 @@ class TutorDashboardDto {
 
   factory TutorDashboardDto.fromJson(Map<String, dynamic> json) {
     final c = json['content'] as Map<String, dynamic>? ?? json;
-    final today = c['todaySessions'] as List<dynamic>? ?? [];
+    // Backend TutorDashboardStatsResponse — tên field khác tên mobile cũ.
+    final next = c['nextClassSessions'] as List<dynamic>? ?? [];
     return TutorDashboardDto(
-      upcomingSessions: c['upcomingSessions'] as int? ?? 0,
-      completedSessions: c['completedSessions'] as int? ?? 0,
-      monthlyEarnings: (c['monthlyEarnings'] as num?)?.toDouble() ?? 0,
+      upcomingSessions: c['upcomingClassSessions'] as int? ?? 0,
+      completedSessions: c['completedThisMonth'] as int? ?? 0,
+      monthlyEarnings: (c['earningsThisMonth'] as num?)?.toDouble() ?? 0,
       averageRating: (c['averageRating'] as num?)?.toDouble() ?? 0,
       totalReviews: c['totalReviews'] as int? ?? 0,
-      escrowBalance: (c['escrowBalance'] as num?)?.toDouble() ?? 0,
-      escrowSessions: c['escrowSessions'] as int? ?? 0,
-      todaySessions: today
+      // "Escrow" = số dư đang bị giữ; số buổi ~ số buổi chờ xác nhận.
+      escrowBalance: (c['frozenBalance'] as num?)?.toDouble() ?? 0,
+      escrowSessions: c['pendingConfirmation'] as int? ?? 0,
+      todaySessions: next
           .whereType<Map<String, dynamic>>()
           .map(TutorTodaySessionDto.fromJson)
           .toList(),
@@ -51,12 +53,13 @@ class TutorTodaySessionDto {
 
   factory TutorTodaySessionDto.fromJson(Map<String, dynamic> j) =>
       TutorTodaySessionDto(
-        lessonId: j['lessonId'] as int? ?? 0,
+        lessonId: (j['classSessionId'] ?? j['lessonId']) as int? ?? 0,
         studentName: j['studentName'] as String? ?? 'Học sinh',
         subjectName: j['subjectName'] as String? ?? '',
         scheduledStart: j['scheduledStart'] as String? ?? '',
         scheduledEnd: j['scheduledEnd'] as String? ?? '',
-        status: j['status'] as String? ?? '',
+        // UpcomingClassSessionResponse không có `status`; mặc định scheduled.
+        status: j['status'] as String? ?? 'scheduled',
       );
 
   final int lessonId;
