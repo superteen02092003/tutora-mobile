@@ -26,7 +26,7 @@ class ParentDatasource {
   }
 
   Future<List<ParentLessonDto>> getPendingLessons() async {
-    final res = await _dio.get<dynamic>('/parent/lessons/pending');
+    final res = await _dio.get<dynamic>('/parent/class-sessions/pending');
     final data = res.data as Map<String, dynamic>;
     final content = data['content'] as List<dynamic>? ?? [];
     return content
@@ -39,7 +39,7 @@ class ParentDatasource {
     required String endDate,
   }) async {
     final res = await _dio.get<dynamic>(
-      '/parent/lessons/calendar',
+      '/parent/class-sessions/calendar',
       queryParameters: {'startDate': startDate, 'endDate': endDate},
     );
     final data = res.data as Map<String, dynamic>;
@@ -49,8 +49,28 @@ class ParentDatasource {
         .toList();
   }
 
-  Future<void> confirmLesson(int lessonId) async {
-    await _dio.put<dynamic>('/parent/lessons/$lessonId/confirm');
+  /// Xác nhận buổi học hoàn tất. Trả về message kết quả settlement từ backend
+  /// (giải ngân/hoàn tiền/số buổi còn lại) nếu có, để hiển thị cho phụ huynh.
+  Future<String?> confirmLesson(int lessonId) async {
+    final res = await _dio.put<dynamic>(
+      '/parent/class-sessions/$lessonId/confirm',
+    );
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      final content = data['content'];
+      if (content is Map<String, dynamic>) {
+        final msg = content['message'];
+        if (msg is String && msg.isNotEmpty) return msg;
+      }
+    }
+    return null;
+  }
+
+  Future<ParentLessonDto> getLessonDetail(int lessonId) async {
+    final res = await _dio.get<dynamic>('/parent/class-sessions/$lessonId');
+    final data = res.data as Map<String, dynamic>;
+    final content = data['content'] as Map<String, dynamic>? ?? data;
+    return ParentLessonDto.fromJson(content);
   }
 
   Future<List<GradeLevelDto>> getGradeLevels() async {

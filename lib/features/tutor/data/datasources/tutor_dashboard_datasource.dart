@@ -10,7 +10,7 @@ class TutorDashboardDatasource {
 
   Future<TutorDashboardDto> getDashboard() async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/tutor/lessons/dashboard',
+      '/tutor/class-sessions/dashboard',
     );
     return TutorDashboardDto.fromJson(res.data!);
   }

@@ -8,7 +8,7 @@ class TutorLessonDatasource {
 
   final Dio _dio;
 
-  // GET /api/tutor/lessons
+  // GET /api/tutor/class-sessions
   Future<List<TutorLessonDto>> getLessons({
     String? status,
     String? from,
@@ -17,13 +17,13 @@ class TutorLessonDatasource {
     int pageSize = 50,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/tutor/lessons',
+      '/tutor/class-sessions',
       queryParameters: {
         'page': page,
         'pageSize': pageSize,
         'status': status,
-        'from': from,
-        'to': to,
+        // Backend nhận `fromDate` (không có `to`).
+        'fromDate': from,
       }..removeWhere((_, v) => v == null),
     );
     final content = res.data?['content'];
@@ -36,19 +36,26 @@ class TutorLessonDatasource {
         .toList();
   }
 
-  // GET /api/tutor/lessons/calendar
+  // GET /api/tutor/class-sessions/calendar
   Future<List<TutorLessonDto>> getCalendar({
     required String from,
     required String to,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/tutor/lessons/calendar',
-      queryParameters: {'from': from, 'to': to},
+      '/tutor/class-sessions/calendar',
+      // Backend nhận `startDate`/`endDate`.
+      queryParameters: {'startDate': from, 'endDate': to},
     );
+    // Backend trả CalendarDayResponse[] (mỗi ngày lồng danh sách buổi) →
+    // gộp phẳng thành danh sách buổi học.
     final content = res.data?['content'];
-    final raw = content is List ? content : <dynamic>[];
-    return raw
+    final days = content is List ? content : <dynamic>[];
+    return days
         .whereType<Map<String, dynamic>>()
+        .expand(
+          (day) => (day['classSessions'] as List<dynamic>? ?? [])
+              .whereType<Map<String, dynamic>>(),
+        )
         .map(TutorLessonDto.fromJson)
         .toList();
   }

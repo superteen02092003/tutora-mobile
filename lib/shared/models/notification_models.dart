@@ -10,6 +10,8 @@ class NotificationDto {
     required this.message,
     required this.isRead,
     required this.createdAt,
+    this.type,
+    this.referenceId,
   });
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) {
@@ -22,6 +24,8 @@ class NotificationDto {
       createdAt: json['createdat'] != null
           ? DateTime.tryParse(json['createdat'] as String) ?? DateTime.now()
           : DateTime.now(),
+      type: json['type'] as String?,
+      referenceId: json['referenceid'] as String?,
     );
   }
 
@@ -32,6 +36,12 @@ class NotificationDto {
   final bool isRead;
   final DateTime createdAt;
 
+  /// Loại thông báo từ backend (VD WithdrawalRequest, Booking…) — deep-link.
+  final String? type;
+
+  /// Id đối tượng liên quan (bookingId/classSessionId/withdrawalId) — deep-link.
+  final String? referenceId;
+
   NotificationDto copyWith({bool? isRead}) => NotificationDto(
     id: id,
     userId: userId,
@@ -39,6 +49,8 @@ class NotificationDto {
     message: message,
     isRead: isRead ?? this.isRead,
     createdAt: createdAt,
+    type: type,
+    referenceId: referenceId,
   );
 
   String get timeAgo {

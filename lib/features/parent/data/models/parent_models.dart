@@ -81,25 +81,40 @@ class ParentLessonDto {
     this.parentAckedAt,
     this.bookingId,
     this.teachingMode,
+    this.lessonContent,
+    this.homework,
+    this.tutorNotes,
+    this.requiresRemainingPayment = false,
   });
 
-  factory ParentLessonDto.fromJson(Map<String, dynamic> j) => ParentLessonDto(
-    lessonId: j['lessonId'] as int? ?? 0,
-    scheduledStart: j['scheduledStart'] as String? ?? '',
-    scheduledEnd: j['scheduledEnd'] as String? ?? '',
-    studentId: j['studentId'] as String?,
-    studentName: j['studentName'] as String?,
-    tutorId: j['tutorId'] as String?,
-    tutorName: j['tutorName'] as String?,
-    tutorAvatarUrl: j['tutorAvatarUrl'] as String?,
-    subjectName: j['subjectName'] as String?,
-    status: j['status'] as String?,
-    meetingLink: j['meetingLink'] as String?,
-    confirmDeadline: j['confirmDeadline'] as String?,
-    parentAckedAt: j['parentAckedAt'] as String?,
-    bookingId: j['bookingId'] as int?,
-    teachingMode: j['teachingMode'] as String?,
-  );
+  /// Parse cả dạng list (phẳng, `lessonId`) lẫn dạng detail
+  /// (ClassSessionDetailResponse: `classSessionId` + nested student/tutor/subject).
+  factory ParentLessonDto.fromJson(Map<String, dynamic> j) {
+    final student = j['student'] as Map<String, dynamic>?;
+    final tutor = j['tutor'] as Map<String, dynamic>?;
+    final subject = j['subject'] as Map<String, dynamic>?;
+    return ParentLessonDto(
+      lessonId: (j['lessonId'] ?? j['classSessionId']) as int? ?? 0,
+      scheduledStart: j['scheduledStart'] as String? ?? '',
+      scheduledEnd: j['scheduledEnd'] as String? ?? '',
+      studentId: (j['studentId'] ?? student?['studentId']) as String?,
+      studentName: (j['studentName'] ?? student?['fullName']) as String?,
+      tutorId: (j['tutorId'] ?? tutor?['tutorId']) as String?,
+      tutorName: (j['tutorName'] ?? tutor?['fullName']) as String?,
+      tutorAvatarUrl: (j['tutorAvatarUrl'] ?? tutor?['avatarUrl']) as String?,
+      subjectName: (j['subjectName'] ?? subject?['subjectName']) as String?,
+      status: j['status'] as String?,
+      meetingLink: j['meetingLink'] as String?,
+      confirmDeadline: j['confirmDeadline'] as String?,
+      parentAckedAt: (j['parentAckedAt'] ?? j['parentAckAt']) as String?,
+      bookingId: j['bookingId'] as int?,
+      teachingMode: j['teachingMode'] as String?,
+      lessonContent: j['classSessionContent'] as String?,
+      homework: j['homework'] as String?,
+      tutorNotes: j['tutorNotes'] as String?,
+      requiresRemainingPayment: j['requiresRemainingPayment'] as bool? ?? false,
+    );
+  }
 
   final int lessonId;
   final String scheduledStart;
@@ -116,6 +131,12 @@ class ParentLessonDto {
   final String? parentAckedAt;
   final int? bookingId;
   final String? teachingMode;
+
+  // Chỉ có ở dạng detail (buổi đã có báo cáo).
+  final String? lessonContent;
+  final String? homework;
+  final String? tutorNotes;
+  final bool requiresRemainingPayment;
 
   bool get isPendingConfirm => status == 'completed' && parentAckedAt == null;
 
@@ -140,27 +161,45 @@ class ParentBookingDto {
     this.teachingMode,
     this.finalPrice,
     this.schedule,
+    this.depositAmount,
+    this.remainingAmount,
+    this.remainingPaidAt,
+    this.escrowStatus,
+    this.paymentCode,
+    this.paymentDueAt,
   });
 
-  factory ParentBookingDto.fromJson(Map<String, dynamic> j) => ParentBookingDto(
-    bookingId: j['bookingId'] as int? ?? 0,
-    studentId: j['studentId'] as String?,
-    studentName: j['studentName'] as String?,
-    tutorId: j['tutorId'] as String?,
-    tutorName: j['tutorName'] as String?,
-    tutorAvatarUrl: j['tutorAvatarUrl'] as String?,
-    subjectName: j['subjectName'] as String?,
-    status: j['status'] as String?,
-    paymentStatus: j['paymentStatus'] as String?,
-    sessionCount: j['sessionCount'] as int?,
-    remainingSessions: j['remainingSessions'] as int?,
-    startDate: j['startDate'] as String?,
-    teachingMode: j['teachingMode'] as String?,
-    finalPrice: (j['finalPrice'] as num?)?.toDouble(),
-    schedule: (j['schedule'] as List<dynamic>?)
-        ?.map((e) => ParentScheduleSlot.fromJson(e as Map<String, dynamic>))
-        .toList(),
-  );
+  factory ParentBookingDto.fromJson(Map<String, dynamic> j) {
+    // Detail trả nested student/tutor/subject; list có thể phẳng.
+    final student = j['student'] as Map<String, dynamic>?;
+    final tutor = j['tutor'] as Map<String, dynamic>?;
+    final subject = j['subject'] as Map<String, dynamic>?;
+    return ParentBookingDto(
+      bookingId: j['bookingId'] as int? ?? 0,
+      studentId: (j['studentId'] ?? student?['studentId']) as String?,
+      studentName: (j['studentName'] ?? student?['fullName']) as String?,
+      tutorId: (j['tutorId'] ?? tutor?['tutorId']) as String?,
+      tutorName: (j['tutorName'] ?? tutor?['fullName']) as String?,
+      tutorAvatarUrl: (j['tutorAvatarUrl'] ?? tutor?['avatarUrl']) as String?,
+      subjectName: (j['subjectName'] ?? subject?['subjectName']) as String?,
+      status: j['status'] as String?,
+      paymentStatus: j['paymentStatus'] as String?,
+      sessionCount: (j['sessionCount'] ?? j['totalSessions']) as int?,
+      remainingSessions: j['remainingSessions'] as int?,
+      startDate: j['startDate'] as String?,
+      teachingMode: j['teachingMode'] as String?,
+      finalPrice: (j['finalPrice'] as num?)?.toDouble(),
+      depositAmount: (j['depositAmount'] as num?)?.toDouble(),
+      remainingAmount: (j['remainingAmount'] as num?)?.toDouble(),
+      remainingPaidAt: j['remainingPaidAt'] as String?,
+      escrowStatus: j['escrowStatus'] as String?,
+      paymentCode: j['paymentCode'] as String?,
+      paymentDueAt: j['paymentDueAt'] as String?,
+      schedule: (j['schedule'] as List<dynamic>?)
+          ?.map((e) => ParentScheduleSlot.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
 
   final int bookingId;
   final String? studentId;
@@ -177,6 +216,14 @@ class ParentBookingDto {
   final String? teachingMode;
   final double? finalPrice;
   final List<ParentScheduleSlot>? schedule;
+
+  // Thanh toán (BookingResponse).
+  final double? depositAmount;
+  final double? remainingAmount;
+  final String? remainingPaidAt;
+  final String? escrowStatus;
+  final String? paymentCode;
+  final String? paymentDueAt;
 
   bool get isActive => status == 'active';
 }
