@@ -77,7 +77,7 @@ class _HomeContentState extends ConsumerState<_HomeContent>
 
   Future<void> _refresh() async {
     ref
-      ..invalidate(upcomingSessionsProvider)
+      ..invalidate(nextSessionProvider)
       ..invalidate(solveHistoryProvider);
     await ref.read(classListProvider.notifier).refresh();
   }
@@ -237,7 +237,7 @@ class _UpcomingCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(upcomingSessionsProvider);
+    final async = ref.watch(nextSessionProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -253,10 +253,10 @@ class _UpcomingCard extends ConsumerWidget {
           title: 'Chưa tải được lịch học',
           message: e.toString().replaceFirst('Exception: ', ''),
           actionLabel: 'Thử lại',
-          onAction: () => ref.invalidate(upcomingSessionsProvider),
+          onAction: () => ref.invalidate(nextSessionProvider),
         ),
-        data: (sessions) {
-          if (sessions.isEmpty) {
+        data: (session) {
+          if (session == null) {
             return _UpcomingEmpty(
               title: 'Chưa có buổi học nào',
               message: 'Tìm gia sư phù hợp và đặt buổi học đầu tiên của bạn.',
@@ -264,7 +264,7 @@ class _UpcomingCard extends ConsumerWidget {
               onAction: () => context.go(AppRoutes.studentSearch),
             );
           }
-          return _UpcomingContent(session: sessions.first);
+          return _UpcomingContent(session: session);
         },
       ),
     );

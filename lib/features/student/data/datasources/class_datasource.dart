@@ -29,19 +29,14 @@ class ClassDatasource {
     }
   }
 
-  /// GET /student/class-sessions/upcoming
-  Future<List<UpcomingSessionDto>> getUpcomingSessions({int limit = 5}) async {
+  /// GET /student/class-sessions/upcoming — 1 buổi gần nhất, null nếu không có.
+  Future<UpcomingSessionDto?> getNextSession() async {
     try {
-      final res = await _dio.get<dynamic>(
-        '/student/class-sessions/upcoming',
-        queryParameters: {'limit': limit},
-      );
+      final res = await _dio.get<dynamic>('/student/class-sessions/upcoming');
       final data = res.data;
       final content = data is Map<String, dynamic> ? data['content'] : null;
-      final items = content is List ? content : const <dynamic>[];
-      return items
-          .map((e) => UpcomingSessionDto.fromJson(e as Map<String, dynamic>))
-          .toList();
+      if (content is! Map<String, dynamic>) return null;
+      return UpcomingSessionDto.fromJson(content);
     } on DioException catch (e) {
       throw _mapError(e);
     }

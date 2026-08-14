@@ -125,8 +125,8 @@ final FutureProviderFamily<StudentClassDto, int> classDetailProvider =
       return ref.read(classDatasourceProvider).getClassDetail(bookingId);
     });
 
-/// Các buổi học sắp tới gần nhất — card "Buổi học sắp tới" ở trang chủ.
-final FutureProvider<List<UpcomingSessionDto>> upcomingSessionsProvider =
-    FutureProvider<List<UpcomingSessionDto>>((ref) async {
-      return ref.read(classDatasourceProvider).getUpcomingSessions();
+/// Buổi học sắp tới gần nhất — card "Buổi học sắp tới" ở trang chủ.
+final FutureProvider<UpcomingSessionDto?> nextSessionProvider =
+    FutureProvider<UpcomingSessionDto?>((ref) async {
+      return ref.read(classDatasourceProvider).getNextSession();
     });
