@@ -4,14 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:tutora/core/constants/app_assets.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
-import 'package:tutora/features/student/presentation/providers/dashboard_provider.dart';
+import 'package:tutora/features/student/data/datasources/ai_solve_datasource.dart';
+import 'package:tutora/features/student/data/models/class_models.dart';
+import 'package:tutora/features/student/presentation/providers/ai_solve_provider.dart';
+import 'package:tutora/features/student/presentation/providers/class_provider.dart';
+import 'package:tutora/features/student/presentation/screens/student_class_detail_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
+import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
+import 'package:tutora/shared/live_session/live_session_call_screen.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/notification_bell.dart';
 
@@ -49,32 +57,13 @@ class _HomeContent extends ConsumerStatefulWidget {
 class _HomeContentState extends ConsumerState<_HomeContent>
     with ScrollToTopMixin {
   final _scrollController = ScrollController();
-  static const List<({String book, String sub, String time, String topic})>
-  _recents = [
-    (
-      sub: 'Toán 10',
-      topic: 'Hệ thức Vi-ét',
-      book: 'Cánh Diều · §3.4',
-      time: '5p trước',
-    ),
-    (
-      sub: 'Vật Lý 10',
-      topic: 'Định luật II Newton',
-      book: 'Chân trời · §9.2',
-      time: 'Hôm qua',
-    ),
-    (
-      sub: 'Hóa 10',
-      topic: 'Cấu hình electron',
-      book: 'Kết nối · §4.1',
-      time: '2 ngày',
-    ),
-  ];
 
   @override
   void initState() {
     super.initState();
-    unawaited(Future.microtask(ref.read(dashboardProvider.notifier).load));
+    unawaited(
+      Future.microtask(() => ref.read(classListProvider.notifier).refresh()),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       listenScrollToTop(context, 0, _scrollController);
     });
@@ -86,46 +75,54 @@ class _HomeContentState extends ConsumerState<_HomeContent>
     super.dispose();
   }
 
+  Future<void> _refresh() async {
+    ref
+      ..invalidate(upcomingSessionsProvider)
+      ..invalidate(solveHistoryProvider);
+    await ref.read(classListProvider.notifier).refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final dash = ref.watch(dashboardProvider);
+    final classes = ref.watch(classListProvider);
+    final ongoing = classes.ongoing;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          controller: _scrollController,
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom,
-          ),
-          children: [
-            _TopBar(name: widget.firstName),
-            _Greeting(firstName: widget.firstName),
-            const SizedBox(height: AppSpacing.sm),
-            const _HeroCapture(),
-            const SizedBox(height: AppSpacing.xs),
-            _QuickActions(
-              onFindTutor: () => context.go(AppRoutes.studentSearch),
-              onLessons: () => context.go(AppRoutes.studentLessons),
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          color: AppColors.oxblood,
+          child: ListView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom,
             ),
-            const SizedBox(height: AppSpacing.sm),
-            _StatRow(state: dash),
-            _SectionHeader(
-              title: 'Gần đây',
-              onSeeAll: () {},
-            ),
-            ..._recents.map(
-              (r) => _RecentItem(
-                subject: r.sub,
-                topic: r.topic,
-                book: r.book,
-                time: r.time,
-                onTap: () {},
+            children: [
+              _TopBar(name: widget.firstName),
+              _Greeting(firstName: widget.firstName),
+              const SizedBox(height: AppSpacing.sm),
+              const _UpcomingCard(),
+              const SizedBox(height: 4),
+              const _QuickActions(),
+              _SectionHeader(
+                title: 'Lớp đang học',
+                onSeeAll: () => context.go(AppRoutes.studentLessons),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-          ],
+              _OngoingClasses(
+                classes: ongoing,
+                isLoading: classes.isLoading && classes.items.isEmpty,
+              ),
+              _SectionHeader(
+                title: 'Hỏi AI gần đây',
+                onSeeAll: () => context.push(AppRoutes.studentSolveHistory),
+              ),
+              const _RecentAskList(),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+          ),
         ),
       ),
     );
@@ -133,6 +130,7 @@ class _HomeContentState extends ConsumerState<_HomeContent>
 }
 
 // Top bar
+
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.name});
 
@@ -141,49 +139,20 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Row(
         children: [
           const AppLogo(),
           const Spacer(),
-          // Bell icon
-          GestureDetector(
+          _CircleIconButton(
+            icon: Icons.notifications_outlined,
             onTap: () => context.push(AppRoutes.notifications),
-            child: NotificationBadge(
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.paper,
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  size: 18,
-                  color: AppColors.ink,
-                ),
-              ),
-            ),
+            withBadge: true,
           ),
           const SizedBox(width: 10),
-          // Chat icon
-          GestureDetector(
+          _CircleIconButton(
+            icon: Icons.chat_bubble_outline,
             onTap: () => context.push(AppRoutes.studentMessages),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-              ),
-              child: const Icon(
-                Icons.chat_bubble_outline,
-                size: 18,
-                color: AppColors.ink,
-              ),
-            ),
           ),
         ],
       ),
@@ -191,7 +160,39 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    this.withBadge = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool withBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.paper,
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Icon(icon, size: 19, color: AppColors.ink),
+    );
+
+    return GestureDetector(
+      onTap: onTap,
+      child: withBadge ? NotificationBadge(child: button) : button,
+    );
+  }
+}
+
 // Greeting
+
 class _Greeting extends StatelessWidget {
   const _Greeting({required this.firstName});
 
@@ -200,39 +201,27 @@ class _Greeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'HỌC SINH',
-            style: AppTextStyles.eyebrow(color: AppColors.oxblood),
+            'Chào, $firstName 👋',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink3,
+            ),
           ),
-          const SizedBox(height: 8),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Chào, $firstName.\n',
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 30,
-                    letterSpacing: -0.02 * 30,
-                    height: 1.05,
-                    color: AppColors.ink,
-                  ),
-                ),
-                TextSpan(
-                  text: 'Hôm nay học gì?',
-                  style: GoogleFonts.ibmPlexSerif(
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w400,
-                    fontSize: 28,
-                    color: AppColors.ink2,
-                    height: 1.1,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 6),
+          Text(
+            'Hôm nay học gì?',
+            style: GoogleFonts.bricolageGrotesque(
+              fontWeight: FontWeight.w800,
+              fontSize: 30,
+              letterSpacing: -0.02 * 30,
+              height: 1.1,
+              color: AppColors.ink,
             ),
           ),
         ],
@@ -241,84 +230,172 @@ class _Greeting extends StatelessWidget {
   }
 }
 
-// Hero AI capture card
-class _HeroCapture extends StatelessWidget {
-  const _HeroCapture();
+// Buổi học sắp tới — card chính của trang chủ
+
+class _UpcomingCard extends ConsumerWidget {
+  const _UpcomingCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(upcomingSessionsProvider);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: async.when(
+        loading: () => Container(
+          height: 168,
+          decoration: BoxDecoration(
+            color: AppColors.cream2,
+            borderRadius: BorderRadius.circular(22),
+          ),
+        ),
+        error: (e, _) => _UpcomingEmpty(
+          title: 'Chưa tải được lịch học',
+          message: e.toString().replaceFirst('Exception: ', ''),
+          actionLabel: 'Thử lại',
+          onAction: () => ref.invalidate(upcomingSessionsProvider),
+        ),
+        data: (sessions) {
+          if (sessions.isEmpty) {
+            return _UpcomingEmpty(
+              title: 'Chưa có buổi học nào',
+              message: 'Tìm gia sư phù hợp và đặt buổi học đầu tiên của bạn.',
+              actionLabel: 'Tìm gia sư',
+              onAction: () => context.go(AppRoutes.studentSearch),
+            );
+          }
+          return _UpcomingContent(session: sessions.first);
+        },
+      ),
+    );
+  }
+}
+
+class _UpcomingContent extends StatelessWidget {
+  const _UpcomingContent({required this.session});
+
+  final UpcomingSessionDto session;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(22),
+    final live = session.state == ClassSessionState.inProgress;
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              StudentSessionDetailPage(lessonId: session.classSessionId),
         ),
-        child: Stack(
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFF3EE),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFD6E0D4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Radial gradient overlay
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  gradient: const RadialGradient(
-                    center: Alignment(0.9, -1),
-                    radius: 1.2,
-                    colors: [Color(0x2ED4B483), Colors.transparent],
-                    stops: [0.0, 0.55],
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: live ? AppColors.green : AppColors.moss,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    live ? 'ĐANG DIỄN RA' : 'BUỔI HỌC SẮP TỚI',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.08,
+                      color: AppColors.cream,
+                    ),
                   ),
                 ),
-              ),
+                const Spacer(),
+                Text(
+                  session.countdownLabel,
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.moss,
+                  ),
+                ),
+              ],
             ),
-            Column(
+            const SizedBox(height: 14),
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'AI HỖ TRỢ',
-                  style: AppTextStyles.eyebrow(color: AppColors.gold),
-                ),
-                const SizedBox(height: 8),
-                RichText(
-                  text: TextSpan(
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextSpan(
-                        text: 'Chụp bài toán.\n',
+                      Text(
+                        session.title,
                         style: GoogleFonts.bricolageGrotesque(
                           fontWeight: FontWeight.w800,
-                          fontSize: 22,
-                          height: 1.1,
-                          color: AppColors.cream,
+                          fontSize: 24,
+                          height: 1.15,
+                          color: AppColors.ink,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      TextSpan(
-                        text: 'Nhận lời giải nhanh chóng.',
-                        style: GoogleFonts.ibmPlexSerif(
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w400,
-                          fontSize: 21,
-                          color: AppColors.gold,
-                          height: 1.1,
+                      const SizedBox(height: 6),
+                      Text(
+                        session.tutorName ?? 'Gia sư',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink2,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.event_rounded,
+                            size: 15,
+                            color: AppColors.moss,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '${session.dayLabel} · ${session.timeRange}',
+                              style: GoogleFonts.inter(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Đọc bài toán → phân loại → gợi ý theo SGK Việt Nam.',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.7),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _CameraButton(
-                  onTap: () => context.go(AppRoutes.studentCapture),
+                const SizedBox(width: 8),
+                Image.asset(
+                  AppAssets.heroUpcoming,
+                  width: 84,
+                  height: 84,
+                  fit: BoxFit.contain,
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+            _JoinButton(session: session),
           ],
         ),
       ),
@@ -326,36 +403,59 @@ class _HeroCapture extends StatelessWidget {
   }
 }
 
-class _CameraButton extends StatelessWidget {
-  const _CameraButton({required this.onTap});
+class _JoinButton extends StatelessWidget {
+  const _JoinButton({required this.session});
 
-  final VoidCallback onTap;
+  final UpcomingSessionDto session;
+
+  /// Phòng luôn mở nên chỉ đổi chữ theo việc đã tới sát giờ hay chưa.
+  String get _label {
+    if (!session.canJoinNow) return 'Phòng học đã đóng';
+    return session.isWithinJoinWindow ? 'Vào phòng học' : 'Vào phòng sớm';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final enabled = session.canJoinNow;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: enabled
+          ? () => unawaited(
+              Navigator.of(context, rootNavigator: true).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => LiveSessionCallScreen(
+                    classSessionId: session.classSessionId,
+                    tutorName: session.tutorName,
+                  ),
+                ),
+              ),
+            )
+          : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
-          color: AppColors.cream,
-          borderRadius: BorderRadius.circular(999),
+          color: enabled ? AppColors.moss : AppColors.paper,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: enabled ? AppColors.moss : AppColors.line,
+          ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.camera_alt_outlined,
-              size: 16,
-              color: AppColors.ink,
+            Icon(
+              enabled ? Icons.videocam_rounded : Icons.lock_clock_rounded,
+              size: 17,
+              color: enabled ? AppColors.cream : AppColors.ink3,
             ),
             const SizedBox(width: 8),
             Text(
-              'Mở camera',
+              _label,
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: AppColors.ink,
+                color: enabled ? AppColors.cream : AppColors.ink3,
               ),
             ),
           ],
@@ -365,12 +465,94 @@ class _CameraButton extends StatelessWidget {
   }
 }
 
-// Quick actions
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.onFindTutor, required this.onLessons});
+class _UpcomingEmpty extends StatelessWidget {
+  const _UpcomingEmpty({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
 
-  final VoidCallback onFindTutor;
-  final VoidCallback onLessons;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF3EE),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFD6E0D4)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.bricolageGrotesque(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 19,
+                    height: 1.2,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.ink3,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: onAction,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.moss,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      actionLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.cream,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Image.asset(
+            AppAssets.heroUpcoming,
+            width: 78,
+            height: 78,
+            fit: BoxFit.contain,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Hành động nhanh
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
 
   @override
   Widget build(BuildContext context) {
@@ -380,21 +562,21 @@ class _QuickActions extends StatelessWidget {
         children: [
           Expanded(
             child: _ActionCard(
-              icon: Icons.search_rounded,
-              label: 'Tìm gia sư',
-              color: AppColors.oxblood,
-              bg: const Color(0xFFF5E9E9),
-              onTap: onFindTutor,
+              title: 'Giải bài tập',
+              image: AppAssets.actionSolve,
+              bg: const Color(0xFFF3EEF8),
+              border: const Color(0xFFE3D9EE),
+              onTap: () => context.go(AppRoutes.studentCapture),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: _ActionCard(
-              icon: Icons.calendar_month_outlined,
-              label: 'Xem lịch học',
-              color: const Color(0xFF3D6EEA),
-              bg: const Color(0xFFE8F0FE),
-              onTap: onLessons,
+              title: 'Tìm gia sư',
+              image: AppAssets.actionFindTutor,
+              bg: const Color(0xFFFBF0E8),
+              border: const Color(0xFFEFDDCE),
+              onTap: () => context.go(AppRoutes.studentSearch),
             ),
           ),
         ],
@@ -405,17 +587,17 @@ class _QuickActions extends StatelessWidget {
 
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
+    required this.title,
+    required this.image,
     required this.bg,
+    required this.border,
     required this.onTap,
   });
 
-  final IconData icon;
-  final String label;
-  final Color color;
+  final String title;
+  final String image;
   final Color bg;
+  final Color border;
   final VoidCallback onTap;
 
   @override
@@ -423,31 +605,54 @@ class _ActionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
         decoration: BoxDecoration(
-          color: AppColors.paper,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.line),
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: border),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: bg,
+            // Tiêu đề luôn nằm gọn 1 dòng: chiếm hết bề ngang card và tự thu
+            // nhỏ cỡ chữ trên máy hẹp thay vì bị ngắt dòng.
+            SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  style: GoogleFonts.bricolageGrotesque(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 17,
+                    height: 1.25,
+                    color: AppColors.ink,
+                  ),
+                ),
               ),
-              child: Icon(icon, size: 17, color: color),
             ),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: GoogleFonts.bricolageGrotesque(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: AppColors.ink,
-              ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.paper,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 16,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const Spacer(),
+                Image.asset(image, width: 52, height: 52, fit: BoxFit.contain),
+              ],
             ),
           ],
         ),
@@ -456,102 +661,161 @@ class _ActionCard extends StatelessWidget {
   }
 }
 
-// Stat row
-class _StatRow extends StatelessWidget {
-  const _StatRow({required this.state});
+// Lớp đang học
 
-  final DashboardState state;
+class _OngoingClasses extends StatelessWidget {
+  const _OngoingClasses({required this.classes, required this.isLoading});
+
+  final List<StudentClassDto> classes;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    final s = state.stats;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      child: Row(
-        children: [
-          _StatCard(
-            label: 'Booking',
-            value: s?.totalBookings,
-            icon: Icons.bookmark_border_rounded,
-            isLoading: state.isLoading,
+    if (isLoading) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        child: Container(
+          height: 140,
+          decoration: BoxDecoration(
+            color: AppColors.cream2,
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(width: 8),
-          _StatCard(
-            label: 'Buổi học',
-            value: s?.totalLessons,
-            icon: Icons.school_outlined,
-            isLoading: state.isLoading,
+        ),
+      );
+    }
+
+    if (classes.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.paper,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.line),
           ),
-          const SizedBox(width: 8),
-          _StatCard(
-            label: 'Chờ xác nhận',
-            value: s?.pendingCount,
-            icon: Icons.hourglass_empty_rounded,
-            isLoading: state.isLoading,
+          child: Row(
+            children: [
+              Image.asset(
+                AppAssets.emptyClasses,
+                width: 52,
+                height: 52,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bạn chưa có lớp học nào đang diễn ra.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13.5,
+                    color: AppColors.ink3,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          _StatCard(
-            label: 'Hoàn thành',
-            value: s?.completedCount,
-            icon: Icons.check_circle_outline_rounded,
-            isLoading: state.isLoading,
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 148,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: classes.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        itemBuilder: (context, i) => _ClassProgressTile(
+          klass: classes[i],
+          onTap: () => Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  StudentClassDetailPage(bookingId: classes[i].bookingId),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.isLoading,
-  });
+class _ClassProgressTile extends StatelessWidget {
+  const _ClassProgressTile({required this.klass, required this.onTap});
 
-  final String label;
-  final int? value;
-  final IconData icon;
-  final bool isLoading;
+  final StudentClassDto klass;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    final next = klass.nextSession;
+
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        width: 228,
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.paper,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.line),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon(icon, size: 18, color: AppColors.ink3),
-            const SizedBox(height: 6),
-            if (isLoading)
-              Container(
-                width: 24,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: AppColors.cream2,
-                  borderRadius: BorderRadius.circular(4),
+            Row(
+              children: [
+                SubjectIcon(
+                  iconUrl: klass.subjectIconUrl,
+                  subjectName: klass.subjectName,
+                  size: 34,
                 ),
-              )
-            else
-              Text(
-                '${value ?? 0}',
-                style: GoogleFonts.bricolageGrotesque(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22,
-                  color: AppColors.ink,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    klass.title,
+                    style: GoogleFonts.bricolageGrotesque(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                      color: AppColors.ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            const SizedBox(height: 3),
+                const SizedBox(width: 6),
+                Text(
+                  '${klass.progressPercent}%',
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.oxblood,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Text(
-              label,
-              style: AppTextStyles.eyebrow(),
-              textAlign: TextAlign.center,
+              klass.tutorName ?? 'Gia sư',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.ink3,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            ProgressBar(progress: klass.progress),
+            const SizedBox(height: 10),
+            Text(
+              '${klass.doneSessions}/${klass.countedSessions} buổi'
+              '${next != null ? ' · Buổi tới ${next.dateLabel}' : ''}',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.ink3,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -563,6 +827,7 @@ class _StatCard extends StatelessWidget {
 }
 
 // Section header
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, required this.onSeeAll});
 
@@ -572,17 +837,15 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 26, 20, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
         children: [
           Text(
             title,
             style: GoogleFonts.bricolageGrotesque(
-              fontWeight: FontWeight.w500,
-              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              fontSize: 19,
               color: AppColors.ink,
             ),
           ),
@@ -590,10 +853,10 @@ class _SectionHeader extends StatelessWidget {
             onTap: onSeeAll,
             child: Text(
               'Xem tất cả',
-              style: GoogleFonts.ibmPlexSerif(
-                fontStyle: FontStyle.italic,
-                fontSize: 16,
-                color: AppColors.ink3,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.oxblood,
               ),
             ),
           ),
@@ -603,88 +866,221 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// Recent item
-class _RecentItem extends StatelessWidget {
-  const _RecentItem({
-    required this.subject,
-    required this.topic,
-    required this.book,
-    required this.time,
+// Hỏi AI gần đây — 3 phiên mới nhất từ /ai-chat/sessions
+
+class _RecentAskList extends ConsumerWidget {
+  const _RecentAskList();
+
+  static const _maxItems = 3;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(solveHistoryProvider);
+
+    return async.when(
+      loading: () => const Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [_RecentSkeleton(), _RecentSkeleton()],
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+        child: _RecentEmpty(
+          message: 'Chưa tải được lịch sử hỏi AI.',
+          actionLabel: 'Thử lại',
+          onAction: () => ref.invalidate(solveHistoryProvider),
+        ),
+      ),
+      data: (sessions) {
+        if (sessions.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+            child: _RecentEmpty(
+              message: 'Bạn chưa hỏi AI bài nào. Chụp một bài toán để bắt đầu.',
+              actionLabel: 'Mở camera',
+              onAction: () => context.go(AppRoutes.studentCapture),
+            ),
+          );
+        }
+        final shown = sessions.take(_maxItems).toList();
+        return Column(
+          // stretch: mỗi dòng chiếm trọn bề ngang để chữ căn trái và đường kẻ
+          // kéo hết chiều rộng — mặc định của Column là center.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < shown.length; i++)
+              _RecentAskItem(
+                session: shown[i],
+                showDivider: i < shown.length - 1,
+                onTap: () => context.push(
+                  AppRoutes.studentSolveSession.replaceFirst(
+                    ':sessionId',
+                    shown[i].sessionId,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Một dòng lịch sử hỏi AI — danh sách phẳng, không viền/nền riêng; các dòng
+/// tách nhau bằng một đường kẻ mảnh.
+class _RecentAskItem extends StatelessWidget {
+  const _RecentAskItem({
+    required this.session,
     required this.onTap,
+    required this.showDivider,
   });
 
-  final String subject;
-  final String topic;
-  final String book;
-  final String time;
+  final AiChatSession session;
   final VoidCallback onTap;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.paper,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.line),
-          ),
-          child: Row(
-            children: [
-              // Subject thumbnail placeholder
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEFE9DA), Color(0xFFE5DDC9)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  subject.substring(0, 1),
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.1,
-                    color: AppColors.ink2.withValues(alpha: 0.6),
-                  ),
-                ),
+    final title = (session.title?.trim().isNotEmpty ?? false)
+        ? session.title!.trim()
+        : 'Bài đã hỏi';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: showDivider
+            ? const BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppColors.line)),
+              )
+            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: AppColors.ink,
+                height: 1.35,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      topic,
-                      style: GoogleFonts.bricolageGrotesque(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$book · $time',
-                      style: AppTextStyles.bodySmall(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: AppColors.ink3),
-            ],
-          ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              _relativeTime(session.updatedAt ?? session.createdAt),
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink4),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _RecentSkeleton extends StatelessWidget {
+  const _RecentSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 14,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.cream2,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 9),
+          Container(
+            height: 11,
+            width: 110,
+            decoration: BoxDecoration(
+              color: AppColors.cream2,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentEmpty extends StatelessWidget {
+  const _RecentEmpty({
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Image.asset(
+          AppAssets.emptyAsk,
+          width: 48,
+          height: 48,
+          fit: BoxFit.contain,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            message,
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              color: AppColors.ink3,
+              height: 1.5,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: onAction,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.cream2,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Text(
+              actionLabel,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "5 phút trước" / "Hôm qua" / "12/08" — nhãn thời gian ngắn cho card.
+String _relativeTime(DateTime? raw) {
+  if (raw == null) return '';
+  final t = raw.toLocal();
+  final diff = DateTime.now().difference(t);
+  if (diff.inMinutes < 1) return 'Vừa xong';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
+  if (diff.inHours < 24) return '${diff.inHours} giờ trước';
+  if (diff.inDays == 1) return 'Hôm qua';
+  if (diff.inDays < 7) return '${diff.inDays} ngày trước';
+  return DateFormat('dd/MM').format(t);
 }
