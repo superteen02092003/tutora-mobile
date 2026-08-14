@@ -109,3 +109,12 @@ final FutureProviderFamily<StudentLessonDetailDto, int> lessonDetailProvider =
       final ds = ref.read(lessonDatasourceProvider);
       return ds.getStudentLessonDetail(lessonId);
     });
+
+// Recording
+
+/// Trạng thái video xem lại của buổi học. Trả null khi buổi chưa có bản ghi.
+final FutureProviderFamily<LessonRecordingDto?, int> lessonRecordingProvider =
+    FutureProvider.family<LessonRecordingDto?, int>((ref, lessonId) async {
+      final ds = ref.read(lessonDatasourceProvider);
+      return ds.getRecording(lessonId);
+    });

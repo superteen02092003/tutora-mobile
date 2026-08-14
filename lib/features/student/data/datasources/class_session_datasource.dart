@@ -16,6 +16,43 @@ class ClassSessionDatasource {
     }
   }
 
+  /// POST /student/class-sessions/{id}/reschedule-proposal — học sinh tự quản lý
+  /// đề xuất dời buổi sang giờ khác. Học sinh do phụ huynh quản lý sẽ bị BE từ
+  /// chối (403) vì quyền thuộc về phụ huynh.
+  Future<void> proposeReschedule({
+    required int classSessionId,
+    required DateTime proposedStart,
+    String? reason,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        '/student/class-sessions/$classSessionId/reschedule-proposal',
+        data: {
+          'proposedScheduledStart': proposedStart.toUtc().toIso8601String(),
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
+      );
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// POST /student/class-sessions/{id}/reschedule-proposal/respond —
+  /// đồng ý / từ chối đề xuất đổi lịch do gia sư gửi.
+  Future<void> respondToReschedule({
+    required int classSessionId,
+    required bool accepted,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        '/student/class-sessions/$classSessionId/reschedule-proposal/respond',
+        data: {'accepted': accepted},
+      );
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   Exception _mapError(DioException e) {
     final data = e.response?.data;
     String? msg;

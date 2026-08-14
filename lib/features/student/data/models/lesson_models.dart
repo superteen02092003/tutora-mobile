@@ -60,24 +60,22 @@ class StudentLessonDto {
         startDt.day == now.day;
   }
 
-  bool get canJoinNow {
-    final now = DateTime.now();
-    final opensAt = startDt.subtract(const Duration(minutes: 15));
-    final closesAt = endDt.add(const Duration(hours: 4));
-    return now.isAfter(opensAt) && now.isBefore(closesAt);
-  }
+  /// Phòng mở theo TRẠNG THÁI buổi học, không theo khung giờ (khớp BE).
+  bool get canJoinNow =>
+      statusType == LessonStatusType.scheduled ||
+      statusType == LessonStatusType.inProgress;
 
-  int get minutesUntilOpen {
-    final opensAt = startDt.subtract(const Duration(minutes: 15));
-    final diff = opensAt.difference(DateTime.now());
-    return diff.isNegative ? 0 : diff.inMinutes + 1;
-  }
+  /// Đã tới sát giờ học (±15 phút) — chỉ để đổi nhãn nút, không chặn vào.
+  bool get isWithinJoinWindow =>
+      DateTime.now().isAfter(startDt.subtract(const Duration(minutes: 15)));
 
   LessonStatusType get statusType => switch (status.toLowerCase()) {
+    'reserved' => LessonStatusType.reserved,
     'scheduled' => LessonStatusType.scheduled,
+    'in_progress' => LessonStatusType.inProgress,
     'pending_confirmation' => LessonStatusType.pending,
     'completed' => LessonStatusType.done,
-    'cancelled' => LessonStatusType.cancelled,
+    'cancelled' || 'no_show' => LessonStatusType.cancelled,
     _ => LessonStatusType.scheduled,
   };
 }
@@ -92,6 +90,8 @@ class StudentLessonDetailDto extends StudentLessonDto {
     super.subjectName,
     super.lessonPrice,
     super.meetingLink,
+    super.confirmDeadline,
+    super.bookingId,
     this.tutorAvatarUrl,
     this.lessonContent,
     this.homework,
@@ -100,10 +100,18 @@ class StudentLessonDetailDto extends StudentLessonDto {
     this.isTutorPresent,
     this.isStudentPresent,
     this.requiresRemainingPayment = false,
+    this.bookingStatus,
+    this.isSettled,
+    this.checkinTime,
+    this.checkoutTime,
+    this.pendingReschedule,
+    this.rescheduleProposals = const [],
   });
 
   factory StudentLessonDetailDto.fromJson(Map<String, dynamic> j) {
     final reportRaw = j['report'] as Map<String, dynamic>?;
+    final pendingRaw = j['pendingRescheduleProposal'] as Map<String, dynamic>?;
+    final proposalsRaw = j['rescheduleProposals'] as List<dynamic>? ?? const [];
     return StudentLessonDetailDto(
       lessonId: (j['classSessionId'] ?? j['lessonId']) as int,
       scheduledStart: j['scheduledStart'] as String,
@@ -114,6 +122,12 @@ class StudentLessonDetailDto extends StudentLessonDto {
       subjectName: j['subjectName'] as String?,
       lessonPrice: (j['classSessionPrice'] as num?)?.toDouble(),
       meetingLink: j['meetingLink'] as String?,
+      confirmDeadline: j['confirmDeadline'] as String?,
+      bookingId: j['bookingId'] as int?,
+      bookingStatus: j['bookingStatus'] as String?,
+      isSettled: j['isSettled'] as bool?,
+      checkinTime: (j['checkinTime'] ?? j['checkInTime']) as String?,
+      checkoutTime: (j['checkoutTime'] ?? j['checkOutTime']) as String?,
       lessonContent:
           (reportRaw?['topicsCovered'] ?? j['lessonContent']) as String?,
       homework: reportRaw?['homeworkAssigned'] as String?,
@@ -122,6 +136,12 @@ class StudentLessonDetailDto extends StudentLessonDto {
       isStudentPresent: j['isStudentPresent'] as bool?,
       requiresRemainingPayment: j['requiresRemainingPayment'] as bool? ?? false,
       report: reportRaw != null ? LessonReportDto.fromJson(reportRaw) : null,
+      pendingReschedule: pendingRaw != null
+          ? RescheduleProposalDto.fromJson(pendingRaw)
+          : null,
+      rescheduleProposals: proposalsRaw
+          .map((e) => RescheduleProposalDto.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -135,6 +155,138 @@ class StudentLessonDetailDto extends StudentLessonDto {
   /// Buổi tiếp theo bị khóa do phụ huynh chưa thanh toán các buổi còn lại.
   final bool requiresRemainingPayment;
   final LessonReportDto? report;
+
+  /// Trạng thái của lớp (booking) chứa buổi này.
+  final String? bookingStatus;
+
+  /// Buổi đã được quyết toán (tiền đã chuyển cho gia sư).
+  final bool? isSettled;
+
+  final String? checkinTime;
+  final String? checkoutTime;
+
+  /// Đề xuất đổi lịch đang chờ phản hồi (gia sư gửi, hoặc chính học sinh gửi).
+  final RescheduleProposalDto? pendingReschedule;
+
+  /// Toàn bộ lịch sử đề xuất đổi lịch, mới nhất trước.
+  final List<RescheduleProposalDto> rescheduleProposals;
+
+  DateTime? get checkinDt =>
+      checkinTime == null ? null : DateTime.tryParse(checkinTime!)?.toLocal();
+  DateTime? get checkoutDt =>
+      checkoutTime == null ? null : DateTime.tryParse(checkoutTime!)?.toLocal();
+
+  /// Thời lượng học thực tế (phút) nếu đã có cả check-in lẫn check-out.
+  int? get actualMinutes {
+    final inAt = checkinDt;
+    final outAt = checkoutDt;
+    if (inAt == null || outAt == null) return null;
+    final mins = outAt.difference(inAt).inMinutes;
+    return mins > 0 ? mins : null;
+  }
+
+  DateTime? get confirmDeadlineDt => confirmDeadline == null
+      ? null
+      : DateTime.tryParse(confirmDeadline!)?.toLocal();
+
+  /// BE chặn đề xuất đổi lịch khi còn dưới 2 giờ trước giờ học đã đặt
+  /// (ClassSessionRescheduleProposalService.MinHoursBeforeOriginalStart).
+  static const rescheduleCutoff = Duration(hours: 2);
+
+  /// Có được đề xuất đổi lịch buổi này không — khớp đúng ràng buộc của BE để
+  /// UI không mời gọi một hành động chắc chắn bị từ chối:
+  ///  • buổi phải đang ở trạng thái `scheduled` (đã học/đang học/hủy đều không)
+  ///  • còn tối thiểu 2 giờ trước giờ bắt đầu
+  ///  • chưa có đề xuất nào đang chờ phản hồi
+  bool get canProposeReschedule =>
+      statusType == LessonStatusType.scheduled &&
+      DateTime.now().isBefore(startDt.subtract(rescheduleCutoff)) &&
+      !(pendingReschedule?.isPending ?? false);
+
+  /// Lý do không đổi lịch được, để hiện cho học sinh thay vì im lặng ẩn nút.
+  String? get rescheduleBlockReason {
+    if (canProposeReschedule) return null;
+    if (pendingReschedule?.isPending ?? false) {
+      return 'Buổi học đang có một đề xuất đổi lịch chờ phản hồi.';
+    }
+    if (statusType != LessonStatusType.scheduled) {
+      return 'Buổi học đã diễn ra hoặc đã kết thúc nên không đổi lịch được.';
+    }
+    return 'Chỉ đổi lịch được khi còn tối thiểu 2 giờ trước giờ học.';
+  }
+}
+
+/// Đề xuất đổi lịch một buổi học (POST reschedule-proposal).
+class RescheduleProposalDto {
+  const RescheduleProposalDto({
+    required this.rescheduleProposalId,
+    required this.classSessionId,
+    required this.status,
+    required this.originalStart,
+    required this.proposedStart,
+    required this.proposedEnd,
+    this.proposedByRole,
+    this.proposedByName,
+    this.reason,
+    this.expiresAt,
+  });
+
+  factory RescheduleProposalDto.fromJson(Map<String, dynamic> j) =>
+      RescheduleProposalDto(
+        rescheduleProposalId: (j['rescheduleProposalId'] as num?)?.toInt() ?? 0,
+        classSessionId: (j['classSessionId'] as num?)?.toInt() ?? 0,
+        status: j['status'] as String? ?? '',
+        originalStart: j['originalScheduledStart'] as String? ?? '',
+        proposedStart: j['proposedScheduledStart'] as String? ?? '',
+        proposedEnd: j['proposedScheduledEnd'] as String? ?? '',
+        proposedByRole: j['proposedByRole'] as String?,
+        proposedByName: j['proposedByName'] as String?,
+        reason: j['reason'] as String?,
+        expiresAt: j['expiresAt'] as String?,
+      );
+
+  final int rescheduleProposalId;
+  final int classSessionId;
+  final String status;
+  final String originalStart;
+  final String proposedStart;
+  final String proposedEnd;
+  final String? proposedByRole;
+  final String? proposedByName;
+  final String? reason;
+  final String? expiresAt;
+
+  DateTime? get proposedStartDt => DateTime.tryParse(proposedStart)?.toLocal();
+  DateTime? get proposedEndDt => DateTime.tryParse(proposedEnd)?.toLocal();
+  DateTime? get originalStartDt => DateTime.tryParse(originalStart)?.toLocal();
+  DateTime? get expiresAtDt =>
+      expiresAt == null ? null : DateTime.tryParse(expiresAt!)?.toLocal();
+
+  bool get isPending => status.toLowerCase() == 'pending';
+
+  /// Đề xuất do gia sư gửi → học sinh là bên phải phản hồi.
+  bool get fromTutor => (proposedByRole ?? '').toLowerCase() == 'tutor';
+}
+
+/// Trạng thái bản ghi video buổi học (GET /class-sessions/{id}/recording).
+class LessonRecordingDto {
+  const LessonRecordingDto({
+    required this.status,
+    required this.available,
+    this.streamUrl,
+  });
+
+  factory LessonRecordingDto.fromJson(Map<String, dynamic> j) =>
+      LessonRecordingDto(
+        status: j['status'] as String? ?? 'none',
+        available: j['available'] as bool? ?? false,
+        streamUrl: j['streamUrl'] as String?,
+      );
+
+  /// available | processing | recording | failed | none
+  final String status;
+  final bool available;
+  final String? streamUrl;
 }
 
 class LessonReportDto {
@@ -183,4 +335,12 @@ class StudentLessonPagedResult {
   final int totalCount;
 }
 
-enum LessonStatusType { scheduled, pending, done, cancelled }
+enum LessonStatusType {
+  /// Buổi 2..N chờ phụ huynh trả nốt phần còn lại mới được kích hoạt.
+  reserved,
+  scheduled,
+  inProgress,
+  pending,
+  done,
+  cancelled,
+}
