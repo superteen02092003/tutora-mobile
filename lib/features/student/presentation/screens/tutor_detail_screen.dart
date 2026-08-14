@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_bottom_sheet.dart';
+import 'package:tutora/features/student/presentation/widgets/parent_managed_guard.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 import 'package:tutora/features/tutor_search/presentation/controllers/tutor_detail_controller.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/skeletons.dart';
 import 'package:tutora/shared/widgets/tutor_detail/tutor_about_section.dart';
 import 'package:tutora/shared/widgets/tutor_detail/tutor_certificates_section.dart';
@@ -133,14 +138,21 @@ class _TopBar extends StatelessWidget {
   }
 
   void _onShare(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Chia sẻ hồ sơ ${profile.displayName}')),
+    unawaited(
+      ParentManagedGuard.copyTutorLink(
+        context,
+        tutorName: profile.displayName,
+        tutorId: tutorId,
+      ),
     );
   }
 
   void _onWishlist(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã lưu vào danh sách yêu thích')),
+    // Chưa có API wishlis
+    AppToast.show(
+      context,
+      message: 'Tính năng yêu thích đang được phát triển.',
+      type: AppToastType.info,
     );
   }
 }
@@ -170,14 +182,17 @@ class _CircleIconBtn extends StatelessWidget {
 
 // Booking button pinned to the bottom of the screen (no price — pricing is
 // shown per subject/grade in the "cấp lớp giảng dạy" section).
-class _BookingBar extends StatelessWidget {
+class _BookingBar extends ConsumerWidget {
   const _BookingBar({required this.tutorId, required this.profile});
   final String tutorId;
   final TutorFullProfileDto profile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    final isParentManaged = ref.watch(isParentManagedProvider);
+
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
       decoration: const BoxDecoration(
@@ -185,7 +200,13 @@ class _BookingBar extends StatelessWidget {
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
       child: GestureDetector(
-        onTap: () => showBookingSheet(context, profile, tutorId),
+        onTap: () => isParentManaged
+            ? ParentManagedGuard.showBookingBlocked(
+                context,
+                tutorName: profile.fullName ?? 'này',
+                tutorId: tutorId,
+              )
+            : showBookingSheet(context, profile, tutorId),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 15),
           decoration: BoxDecoration(

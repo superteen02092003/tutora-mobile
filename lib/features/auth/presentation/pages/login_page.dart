@@ -25,12 +25,12 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final _emailCtrl = TextEditingController();
+  final _identifierCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _emailCtrl.dispose();
+    _identifierCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -38,7 +38,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     await ref
         .read(loginControllerProvider.notifier)
-        .login(_emailCtrl.text, _passCtrl.text);
+        .login(_identifierCtrl.text, _passCtrl.text);
   }
 
   Future<void> _navigateByRole() async {
@@ -111,11 +111,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(height: 28),
 
                     AuthInput(
-                      label: 'Email',
-                      controller: _emailCtrl,
-                      keyboardType: TextInputType.emailAddress,
+                      label: 'Số điện thoại, email hoặc tên đăng nhập',
+                      controller: _identifierCtrl,
+                      keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.next,
-                      hint: 'ten@email.com',
+                      hint: '090..., email@example.com hoặc tên đăng nhập',
                       enabled: !isLoading,
                     ),
                     const SizedBox(height: 14),

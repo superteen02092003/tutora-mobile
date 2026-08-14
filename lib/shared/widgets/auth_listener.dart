@@ -5,7 +5,7 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
-import 'package:tutora/features/student/presentation/providers/dashboard_provider.dart';
+import 'package:tutora/features/student/presentation/providers/class_provider.dart';
 import 'package:tutora/features/student/presentation/providers/profile_provider.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -20,7 +20,7 @@ class AuthListener extends ConsumerWidget {
       if (next is AuthLoggedOut) {
         ref
           ..invalidate(profileProvider)
-          ..invalidate(dashboardProvider)
+          ..invalidate(classListProvider)
           ..invalidate(parentProfileProvider)
           ..invalidate(parentStudentsProvider)
           ..invalidate(parentDashboardProvider);

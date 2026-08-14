@@ -3,16 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/features/student/data/models/lesson_models.dart';
-import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
+import 'package:tutora/features/student/data/models/class_models.dart';
+import 'package:tutora/features/student/presentation/providers/class_provider.dart';
+import 'package:tutora/features/student/presentation/screens/student_class_detail_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
+import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
 import 'package:tutora/shared/widgets/app_calendar.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 
+/// Trang Lịch học — hai chế độ xem:
+///  • Danh sách: lớp học (kỳ học với 1 gia sư), mỗi lớp mở ra danh sách buổi.
+///  • Lịch tháng: toàn bộ buổi học của mọi lớp, chấm theo ngày.
 class StudentLessonsPage extends ConsumerStatefulWidget {
   const StudentLessonsPage({super.key});
 
@@ -32,9 +38,7 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
     _tabs = TabController(length: 2, vsync: this);
     _tabs.addListener(() => setState(() {}));
     unawaited(
-      Future.microtask(
-        () => ref.read(lessonListProvider.notifier).load(reset: true),
-      ),
+      Future.microtask(() => ref.read(classListProvider.notifier).refresh()),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       listenScrollToTop(context, 3, _scrollController);
@@ -50,21 +54,7 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(lessonListProvider);
-    final todayLessons = state.items.where((l) => l.isToday).toList();
-    final upcomingLessons =
-        state.items
-            .where(
-              (l) =>
-                  l.statusType != LessonStatusType.done &&
-                  l.statusType != LessonStatusType.cancelled,
-            )
-            .toList()
-          ..sort((a, b) => a.startDt.compareTo(b.startDt));
-    // Done: most recent first (descending).
-    final doneLessons =
-        state.items.where((l) => l.statusType == LessonStatusType.done).toList()
-          ..sort((a, b) => b.startDt.compareTo(a.startDt));
+    final state = ref.watch(classListProvider);
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -75,51 +65,60 @@ class _StudentLessonsPageState extends ConsumerState<StudentLessonsPage>
           children: [
             _TopBar(
               showCalendar: _showCalendar,
-              onToggle: () {
-                setState(() => _showCalendar = !_showCalendar);
-              },
+              onToggle: () => setState(() => _showCalendar = !_showCalendar),
             ),
-            if (_showCalendar) ...[
+            if (state.isLoading && state.items.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.oxblood,
+                    strokeWidth: 2,
+                  ),
+                ),
+              )
+            else if (state.error != null && state.items.isEmpty)
               Expanded(
-                child: _CalendarView(allLessons: state.items),
-              ),
-            ] else ...[
-              _TodayCard(lessons: todayLessons),
+                child: _ErrorView(
+                  message: state.error!,
+                  onRetry: () => ref.read(classListProvider.notifier).refresh(),
+                ),
+              )
+            else if (_showCalendar)
+              Expanded(child: _CalendarView(entries: state.allSessions))
+            else ...[
+              _UpNextCard(summary: state.summary),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: _SegmentedTabs(
                   selected: _tabs.index,
-                  onSelect: (i) => _tabs.animateTo(i),
+                  labels: [
+                    'Đang học (${state.ongoing.length})',
+                    'Đã xong (${state.finished.length})',
+                  ],
+                  onSelect: _tabs.animateTo,
                 ),
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: state.isLoading && state.items.isEmpty
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.oxblood,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : state.error != null && state.items.isEmpty
-                    ? _ErrorView(
-                        message: state.error!,
-                        onRetry: () =>
-                            ref.read(lessonListProvider.notifier).refresh(),
-                      )
-                    : TabBarView(
-                        controller: _tabs,
-                        children: [
-                          _SessionListView(
-                            lessons: upcomingLessons,
-                            scrollController: _scrollController,
-                          ),
-                          _SessionListView(
-                            lessons: doneLessons,
-                            scrollController: _scrollController,
-                          ),
-                        ],
-                      ),
+                child: TabBarView(
+                  controller: _tabs,
+                  children: [
+                    _ClassListView(
+                      classes: state.ongoing,
+                      scrollController: _scrollController,
+                      emptyMessage:
+                          'Bạn chưa có lớp học nào đang diễn ra.\nTìm gia sư để bắt đầu lớp đầu tiên nhé.',
+                      onRefresh: () =>
+                          ref.read(classListProvider.notifier).refresh(),
+                    ),
+                    _ClassListView(
+                      classes: state.finished,
+                      emptyMessage: 'Chưa có lớp học nào kết thúc.',
+                      onRefresh: () =>
+                          ref.read(classListProvider.notifier).refresh(),
+                    ),
+                  ],
+                ),
               ),
             ],
           ],
@@ -179,17 +178,30 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-// Today card
+// Up-next card: buổi học gần nhất trên toàn bộ lớp
 
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.lessons});
-  final List<StudentLessonDto> lessons;
+class _UpNextCard extends StatelessWidget {
+  const _UpNextCard({required this.summary});
+  final StudyProgressSummary summary;
 
   @override
   Widget build(BuildContext context) {
-    if (lessons.isEmpty) return const SizedBox(height: 4);
+    final next = summary.nextSession;
+    if (next == null) return const SizedBox(height: 4);
+
     final now = DateTime.now();
-    final times = lessons.map((l) => l.timeStart).join(' · ');
+    final isToday = next.isToday;
+    final daysAway = DateTime(
+      next.startDt.year,
+      next.startDt.month,
+      next.startDt.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
+
+    final when = isToday
+        ? 'Hôm nay'
+        : daysAway == 1
+        ? 'Ngày mai'
+        : '${next.weekdayLabel}, ${next.dateLabel}';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -222,30 +234,33 @@ class _TodayCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hôm nay · ${now.day} tháng ${now.month}',
+                      'BUỔI HỌC TIẾP THEO',
                       style: AppTextStyles.eyebrow(color: AppColors.gold),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${lessons.length} buổi học',
+                      summary.nextSessionClassName ?? 'Buổi học',
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w800,
-                        fontSize: 22,
-                        height: 1.1,
+                        fontSize: 20,
+                        height: 1.15,
                         color: AppColors.cream,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      times,
+                      '$when · ${next.timeRange}',
                       style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        color: AppColors.cream.withValues(alpha: 0.65),
+                        fontSize: 12,
+                        color: AppColors.cream.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Container(
                 width: 56,
                 height: 56,
@@ -260,7 +275,7 @@ class _TodayCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      '${now.day}',
+                      '${next.startDt.day}',
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w800,
                         fontSize: 22,
@@ -270,7 +285,7 @@ class _TodayCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _weekdayLabel(now.weekday),
+                      'TH ${next.startDt.month}',
                       style: GoogleFonts.ibmPlexMono(
                         fontSize: 8,
                         color: AppColors.cream.withValues(alpha: 0.6),
@@ -286,26 +301,20 @@ class _TodayCard extends StatelessWidget {
       ),
     );
   }
-
-  String _weekdayLabel(int weekday) => const [
-    'T2',
-    'T3',
-    'T4',
-    'T5',
-    'T6',
-    'T7',
-    'CN',
-  ][weekday - 1];
 }
 
-//Segmented tabs
+// Segmented tabs
 
 class _SegmentedTabs extends StatelessWidget {
-  const _SegmentedTabs({required this.selected, required this.onSelect});
-  final int selected;
-  final ValueChanged<int> onSelect;
+  const _SegmentedTabs({
+    required this.selected,
+    required this.labels,
+    required this.onSelect,
+  });
 
-  static const _labels = ['Sắp tới', 'Đã xong'];
+  final int selected;
+  final List<String> labels;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +326,7 @@ class _SegmentedTabs extends StatelessWidget {
         border: Border.all(color: AppColors.line),
       ),
       child: Row(
-        children: List.generate(_labels.length, (i) {
+        children: List.generate(labels.length, (i) {
           final active = i == selected;
           return Expanded(
             child: GestureDetector(
@@ -331,7 +340,7 @@ class _SegmentedTabs extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  _labels[i],
+                  labels[i],
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -347,211 +356,177 @@ class _SegmentedTabs extends StatelessWidget {
   }
 }
 
-// Session list
+// Class list
 
-class _SessionListView extends StatelessWidget {
-  const _SessionListView({required this.lessons, this.scrollController});
-  final List<StudentLessonDto> lessons;
+class _ClassListView extends StatelessWidget {
+  const _ClassListView({
+    required this.classes,
+    required this.emptyMessage,
+    required this.onRefresh,
+    this.scrollController,
+  });
+
+  final List<StudentClassDto> classes;
+  final String emptyMessage;
+  final Future<void> Function() onRefresh;
   final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
-    if (lessons.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    if (classes.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        color: AppColors.oxblood,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Image.asset(
-              'assets/images/common/empty_calendar.png',
-              width: 200,
-            ),
-            Text(
-              'Không có buổi học nào.',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
-            ),
+            const SizedBox(height: 40),
+            EmptyState(message: emptyMessage),
           ],
         ),
       );
     }
-    return ListView.separated(
-      controller: scrollController,
-      padding: EdgeInsets.fromLTRB(
-        16,
-        8,
-        16,
-        16 + MediaQuery.of(context).padding.bottom,
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      color: AppColors.oxblood,
+      child: ListView.separated(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          16 + MediaQuery.of(context).padding.bottom,
+        ),
+        itemCount: classes.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, i) => ClassCard(
+          klass: classes[i],
+          onTap: () => Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute<void>(
+              builder: (_) =>
+                  StudentClassDetailPage(bookingId: classes[i].bookingId),
+            ),
+          ),
+        ),
       ),
-      itemCount: lessons.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, i) => _SessionCard(lesson: lessons[i]),
     );
   }
 }
 
-// Session card
+// Calendar view
 
-class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.lesson});
-  final StudentLessonDto lesson;
+class _CalendarView extends StatefulWidget {
+  const _CalendarView({required this.entries});
 
-  Color get _dividerColor => switch (lesson.statusType) {
-    LessonStatusType.scheduled => AppColors.moss,
-    LessonStatusType.pending => const Color(0xFFF0E3CA),
-    LessonStatusType.done => AppColors.line,
-    LessonStatusType.cancelled => AppColors.line,
-  };
+  final List<({StudentClassDto klass, ClassSessionSlotDto session})> entries;
 
-  _ChipStyle get _chipStyle => switch (lesson.statusType) {
-    LessonStatusType.scheduled => (
-      bg: AppColors.moss,
-      fg: const Color(0xFFE0E7DF),
-      label: 'Đã xác nhận',
-    ),
-    LessonStatusType.pending => (
-      bg: const Color(0xFFF0E3CA),
-      fg: const Color(0xFF5C3A1A),
-      label: 'Chờ xác nhận',
-    ),
-    LessonStatusType.done => (
-      bg: AppColors.cream2,
-      fg: AppColors.ink3,
-      label: 'Hoàn thành',
-    ),
-    LessonStatusType.cancelled => (
-      bg: AppColors.cream2,
-      fg: AppColors.ink3,
-      label: 'Đã hủy',
-    ),
-  };
+  @override
+  State<_CalendarView> createState() => _CalendarViewState();
+}
+
+class _CalendarViewState extends State<_CalendarView> {
+  DateTime _selected = DateTime.now();
+
+  String get _dayHeader {
+    final today = DateTime.now();
+    final isToday =
+        _selected.year == today.year &&
+        _selected.month == today.month &&
+        _selected.day == today.day;
+    final label = DateFormat('dd/MM').format(_selected);
+    return isToday ? 'Hôm nay · $label' : 'Ngày $label';
+  }
+
+  List<({StudentClassDto klass, ClassSessionSlotDto session})>
+  get _selectedEntries => widget.entries.where((e) {
+    final d = e.session.startDt;
+    return d.year == _selected.year &&
+        d.month == _selected.month &&
+        d.day == _selected.day;
+  }).toList();
+
+  int _sessionCountForDay(int year, int month, int day) => widget.entries
+      .where(
+        (e) =>
+            e.session.startDt.year == year &&
+            e.session.startDt.month == month &&
+            e.session.startDt.day == day,
+      )
+      .length;
 
   @override
   Widget build(BuildContext context) {
-    final chip = _chipStyle;
-    final isDone = lesson.statusType == LessonStatusType.done;
-
-    return Opacity(
-      opacity: isDone ? 0.75 : 1.0,
-      child: GestureDetector(
-        onTap: () => Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute<void>(
-            builder: (_) => StudentSessionDetailPage(lessonId: lesson.lessonId),
-          ),
+    final entries = _selectedEntries;
+    return ListView(
+      padding: EdgeInsets.only(
+        bottom: AppSpacing.xxl + MediaQuery.of(context).padding.bottom,
+      ),
+      children: [
+        const SizedBox(height: 4),
+        AppCalendar(
+          selectedDate: _selected,
+          sessionCountForDay: _sessionCountForDay,
+          onSelectDate: (date) => setState(() => _selected = date),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.paper,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.line),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Row(
             children: [
-              // Time block
-              SizedBox(
-                width: 50,
-                child: Column(
-                  children: [
-                    Text(
-                      lesson.timeStart,
-                      style: GoogleFonts.ibmPlexMono(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      lesson.dateLabel,
-                      style: GoogleFonts.inter(
-                        fontSize: 9,
-                        color: AppColors.ink3,
-                      ),
-                    ),
-                  ],
+              Text(
+                _dayHeader.toUpperCase(),
+                style: AppTextStyles.eyebrow(color: AppColors.ink3),
+              ),
+              const Spacer(),
+              if (entries.isNotEmpty)
+                Text(
+                  '${entries.length} buổi',
+                  style: GoogleFonts.ibmPlexMono(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink3,
+                  ),
                 ),
-              ),
-              Container(
-                width: 2,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: _dividerColor,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      lesson.subjectName ?? 'Buổi học #${lesson.lessonId}',
-                      style: GoogleFonts.ibmPlexSerif(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      lesson.tutorName ?? 'Gia sư',
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        color: AppColors.ink3,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 7),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: chip.bg,
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                          child: Text(
-                            chip.label,
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: chip.fg,
-                              letterSpacing: 0.06,
-                            ),
-                          ),
-                        ),
-                        if (lesson.priceK > 0) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            '${lesson.priceK}k',
-                            style: GoogleFonts.ibmPlexMono(
-                              fontSize: 11,
-                              color: AppColors.ink3,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 16,
-                color: AppColors.ink3,
-              ),
             ],
           ),
         ),
-      ),
+        if (entries.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            child: Center(
+              child: Text(
+                'Không có buổi học nào ngày này.',
+                style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+              ),
+            ),
+          )
+        else
+          for (int i = 0; i < entries.length; i++)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                i < entries.length - 1 ? 10 : 0,
+              ),
+              child: SessionCard(
+                session: entries[i].session,
+                subjectName: entries[i].klass.title,
+                tutorName: entries[i].klass.tutorName,
+                onTap: () => Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => StudentSessionDetailPage(
+                      lessonId: entries[i].session.classSessionId,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+      ],
     );
   }
 }
-
-typedef _ChipStyle = ({Color bg, Color fg, String label});
 
 // Error view
 
@@ -563,127 +538,38 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Không tải được lịch học',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: onRetry,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Không tải được lớp học',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
                 color: AppColors.ink,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'Thử lại',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.cream,
-                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 140,
+              child: PrimaryButton(
+                label: 'Thử lại',
+                color: AppColors.ink,
+                fg: AppColors.cream,
+                onTap: onRetry,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-}
-
-// Calendar view
-
-class _CalendarView extends ConsumerStatefulWidget {
-  const _CalendarView({required this.allLessons});
-  final List<StudentLessonDto> allLessons;
-
-  @override
-  ConsumerState<_CalendarView> createState() => _CalendarViewState();
-}
-
-class _CalendarViewState extends ConsumerState<_CalendarView> {
-  DateTime _selected = DateTime.now();
-
-  String get _dayHeader {
-    final today = DateTime.now();
-    if (_selected.year == today.year &&
-        _selected.month == today.month &&
-        _selected.day == today.day) {
-      return 'Hôm nay · ${_selected.day} tháng ${_selected.month}';
-    }
-    return 'Ngày ${_selected.day} tháng ${_selected.month}';
-  }
-
-  List<StudentLessonDto> get _selectedSessions {
-    return widget.allLessons.where((l) {
-      final d = l.startDt;
-      return d.year == _selected.year &&
-          d.month == _selected.month &&
-          d.day == _selected.day;
-    }).toList();
-  }
-
-  int _sessionCountForDay(int year, int month, int day) {
-    return widget.allLessons.where((l) {
-      final d = l.startDt;
-      return d.year == year && d.month == month && d.day == day;
-    }).length;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        const SizedBox(height: 4),
-        AppCalendar(
-          selectedDate: _selected,
-          sessionCountForDay: _sessionCountForDay,
-          onSelectDate: (date) => setState(() => _selected = date),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-          child: Text(
-            _dayHeader.toUpperCase(),
-            style: AppTextStyles.eyebrow(color: AppColors.ink3),
-          ),
-        ),
-        if (_selectedSessions.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 28),
-            child: Center(
-              child: Text(
-                'Không có buổi học nào ngày này.',
-              ),
-            ),
-          )
-        else
-          for (int i = 0; i < _selectedSessions.length; i++)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                0,
-                16,
-                i < _selectedSessions.length - 1 ? 8 : 0,
-              ),
-              child: _SessionCard(lesson: _selectedSessions[i]),
-            ),
-        const SizedBox(height: AppSpacing.xxl),
-      ],
     );
   }
 }

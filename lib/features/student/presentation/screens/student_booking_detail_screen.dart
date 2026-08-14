@@ -10,6 +10,7 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/datasources/booking_datasource.dart';
 import 'package:tutora/features/student/data/datasources/payment_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/booking_detail_provider.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -845,7 +846,6 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
   /// refresh the booking detail on success.
   Future<void> _startDepositPayment() async {
     setState(() => _paying = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final ds = ref.read(paymentDatasourceProvider);
       final info = await ds.getPaymentInfo(booking.bookingId);
@@ -869,22 +869,25 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
 
       if (status.depositSettled) {
         ref.invalidate(bookingDetailProvider(booking.bookingId));
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Thanh toán buổi học đầu thành công.')),
+        AppToast.show(
+          context,
+          message: 'Thanh toán buổi học đầu thành công.',
+          type: AppToastType.success,
         );
       } else {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
+        AppToast.show(
+          context,
+          message:
               'Chưa ghi nhận thanh toán. Nếu bạn đã trả, vui lòng đợi giây lát rồi mở lại.',
-            ),
-          ),
+          type: AppToastType.warning,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
       );
     } finally {
       if (mounted) setState(() => _paying = false);

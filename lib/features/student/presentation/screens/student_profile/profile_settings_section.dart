@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/student/presentation/providers/profile_provider.dart';
+import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_primitives.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -22,6 +23,7 @@ class ProfileSettingsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifOn = ref.watch(profileProvider).notifOn;
+    final isParentManaged = ref.watch(isParentManagedProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,12 +64,13 @@ class ProfileSettingsSection extends ConsumerWidget {
         const SizedBox(height: 14),
         ProfileSectionCard(
           children: [
-            SettingRow(
-              icon: Icons.receipt_long_outlined,
-              label: 'Booking của tôi',
-              sub: 'Xem lịch sử đặt gia sư',
-              onTap: () => context.push(AppRoutes.studentBookings),
-            ),
+            if (!isParentManaged)
+              SettingRow(
+                icon: Icons.receipt_long_outlined,
+                label: 'Booking của tôi',
+                sub: 'Xem lịch sử đặt gia sư',
+                onTap: () => context.push(AppRoutes.studentBookings),
+              ),
             SettingRow(
               icon: Icons.auto_stories_outlined,
               label: 'Lịch sử giải toán',
