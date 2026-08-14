@@ -14,6 +14,38 @@ class BookingDatasource {
   const BookingDatasource(this._dio);
   final Dio _dio;
 
+  /// Buổi gia sư đã nhận trong khoảng [start, end] — trả về giờ LOCAL.
+  Future<List<({DateTime start, DateTime end})>> getTutorBookedSlots(
+    String tutorId, {
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    try {
+      final res = await _dio.get<dynamic>(
+        '/bookings/tutor/$tutorId/booked-slots',
+        queryParameters: {
+          'startDate': start.toUtc().toIso8601String(),
+          'endDate': end.toUtc().toIso8601String(),
+        },
+      );
+      final data = res.data as Map<String, dynamic>;
+      final content = data['content'] as List<dynamic>? ?? const [];
+      return content
+          .map((e) {
+            final m = e as Map<String, dynamic>;
+            final s = DateTime.tryParse(m['scheduledStart'] as String? ?? '');
+            final t = DateTime.tryParse(m['scheduledEnd'] as String? ?? '');
+            if (s == null || t == null || !t.isAfter(s)) return null;
+            return (start: s.toLocal(), end: t.toLocal());
+          })
+          .whereType<({DateTime start, DateTime end})>()
+          .toList();
+    } on DioException {
+      // Không chặn được thì để BE trả 409 lúc submit, đừng khoá hết lịch.
+      return const [];
+    }
+  }
+
   Future<CreateBookingResponse> createBooking(CreateBookingRequest req) async {
     try {
       final response = await _dio.post<dynamic>(
@@ -22,6 +54,20 @@ class BookingDatasource {
       );
       return CreateBookingResponse.fromJson(
         response.data as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  /// DELETE /api/bookings/{id} — huỷ đơn chưa hoàn tất.
+  Future<void> cancelBooking(int bookingId, {String? reason}) async {
+    try {
+      await _dio.delete<dynamic>(
+        '/bookings/$bookingId',
+        queryParameters: {
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
       );
     } on DioException catch (e) {
       throw _mapError(e);

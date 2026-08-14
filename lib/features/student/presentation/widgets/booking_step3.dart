@@ -3,10 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/models/booking_models.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_constants.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_form.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_month_preview.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_shared.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
@@ -16,12 +16,16 @@ class BookingStep3 extends StatefulWidget {
     required this.form,
     required this.profile,
     required this.onChanged,
+    required this.bookedSlots,
     super.key,
   });
 
   final BookingForm form;
   final TutorFullProfileDto profile;
   final ValueChanged<BookingForm> onChanged;
+
+  /// Buổi gia sư đã nhận (giờ local) — dùng để chặn chọn trùng.
+  final List<({DateTime start, DateTime end})> bookedSlots;
 
   @override
   State<BookingStep3> createState() => _BookingStep3State();
@@ -55,22 +59,34 @@ class _BookingStep3State extends State<BookingStep3> {
     widget.onChanged(updated);
   }
 
-  List<AvailabilitySlotDto> _availForDay(int day) {
-    final avail = widget.profile.availabilities;
-    if (avail == null || avail.isEmpty) return [];
-    return avail.where((a) => a.dayofweek == day).toList();
-  }
+  /// Lịch rảnh của gia sư đã quy về giờ local (BE lưu UTC).
+  late final List<({int dayOfWeek, String startTime, String endTime})>
+  _localAvail = (widget.profile.availabilities ?? [])
+      .where((a) => a.starttime.isNotEmpty && a.endtime.isNotEmpty)
+      .map(
+        (a) => availabilityToLocal(
+          isoDayOfWeek: a.dayofweek,
+          startUtc: a.starttime,
+          endUtc: a.endtime,
+        ),
+      )
+      .toList();
+
+  List<({int dayOfWeek, String startTime, String endTime})> _availForDay(
+    int day,
+  ) => _localAvail.where((a) => a.dayOfWeek == day).toList();
 
   // Generate time chips from availability slots on a given day
   List<String> _timeSlotsForDay(int day) {
     final dayAvail = _availForDay(day);
-    if (dayAvail.isEmpty) return kTimeSlots;
+    if (_localAvail.isEmpty) return kTimeSlots;
+    if (dayAvail.isEmpty) return const [];
 
     final slots = <String>[];
+    final durMins = (_form.slotDurationHours * 60).round();
     for (final a in dayAvail) {
-      var cur = toMins(a.starttime);
-      final end = toMins(a.endtime);
-      final durMins = (_form.slotDurationHours * 60).round();
+      var cur = toMins(a.startTime);
+      final end = toMins(a.endTime);
       while (cur + durMins <= end) {
         final h = cur ~/ 60;
         final m = cur % 60;
@@ -86,6 +102,27 @@ class _BookingStep3State extends State<BookingStep3> {
   bool _isSelected(int day, String startTime) => _form.schedule.any(
     (s) => s.dayOfWeek == day && s.startTime == startTime,
   );
+
+  /// Khung tuần này có đụng buổi gia sư đã nhận ở BẤT KỲ ngày nào trong cửa sổ
+  /// đặt lịch không — booked slot là ngày cụ thể nên phải trải ra rồi so.
+  bool _conflictsBooked(int day, String startTime) {
+    if (widget.bookedSlots.isEmpty) return false;
+    final startDate = DateTime.tryParse(_form.startDate);
+    if (startDate == null) return false;
+
+    final durMins = (_form.slotDurationHours * 60).round();
+    final sMins = toMins(startTime);
+
+    for (final d in sessionDatesInWindow(start: startDate, weekdays: [day])) {
+      final s = d.add(Duration(minutes: sMins));
+      final e = s.add(Duration(minutes: durMins));
+      final hit = widget.bookedSlots.any(
+        (b) => s.isBefore(b.end) && e.isAfter(b.start),
+      );
+      if (hit) return true;
+    }
+    return false;
+  }
 
   // Returns true if this slot overlaps with any already-selected slot on the same day
   bool _overlapsSelected(int day, String startTime) {
@@ -126,16 +163,21 @@ class _BookingStep3State extends State<BookingStep3> {
       return;
     }
 
-    // Validate against tutor availability
-    final avail = widget.profile.availabilities ?? [];
-    if (avail.isNotEmpty) {
+    if (_conflictsBooked(day, startTime)) {
+      AppToast.show(
+        context,
+        message: 'Gia sư đã có lịch dạy vào khung $startTime–$endTime.',
+        type: AppToastType.error,
+      );
+      return;
+    }
+
+    if (_localAvail.isNotEmpty) {
       final sMins = toMins(startTime);
       final eMins = toMins(endTime);
-      final ok = avail.any((a) {
-        if (a.dayofweek != day) return false;
-        if (a.starttime.isEmpty || a.endtime.isEmpty) return false;
-        return sMins >= toMins(a.starttime) && eMins <= toMins(a.endtime);
-      });
+      final ok = _availForDay(day).any(
+        (a) => sMins >= toMins(a.startTime) && eMins <= toMins(a.endTime),
+      );
       if (!ok) {
         AppToast.show(
           context,
@@ -163,6 +205,14 @@ class _BookingStep3State extends State<BookingStep3> {
 
   @override
   Widget build(BuildContext context) {
+    // Gói cố định đã khoá sẵn lịch: chỉ còn chọn ngày bắt đầu.
+    if (_form.bookingMode == BookingMode.package) {
+      return _PackageScheduleView(
+        form: _form,
+        onStartDateChanged: (d) => _update(_form.copyWith(startDate: d)),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -171,47 +221,6 @@ class _BookingStep3State extends State<BookingStep3> {
         _DatePicker(
           value: _form.startDate,
           onChanged: (d) => _update(_form.copyWith(startDate: d)),
-        ),
-        const SizedBox(height: 20),
-
-        const BookingSectionTitle('Thời lượng mỗi buổi'),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: kSlotDurationOptions.map((d) {
-              final sel = _form.slotDurationHours == d;
-              final label = d == d.truncateToDouble()
-                  ? '${d.toInt()} giờ'
-                  : '$d giờ';
-              return GestureDetector(
-                onTap: () =>
-                    _update(_form.copyWith(slotDurationHours: d, schedule: [])),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: sel ? AppColors.ink : Colors.white,
-                    border: Border.all(
-                      color: sel ? AppColors.ink : AppColors.line,
-                    ),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: sel ? AppColors.gold : AppColors.ink,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
         ),
         const SizedBox(height: 20),
 
@@ -262,7 +271,7 @@ class _BookingStep3State extends State<BookingStep3> {
                       Text(
                         kDayNames[day],
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: selected
                               ? AppColors.gold
@@ -321,27 +330,30 @@ class _BookingStep3State extends State<BookingStep3> {
             isSelected: _isSelected,
             isOverlapping: _overlapsSelected,
             onToggle: _toggle,
+            ranges: _availForDay(_selectedDay!),
+            isBooked: _conflictsBooked,
             slotDurationHours: _form.slotDurationHours,
             hasAvailability: _availForDay(_selectedDay!).isNotEmpty,
           ),
 
         // ── Selected summary ──────────────────────────────────────────────────
         if (_form.schedule.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
-            'Đã chọn (${_form.schedule.length} buổi/tuần):',
-            style: AppTextStyles.eyebrow(),
+            'Đã chọn · ${_form.schedule.length} buổi/tuần',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
+            spacing: 8,
+            runSpacing: 8,
             children: _form.schedule.map((s) {
               return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
                 decoration: BoxDecoration(
                   color: AppColors.ink,
                   borderRadius: BorderRadius.circular(AppRadius.full),
@@ -352,11 +364,12 @@ class _BookingStep3State extends State<BookingStep3> {
                     Text(
                       '${kDayNames[s.dayOfWeek]}  ${s.startTime}–${s.endTime}',
                       style: GoogleFonts.inter(
-                        fontSize: 12,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.cream,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () => _update(
                         _form.copyWith(
@@ -371,7 +384,7 @@ class _BookingStep3State extends State<BookingStep3> {
                       ),
                       child: const Icon(
                         Icons.close_rounded,
-                        size: 13,
+                        size: 16,
                         color: AppColors.cream,
                       ),
                     ),
@@ -379,6 +392,11 @@ class _BookingStep3State extends State<BookingStep3> {
                 ),
               );
             }).toList(),
+          ),
+          const SizedBox(height: 24),
+          BookingMonthPreview(
+            startDate: _form.startDate,
+            schedule: _form.schedule,
           ),
         ],
       ],
@@ -403,7 +421,7 @@ class _Legend extends StatelessWidget {
       const SizedBox(width: 4),
       Text(
         label,
-        style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink3),
+        style: GoogleFonts.inter(fontSize: 14, color: AppColors.ink3),
       ),
     ],
   );
@@ -419,6 +437,8 @@ class _TimeSlotPanel extends StatelessWidget {
     required this.onToggle,
     required this.slotDurationHours,
     required this.hasAvailability,
+    required this.ranges,
+    required this.isBooked,
   });
 
   final int day;
@@ -426,9 +446,13 @@ class _TimeSlotPanel extends StatelessWidget {
   final BookingForm form;
   final bool Function(int, String) isSelected;
   final bool Function(int, String) isOverlapping;
+  final bool Function(int, String) isBooked;
   final void Function(int, String) onToggle;
   final double slotDurationHours;
   final bool hasAvailability;
+
+  /// Các khoảng rảnh thật của gia sư trong ngày (đã là giờ local).
+  final List<({int dayOfWeek, String startTime, String endTime})> ranges;
 
   @override
   Widget build(BuildContext context) {
@@ -443,7 +467,7 @@ class _TimeSlotPanel extends StatelessWidget {
         child: Center(
           child: Text(
             'Gia sư không có lịch rảnh vào ${kDayNamesLong[day]}',
-            style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+            style: GoogleFonts.inter(fontSize: 15, color: AppColors.ink3),
           ),
         ),
       );
@@ -461,7 +485,7 @@ class _TimeSlotPanel extends StatelessWidget {
             Text(
               'Giờ học ${kDayNamesLong[day]}',
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.ink,
               ),
@@ -476,59 +500,310 @@ class _TimeSlotPanel extends StatelessWidget {
               ),
               child: Text(
                 durLabel,
-                style: GoogleFonts.inter(fontSize: 10, color: AppColors.ink3),
+                style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: slots.map((start) {
-            final sel = isSelected(day, start);
-            final overlap = !sel && isOverlapping(day, start);
-            final end = addHours(start, slotDurationHours);
-            final disabled = overlap;
-            return GestureDetector(
-              onTap: disabled ? null : () => onToggle(day, start),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: sel
-                      ? AppColors.ink
-                      : disabled
-                      ? AppColors.paper
-                      : Colors.white,
-                  border: Border.all(
-                    color: sel
-                        ? AppColors.ink
-                        : disabled
-                        ? AppColors.line
-                        : AppColors.line,
-                    width: sel ? 1.5 : 1,
+        if (ranges.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: ranges
+                .map(
+                  (r) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.cream2,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: Text(
+                      'Rảnh ${r.startTime}–${r.endTime}',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink3,
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Text(
-                  '$start – $end',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                    color: sel
-                        ? AppColors.gold
-                        : disabled
-                        ? AppColors.ink3
-                        : AppColors.ink,
-                  ),
-                ),
+                )
+                .toList(),
+          ),
+        ],
+        const SizedBox(height: 12),
+        // Chia sáng/chiều/tối để danh sách giờ dài không thành một khối khó quét.
+        ...(() {
+          final grouped = groupByDayPart(slots);
+          final parts = DayPart.values.where(grouped.containsKey).toList();
+          return [
+            for (var i = 0; i < parts.length; i++) ...[
+              if (i > 0) const SizedBox(height: 18),
+              _DayPartSection(
+                part: parts[i],
+                starts: grouped[parts[i]]!,
+                day: day,
+                slotDurationHours: slotDurationHours,
+                isSelected: isSelected,
+                isOverlapping: isOverlapping,
+                isBooked: isBooked,
+                onToggle: onToggle,
               ),
+            ],
+          ];
+        })(),
+      ],
+    );
+  }
+}
+
+/// Một buổi trong ngày (Sáng/Chiều/Tối) kèm icon và lưới 2 cột giờ bắt đầu.
+class _DayPartSection extends StatelessWidget {
+  const _DayPartSection({
+    required this.part,
+    required this.starts,
+    required this.day,
+    required this.slotDurationHours,
+    required this.isSelected,
+    required this.isOverlapping,
+    required this.isBooked,
+    required this.onToggle,
+  });
+
+  final DayPart part;
+  final List<String> starts;
+  final int day;
+  final double slotDurationHours;
+  final bool Function(int, String) isSelected;
+  final bool Function(int, String) isOverlapping;
+  final bool Function(int, String) isBooked;
+  final void Function(int, String) onToggle;
+
+  // Placeholder — sẽ thay bằng icon ảnh màu do CEO cung cấp.
+  IconData get _icon => switch (part) {
+    DayPart.morning => Icons.wb_twilight_rounded,
+    DayPart.afternoon => Icons.wb_sunny_rounded,
+    DayPart.evening => Icons.nightlight_round,
+  };
+
+  Color get _iconColor => switch (part) {
+    DayPart.morning => const Color(0xFFE9A23B),
+    DayPart.afternoon => const Color(0xFFEFB700),
+    DayPart.evening => const Color(0xFF5B6BA8),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(_icon, size: 20, color: _iconColor),
+            const SizedBox(width: 8),
+            Text(
+              part.label,
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              part.rangeLabel,
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink4),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, c) {
+            const gap = 8.0;
+            final w = (c.maxWidth - gap) / 2;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: starts.map((start) {
+                final sel = isSelected(day, start);
+                final booked = !sel && isBooked(day, start);
+                final disabled = booked || (!sel && isOverlapping(day, start));
+                final end = addHours(start, slotDurationHours);
+                return GestureDetector(
+                  onTap: disabled ? null : () => onToggle(day, start),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: w,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: sel
+                          ? AppColors.ink
+                          : booked
+                          ? const Color(0xFFFBF1E3)
+                          : disabled
+                          ? AppColors.paper
+                          : Colors.white,
+                      border: Border.all(
+                        color: sel
+                            ? AppColors.ink
+                            : booked
+                            ? const Color(0xFFE6D2B5)
+                            : AppColors.line,
+                        width: sel ? 1.5 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (sel) ...[
+                          const Icon(
+                            Icons.check_rounded,
+                            size: 16,
+                            color: AppColors.gold,
+                          ),
+                          const SizedBox(width: 6),
+                        ] else if (booked) ...[
+                          const Icon(
+                            Icons.event_busy_rounded,
+                            size: 15,
+                            color: Color(0xFF9A6B22),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Flexible(
+                          child: Text(
+                            booked ? 'Trùng lịch' : '$start – $end',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: sel || booked
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: sel
+                                  ? AppColors.gold
+                                  : booked
+                                  ? const Color(0xFF9A6B22)
+                                  : disabled
+                                  ? AppColors.ink4
+                                  : AppColors.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Lịch của gói cố định — chỉ xem, kèm ô chọn ngày bắt đầu.
+class _PackageScheduleView extends StatelessWidget {
+  const _PackageScheduleView({
+    required this.form,
+    required this.onStartDateChanged,
+  });
+
+  final BookingForm form;
+  final ValueChanged<String> onStartDateChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final pkg = form.selectedPackage;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const BookingSectionTitle('Ngày bắt đầu'),
+        const SizedBox(height: 6),
+        _DatePicker(value: form.startDate, onChanged: onStartDateChanged),
+        const SizedBox(height: 24),
+
+        const BookingSectionTitle('Lịch của gói'),
+        const SizedBox(height: 4),
+        Text(
+          pkg?.name?.trim().isNotEmpty ?? false
+              ? pkg!.name!.trim()
+              : 'Gói cố định',
+          style: GoogleFonts.inter(fontSize: 15, color: AppColors.ink3),
+        ),
+        const SizedBox(height: 12),
+        ...form.schedule.map(
+          (s) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: AppColors.cream2,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      kDayNames[s.dayOfWeek],
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        kDayNamesLong[s.dayOfWeek],
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${s.startTime} – ${s.endTime}',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: AppColors.ink3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  DayPartX.of(s.startTime) == DayPart.morning
+                      ? Icons.wb_twilight_rounded
+                      : DayPartX.of(s.startTime) == DayPart.afternoon
+                      ? Icons.wb_sunny_rounded
+                      : Icons.nightlight_round,
+                  size: 20,
+                  color: AppColors.ink4,
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -596,7 +871,7 @@ class _DatePicker extends StatelessWidget {
               Text(
                 'Ngày không hợp lệ',
                 style: GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: 13,
                   color: Colors.red.shade500,
                 ),
               ),

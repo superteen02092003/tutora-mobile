@@ -12,25 +12,27 @@ class BookingStep2 extends StatelessWidget {
   final BookingForm form;
   final ValueChanged<BookingForm> onChanged;
 
-  static const List<({String key, IconData icon, String label, String desc})>
+  // Hệ thống mới chỉ dạy online ngay trong app (Agora); 2 hình thức còn lại
+  // để đó cho thấy lộ trình nhưng chưa bấm được.
+  static const List<({String key, IconData icon, String label, bool enabled})>
   _modes = [
     (
       key: 'online',
       icon: Icons.videocam_rounded,
       label: 'Học Online',
-      desc: 'Qua Google Meet, Zoom…',
+      enabled: true,
     ),
     (
       key: 'offline',
       icon: Icons.home_rounded,
       label: 'Học tại nhà',
-      desc: 'Gia sư đến địa điểm bạn chọn',
+      enabled: false,
     ),
     (
       key: 'hybrid',
       icon: Icons.swap_horiz_rounded,
       label: 'Kết hợp',
-      desc: 'Linh hoạt online & offline',
+      enabled: false,
     ),
   ];
 
@@ -42,85 +44,88 @@ class BookingStep2 extends StatelessWidget {
       const SizedBox(height: 8),
       ..._modes.map((m) {
         final sel = form.teachingMode == m.key;
+        final off = !m.enabled;
         return GestureDetector(
-          onTap: () {
-            var updated = form.copyWith(teachingMode: m.key);
-            if (m.key == 'online') {
-              updated = updated.copyWith(
-                locationCity: '',
-                locationDistrict: '',
-                locationWard: '',
-                locationDetail: '',
-              );
-            }
-            onChanged(updated);
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: sel
-                  ? AppColors.ink.withValues(alpha: 0.04)
-                  : AppColors.paper,
-              border: Border.all(
-                color: sel ? AppColors.ink : AppColors.line,
-                width: sel ? 1.5 : 1,
-              ),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: sel ? AppColors.ink : AppColors.cream,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    m.icon,
-                    size: 20,
-                    color: sel ? AppColors.gold : AppColors.ink3,
-                  ),
+          onTap: off
+              ? null
+              : () => onChanged(form.copyWith(teachingMode: m.key)),
+          child: Opacity(
+            opacity: off ? 0.5 : 1,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: sel
+                    ? AppColors.ink.withValues(alpha: 0.04)
+                    : AppColors.paper,
+                border: Border.all(
+                  color: sel ? AppColors.ink : AppColors.line,
+                  width: sel ? 1.5 : 1,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.label,
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: AppColors.ink,
-                        ),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: sel ? AppColors.ink : AppColors.cream,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      m.icon,
+                      size: 20,
+                      color: sel ? AppColors.gold : AppColors.ink3,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      m.label,
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.ink,
                       ),
-                      Text(
-                        m.desc,
+                    ),
+                  ),
+                  if (off)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.cream2,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.line),
+                      ),
+                      child: Text(
+                        'Chưa hỗ trợ',
                         style: GoogleFonts.inter(
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.ink3,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                if (sel)
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.gold,
+                    )
+                  else if (sel)
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.gold,
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        size: 13,
+                        color: AppColors.ink,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: AppColors.ink,
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         );
