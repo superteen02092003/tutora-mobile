@@ -93,10 +93,10 @@ class FloatingPillNavBar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(_barHeight / 2),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.14),
-                              blurRadius: 28,
-                              spreadRadius: -2,
-                              offset: const Offset(0, 10),
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 20,
+                              spreadRadius: -4,
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
@@ -107,21 +107,14 @@ class FloatingPillNavBar extends StatelessWidget {
                             child: Container(
                               height: _barHeight,
                               decoration: BoxDecoration(
-                                // Vertical sheen: brighter at the top edge, like glass.
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.88),
-                                    AppColors.paper.withValues(alpha: 0.70),
-                                  ],
-                                ),
+                                // Một lớp trắng mờ phẳng: vẫn thấy nội dung trôi
+                                // phía sau (liquid), nhưng không pha gradient.
+                                color: Colors.white.withValues(alpha: 0.72),
                                 borderRadius: BorderRadius.circular(
                                   _barHeight / 2,
                                 ),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  width: 1.2,
+                                  color: Colors.white.withValues(alpha: 0.6),
                                 ),
                               ),
                               child: _PillContent(
@@ -139,9 +132,7 @@ class FloatingPillNavBar extends StatelessWidget {
                     _ActionButton(
                       size: _actionSize,
                       onTap: onActionTap,
-                      fill: actionChild == null
-                          ? (actionIsActive ? AppColors.oxblood : AppColors.ink)
-                          : null,
+                      fill: actionChild == null ? AppColors.ink : null,
                       child:
                           actionChild ??
                           Icon(
@@ -149,9 +140,7 @@ class FloatingPillNavBar extends StatelessWidget {
                                 ? (actionActiveIcon ?? actionIcon!)
                                 : actionIcon!,
                             size: 24,
-                            color: actionIsActive
-                                ? const Color(0xFFFFF1E6)
-                                : AppColors.cream,
+                            color: AppColors.cream,
                           ),
                     ),
                   ],
@@ -217,46 +206,17 @@ class _PillContent extends StatelessWidget {
   }
 }
 
-/// The moving highlight: white raised ring + brand radial glow.
+/// Viên thuốc nền mờ trượt theo tab đang chọn — phẳng
 class _TabIndicator extends StatelessWidget {
   const _TabIndicator();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.9),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.oxblood.withValues(alpha: 0.18),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.oxblood.withValues(alpha: 0.45),
-                  AppColors.oxblood.withValues(alpha: 0.16),
-                  AppColors.oxblood.withValues(alpha: 0),
-                ],
-                stops: const [0, 0.5, 1],
-              ),
-            ),
-          ),
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(40),
       ),
     );
   }
@@ -275,7 +235,7 @@ class _PillTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onColor = selected ? AppColors.oxblood : AppColors.ink4;
+    final onColor = selected ? AppColors.ink : AppColors.ink4;
 
     return Expanded(
       child: InkWell(
@@ -294,14 +254,13 @@ class _PillTab extends StatelessWidget {
                 color: onColor,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               item.label,
               style: GoogleFonts.inter(
-                fontSize: 9,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 10.5,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: onColor,
-                letterSpacing: 0.04,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -343,15 +302,12 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: fill,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.7),
-              width: 1.2,
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
