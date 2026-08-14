@@ -14,32 +14,45 @@ import 'package:tutora/features/student/presentation/providers/student_access_pr
 
 typedef _TabItem = ({String key, String label});
 
+// Khớp tab bên web; BE nhận nhiều status ngăn cách bằng dấu phẩy.
 const _tabs = <_TabItem>[
   (key: '', label: 'Tất cả'),
+  (key: 'pending_payment,accepted', label: 'Chờ trả phí buổi đầu'),
   (key: 'pending_tutor', label: 'Chờ gia sư'),
-  (key: 'accepted', label: 'Chờ đặt cọc'),
-  (key: 'active', label: 'Đang học'),
+  (key: 'deposit_paid', label: 'Đã trả phí buổi đầu'),
+  (key: 'ongoing,paid', label: 'Đang học'),
+  (key: 'pending_remaining_payment', label: 'Trả nốt'),
   (key: 'completed', label: 'Hoàn thành'),
-  (key: 'cancelled', label: 'Đã hủy'),
+  (key: 'cancelled,cancelled_noshow,payment_timeout', label: 'Đã huỷ'),
 ];
 
 typedef _StatusStyle = ({Color bg, Color fg, String label});
 
 _StatusStyle _statusStyle(BookingStatusType t) => switch (t) {
-  BookingStatusType.pendingTutor => (
+  BookingStatusType.pendingDeposit => (
     bg: const Color(0xFFFEF3C7),
     fg: const Color(0xFF92400E),
-    label: 'Chờ gia sư',
+    label: 'Chờ trả phí buổi đầu',
   ),
-  BookingStatusType.accepted => (
+  BookingStatusType.pendingTutor => (
     bg: const Color(0xFFDBEAFE),
     fg: const Color(0xFF1E40AF),
-    label: 'Chờ đặt cọc',
+    label: 'Chờ gia sư nhận',
+  ),
+  BookingStatusType.depositPaid => (
+    bg: const Color(0xFFE0E7FF),
+    fg: const Color(0xFF3730A3),
+    label: 'Đã trả phí buổi đầu',
   ),
   BookingStatusType.active => (
     bg: const Color(0xFFD1FAE5),
     fg: const Color(0xFF065F46),
     label: 'Đang học',
+  ),
+  BookingStatusType.pendingRemaining => (
+    bg: const Color(0xFFFFEDD5),
+    fg: const Color(0xFF9A3412),
+    label: 'Cần trả nốt',
   ),
   BookingStatusType.completed => (
     bg: AppColors.cream2,
@@ -49,12 +62,12 @@ _StatusStyle _statusStyle(BookingStatusType t) => switch (t) {
   BookingStatusType.cancelled => (
     bg: const Color(0xFFFFE4E6),
     fg: const Color(0xFF9F1239),
-    label: 'Đã hủy',
+    label: 'Đã huỷ',
   ),
   BookingStatusType.paymentTimeout => (
     bg: const Color(0xFFF3F4F6),
     fg: const Color(0xFF6B7280),
-    label: 'Hết hạn TT',
+    label: 'Hết hạn thanh toán',
   ),
 };
 
@@ -240,7 +253,7 @@ class _TopBar extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Booking của tôi',
+                'Lịch đặt của tôi',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.h2(),
               ),
@@ -402,7 +415,7 @@ class _BookingCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      booking.subjectName ?? 'Booking #${booking.bookingId}',
+                      booking.subjectName ?? 'Lịch đặt #',
                       style: GoogleFonts.ibmPlexSerif(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,

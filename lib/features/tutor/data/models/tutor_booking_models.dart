@@ -40,7 +40,7 @@ enum TutorBookingStatus {
     TutorBookingStatus.pendingTutor => 'Chờ bạn phản hồi',
     TutorBookingStatus.accepted => 'Đã nhận',
     TutorBookingStatus.pendingPayment => 'Chờ thanh toán',
-    TutorBookingStatus.depositPaid => 'Đã cọc',
+    TutorBookingStatus.depositPaid => 'Đã trả phí buổi đầu',
     TutorBookingStatus.pendingRemainingPayment => 'Chờ trả phần còn lại',
     TutorBookingStatus.paid => 'Đã thanh toán',
     TutorBookingStatus.paymentTimeout => 'Quá hạn thanh toán',
