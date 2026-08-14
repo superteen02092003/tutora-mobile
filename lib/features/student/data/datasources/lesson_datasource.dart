@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
 import 'package:tutora/features/student/data/models/lesson_models.dart';
+export 'package:tutora/features/student/data/models/lesson_models.dart'
+    show LessonRecordingDto, RescheduleProposalDto;
 
 class LessonDatasource {
   const LessonDatasource(this._dio);
@@ -63,6 +65,21 @@ class LessonDatasource {
       );
     }
     return StudentLessonPagedResult.fromJson(data);
+  }
+
+  /// GET /class-sessions/{id}/recording — trạng thái + link xem lại video.
+  /// Trả null khi buổi chưa có bản ghi hoặc endpoint từ chối (404/403).
+  Future<LessonRecordingDto?> getRecording(int lessonId) async {
+    try {
+      final res = await _dio.get<dynamic>(
+        '/class-sessions/$lessonId/recording',
+      );
+      final data = res.data as Map<String, dynamic>;
+      final content = data['content'] as Map<String, dynamic>? ?? data;
+      return LessonRecordingDto.fromJson(content);
+    } on DioException {
+      return null;
+    }
   }
 }
 

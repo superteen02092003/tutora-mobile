@@ -10,6 +10,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/datasources/booking_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/booking_list_provider.dart';
+import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
 
 typedef _TabItem = ({String key, String label});
 
@@ -101,6 +102,10 @@ class _StudentBookingScreenState extends ConsumerState<StudentBookingScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(isParentManagedProvider)) {
+      return const _ParentManagedNotice();
+    }
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
@@ -138,6 +143,63 @@ class _StudentBookingScreenState extends ConsumerState<StudentBookingScreen>
                 itemCount: _tabs.length,
                 itemBuilder: (_, i) =>
                     _BookingPageView(statusKey: _tabs[i].key),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Màn thay thế cho tài khoản học sinh do phụ huynh quản lý
+class _ParentManagedNotice extends StatelessWidget {
+  const _ParentManagedNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.cream,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _TopBar(),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/common/empty_mesages.png',
+                        width: 160,
+                        height: 160,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Bố mẹ đặt lịch giúp con',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.ink3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tài khoản của con do bố mẹ quản lý. Sau khi tìm được gia sư '
+                        'mình thích rồi chia sẻ cho bố mẹ đặt lịch nhé.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          height: 1.5,
+                          color: AppColors.ink4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

@@ -215,3 +215,9 @@ final tutorProfileProvider =
         ref.read(tutorProfileDatasourceProvider),
       ),
     );
+
+/// Hồ sơ nghề nghiệp gia sư — nguồn của cờ "đang nhận booking".
+final AutoDisposeFutureProvider<TutorSelfProfileDto> tutorSelfProfileProvider =
+    FutureProvider.autoDispose<TutorSelfProfileDto>((ref) {
+      return ref.read(tutorProfileDatasourceProvider).getSelfProfile();
+    });
