@@ -301,25 +301,31 @@ class StudentClassDto {
   }
 
   ClassStatusType get statusType => switch (status.toLowerCase()) {
+    'pending_payment' || 'accepted' => ClassStatusType.unpaid,
     'pending_tutor' => ClassStatusType.pendingTutor,
-    'accepted' || 'pending_payment' || 'deposit_paid' => ClassStatusType.unpaid,
-    'paid' ||
-    'ongoing' ||
-    'active' ||
-    'pending_remaining_payment' => ClassStatusType.active,
+    'deposit_paid' => ClassStatusType.depositPaid,
+    'pending_remaining_payment' => ClassStatusType.pendingRemaining,
+    'paid' || 'ongoing' || 'active' => ClassStatusType.active,
     'completed' || 'closed' => ClassStatusType.completed,
     'cancelled' ||
     'cancelled_noshow' ||
     'refunded' => ClassStatusType.cancelled,
     'payment_timeout' => ClassStatusType.expired,
-    _ => ClassStatusType.pendingTutor,
+    _ => ClassStatusType.unpaid,
   };
+
+  /// Chưa trả phí buổi đầu thì CHƯA phải lớp học — chỉ là đơn chờ thanh toán.
+  bool get isAwaitingDeposit {
+    final s = status.toLowerCase();
+    return s == 'pending_payment' || s == 'accepted' || s == 'pending_tutor';
+  }
 
   /// Lớp còn đang chạy — hiện ở tab "Đang học".
   bool get isOngoing =>
-      statusType == ClassStatusType.pendingTutor ||
-      statusType == ClassStatusType.unpaid ||
-      statusType == ClassStatusType.active;
+      !isAwaitingDeposit &&
+      (statusType == ClassStatusType.depositPaid ||
+          statusType == ClassStatusType.active ||
+          statusType == ClassStatusType.pendingRemaining);
 
   /// Cần thanh toán nốt phần còn lại để mở các buổi tiếp theo.
   bool get needsRemainingPayment =>
@@ -329,13 +335,13 @@ class StudentClassDto {
 
   // Tiến độ
 
-  /// Số buổi tính vào tiến độ (loại buổi đã hủy / no-show).
-  /// Mẫu số tiến độ = tổng buổi đã mua, gồm cả buổi `reserved` chờ mở khoá
-  /// (học sinh đã trả tiền gói nên vẫn phải thấy "x/10"), chỉ trừ buổi hủy.
+  /// Mẫu số tiến độ = số buổi ĐÃ TRẢ TIỀN. Mới đặt cọc thì chỉ buổi đầu được
+  /// mở nên là "x/1"; trả nốt đợt 2 mới mở hết và thành "x/N".
   int get countedSessions {
-    final active = sessions.where((s) => s.isCounted || s.isLocked).length;
-    if (active > 0) return active;
-    return totalSessions ?? 0;
+    final unlocked = sessions.where((s) => s.isCounted).length;
+    if (unlocked > 0) return unlocked;
+    // Chưa có buổi nào mở khoá: đang chờ cọc → chưa tính buổi nào.
+    return sessions.any((s) => s.isLocked) ? 0 : (totalSessions ?? 0);
   }
 
   int get doneSessions => sessions.where((s) => s.isFinished).length;
@@ -413,9 +419,11 @@ class WeeklySlotDto {
 }
 
 enum ClassStatusType {
-  pendingTutor,
   unpaid,
+  pendingTutor,
+  depositPaid,
   active,
+  pendingRemaining,
   completed,
   cancelled,
   expired,

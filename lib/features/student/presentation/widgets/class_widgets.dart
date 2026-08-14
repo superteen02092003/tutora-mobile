@@ -11,15 +11,25 @@ import 'package:tutora/shared/widgets/user_avatar.dart';
 typedef ChipStyle = ({Color bg, Color fg, String label});
 
 ChipStyle classChipStyle(ClassStatusType t) => switch (t) {
-  ClassStatusType.pendingTutor => (
-    bg: const Color(0xFFF0E3CA),
-    fg: const Color(0xFF5C3A1A),
-    label: 'Chờ gia sư',
-  ),
   ClassStatusType.unpaid => (
     bg: const Color(0xFFF5E9E9),
     fg: AppColors.oxblood,
-    label: 'Chờ thanh toán',
+    label: 'Chờ trả phí buổi đầu',
+  ),
+  ClassStatusType.pendingTutor => (
+    bg: const Color(0xFFF0E3CA),
+    fg: const Color(0xFF5C3A1A),
+    label: 'Chờ gia sư nhận lớp',
+  ),
+  ClassStatusType.depositPaid => (
+    bg: const Color(0xFFE0E7FF),
+    fg: const Color(0xFF3730A3),
+    label: 'Đã thanh toán buổi đầu',
+  ),
+  ClassStatusType.pendingRemaining => (
+    bg: const Color(0xFFFFEDD5),
+    fg: const Color(0xFF9A3412),
+    label: 'Cần trả phí còn lại',
   ),
   ClassStatusType.active => (
     bg: const Color(0xFFE0E7DF),

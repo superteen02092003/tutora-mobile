@@ -208,7 +208,7 @@ class _Greeting extends StatelessWidget {
           Text(
             'Chào, $firstName 👋',
             style: GoogleFonts.inter(
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.ink3,
             ),
@@ -352,7 +352,7 @@ class _UpcomingContent extends StatelessWidget {
                       Text(
                         session.tutorName ?? 'Gia sư',
                         style: GoogleFonts.inter(
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppColors.ink2,
                         ),
@@ -372,7 +372,7 @@ class _UpcomingContent extends StatelessWidget {
                             child: Text(
                               '${session.dayLabel} · ${session.timeRange}',
                               style: GoogleFonts.inter(
-                                fontSize: 13.5,
+                                fontSize: 14.5,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.ink,
                               ),
@@ -453,7 +453,7 @@ class _JoinButton extends StatelessWidget {
             Text(
               _label,
               style: GoogleFonts.inter(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: enabled ? AppColors.cream : AppColors.ink3,
               ),
@@ -497,7 +497,7 @@ class _UpcomingEmpty extends StatelessWidget {
                   title,
                   style: GoogleFonts.bricolageGrotesque(
                     fontWeight: FontWeight.w800,
-                    fontSize: 19,
+                    fontSize: 21,
                     height: 1.2,
                     color: AppColors.ink,
                   ),
@@ -506,7 +506,7 @@ class _UpcomingEmpty extends StatelessWidget {
                 Text(
                   message,
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 15,
                     color: AppColors.ink3,
                     height: 1.5,
                   ),
@@ -526,7 +526,7 @@ class _UpcomingEmpty extends StatelessWidget {
                     child: Text(
                       actionLabel,
                       style: GoogleFonts.inter(
-                        fontSize: 13,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w700,
                         color: AppColors.cream,
                       ),
@@ -675,7 +675,7 @@ class _OngoingClasses extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         child: Container(
-          height: 140,
+          height: 156,
           decoration: BoxDecoration(
             color: AppColors.cream2,
             borderRadius: BorderRadius.circular(18),
@@ -707,7 +707,7 @@ class _OngoingClasses extends StatelessWidget {
                 child: Text(
                   'Bạn chưa có lớp học nào đang diễn ra.',
                   style: GoogleFonts.inter(
-                    fontSize: 13.5,
+                    fontSize: 15,
                     color: AppColors.ink3,
                     height: 1.5,
                   ),
@@ -720,7 +720,7 @@ class _OngoingClasses extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 148,
+      height: 156,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -798,7 +798,7 @@ class _ClassProgressTile extends StatelessWidget {
             Text(
               klass.tutorName ?? 'Gia sư',
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: AppColors.ink3,
               ),
@@ -812,7 +812,7 @@ class _ClassProgressTile extends StatelessWidget {
               '${klass.doneSessions}/${klass.countedSessions} buổi'
               '${next != null ? ' · Buổi tới ${next.dateLabel}' : ''}',
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppColors.ink3,
               ),
@@ -854,7 +854,7 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               'Xem tất cả',
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.oxblood,
               ),
@@ -961,7 +961,7 @@ class _RecentAskItem extends StatelessWidget {
               title,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
-                fontSize: 15,
+                fontSize: 16,
                 color: AppColors.ink,
                 height: 1.35,
               ),
@@ -971,7 +971,7 @@ class _RecentAskItem extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               _relativeTime(session.updatedAt ?? session.createdAt),
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink4),
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.ink4),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1041,7 +1041,7 @@ class _RecentEmpty extends StatelessWidget {
           child: Text(
             message,
             style: GoogleFonts.inter(
-              fontSize: 13.5,
+              fontSize: 15,
               color: AppColors.ink3,
               height: 1.5,
             ),
@@ -1060,7 +1060,7 @@ class _RecentEmpty extends StatelessWidget {
             child: Text(
               actionLabel,
               style: GoogleFonts.inter(
-                fontSize: 12.5,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink,
               ),

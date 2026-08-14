@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/features/student/data/models/booking_models.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_constants.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_form.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_shared.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
@@ -43,12 +44,16 @@ class BookingStep1 extends StatelessWidget {
     }
     match ??= forSubject.isNotEmpty ? forSubject.first : null;
 
+    // Thời lượng bám theo bảng giá của gia sư. Không có thì về 1 giờ — KHÔNG
+    // giữ giá trị cũ, vì buổi lệch thời lượng sẽ bị BE trả 400.
     final duration = match?.durationMinutesPerSession;
     return form.copyWith(
       subjectId: subjectId,
       tutorSubjectGradePriceId: match?.id ?? 0,
       selectedGradePrice: match,
-      slotDurationHours: duration != null ? duration / 60.0 : null,
+      slotDurationHours: duration != null ? duration / 60.0 : 1.0,
+      // Đổi thời lượng thì các khung giờ đã chọn không còn hợp lệ.
+      schedule: const [],
     );
   }
 
@@ -71,7 +76,7 @@ class BookingStep1 extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 'Chưa có hồ sơ học sinh.',
-                style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+                style: GoogleFonts.inter(fontSize: 15, color: AppColors.ink3),
               ),
             )
           else
@@ -107,7 +112,7 @@ class BookingStep1 extends StatelessWidget {
                               s.fullName,
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                                fontSize: 15,
                                 color: AppColors.ink,
                               ),
                             ),
@@ -115,7 +120,7 @@ class BookingStep1 extends StatelessWidget {
                               Text(
                                 s.displayGrade,
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   color: AppColors.ink3,
                                 ),
                               ),
@@ -148,42 +153,138 @@ class BookingStep1 extends StatelessWidget {
         if (subjects.isEmpty)
           Text(
             'Gia sư chưa cập nhật môn học.',
-            style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+            style: GoogleFonts.inter(fontSize: 15, color: AppColors.ink3),
           )
         else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: subjects.map((s) {
-              final sid = s.subjectId ?? 0;
-              final selected = form.subjectId == sid;
-              return GestureDetector(
-                onTap: () => onChanged(_selectSubject(sid)),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.ink : AppColors.paper,
-                    border: Border.all(
-                      color: selected ? AppColors.ink : AppColors.line,
+          // Lưới 2 cột thay cho Wrap: chip co theo độ dài tên môn khiến hàng
+          // ngắn hụt bề ngang, nhìn như bị căn giữa và hở hai bên.
+          LayoutBuilder(
+            builder: (context, c) {
+              const gap = 8.0;
+              final w = (c.maxWidth - gap) / 2;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: subjects.map((s) {
+                  final sid = s.subjectId ?? 0;
+                  final selected = form.subjectId == sid;
+                  return GestureDetector(
+                    onTap: () => onChanged(_selectSubject(sid)),
+                    child: Container(
+                      width: w,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.ink : AppColors.paper,
+                        border: Border.all(
+                          color: selected ? AppColors.ink : AppColors.line,
+                        ),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Text(
+                        s.subjectName ?? '',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? AppColors.gold : AppColors.ink,
+                        ),
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Text(
-                    s.subjectName ?? '',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? AppColors.gold : AppColors.ink,
-                    ),
-                  ),
-                ),
+                  );
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
+
+        // Thời lượng + giá do gia sư đặt sẵn theo môn/lớp, không chọn được —
+        // hiện ngay ở đây để không bị bất ngờ tới lúc bấm đặt lịch.
+        if (form.selectedGradePrice != null) ...[
+          const SizedBox(height: 18),
+          _PriceNote(price: form.selectedGradePrice!),
+        ],
       ],
     );
   }
+}
+
+class _PriceNote extends StatelessWidget {
+  const _PriceNote({required this.price});
+
+  final SubjectGradePriceDto price;
+
+  @override
+  Widget build(BuildContext context) {
+    final mins = price.durationMinutesPerSession;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.paper,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Column(
+        children: [
+          if (mins != null)
+            _NoteRow(
+              icon: Icons.schedule_rounded,
+              label: 'Thời lượng mỗi buổi',
+              value: mins % 60 == 0 ? '${mins ~/ 60} giờ' : '$mins phút',
+            ),
+          if (mins != null) const SizedBox(height: 10),
+          _NoteRow(
+            icon: Icons.payments_outlined,
+            label: 'Học phí',
+            value: '${formatPrice(price.pricePerHour)}/giờ',
+          ),
+          if (price.gradeLevelName.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _NoteRow(
+              icon: Icons.school_outlined,
+              label: 'Áp dụng cho',
+              value: price.gradeLevelName,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _NoteRow extends StatelessWidget {
+  const _NoteRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 19, color: AppColors.ink3),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          label,
+          style: GoogleFonts.inter(fontSize: 14.5, color: AppColors.ink3),
+        ),
+      ),
+      Text(
+        value,
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: AppColors.ink,
+        ),
+      ),
+    ],
+  );
 }

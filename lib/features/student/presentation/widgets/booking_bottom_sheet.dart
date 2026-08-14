@@ -1,23 +1,30 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/student/data/datasources/booking_datasource.dart';
+import 'package:tutora/features/student/data/datasources/payment_datasource.dart';
 import 'package:tutora/features/student/data/models/booking_models.dart';
+import 'package:tutora/features/student/data/models/payment_models.dart';
+import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_constants.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_draft_store.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_form.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_shared.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_step1.dart';
-import 'package:tutora/features/student/presentation/widgets/booking_step2.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_step3.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_step4.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_step_mode.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_step_payment.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
+import 'package:tutora/shared/widgets/app_confirm_sheet.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 Future<void> showBookingSheet(
@@ -58,78 +65,57 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
   int? _successBookingId;
   String _userRole = 'Student';
 
-  String get _draftKey => 'booking_draft_${widget.tutorId}';
+  List<({DateTime start, DateTime end})> _bookedSlots = const [];
 
-  SubjectGradePriceDto? _resolveGradePrice(int subjectId) {
-    final prices = widget.profile.subjectGradePrices ?? [];
-    for (final p in prices) {
-      if (p.subjectId == subjectId) return p;
-    }
-    return null;
-  }
+  // ── Bước thanh toán ──
+  PaymentSummaryDto? _paySummary;
+  PaymentInfoDto? _payInfo;
+  bool _payLoading = false;
+  String? _payError;
+  PayMethod _payMethod = PayMethod.transfer;
 
-  Future<void> _saveDraft() async {
+  /// Đang hiện QR chờ chuyển khoản.
+  bool get _showingQr => _payInfo != null;
+
+  void _saveDraft() {
     if (_success) return;
-    final prefs = await SharedPreferences.getInstance();
-    final scheduleJson = jsonEncode(
-      _form.schedule.map((s) => s.toJson()).toList(),
-    );
-    await prefs.setString(
-      _draftKey,
-      jsonEncode({
-        'step': _step,
-        'studentId': _form.studentId,
-        'subjectId': _form.subjectId,
-        'teachingMode': _form.teachingMode,
-        'startDate': _form.startDate,
-        'schedule': scheduleJson,
-        'locationCity': _form.locationCity,
-        'locationDistrict': _form.locationDistrict,
-        'locationWard': _form.locationWard,
-        'locationDetail': _form.locationDetail,
-        'slotDurationHours': _form.slotDurationHours,
-      }),
-    );
+    BookingDraftStore.save(widget.tutorId, step: _step, form: _form);
   }
 
-  Future<void> _loadDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_draftKey);
-    if (raw == null) return;
-    try {
-      final map = jsonDecode(raw) as Map<String, dynamic>;
-      final scheduleRaw =
-          jsonDecode(map['schedule'] as String) as List<dynamic>;
-      final schedule = scheduleRaw
-          .map((e) => ScheduleSlotDto.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final subjectId = map['subjectId'] as int;
-      final gradePrice = _resolveGradePrice(subjectId);
-      setState(() {
-        _step = (map['step'] as int).clamp(0, 2); // max step 2, not 3
-        _form = BookingForm(
-          studentId: map['studentId'] as String,
-          subjectId: subjectId,
-          tutorSubjectGradePriceId: gradePrice?.id ?? 0,
-          selectedGradePrice: gradePrice,
-          teachingMode: map['teachingMode'] as String,
-          startDate: map['startDate'] as String,
-          schedule: schedule,
-          locationCity: map['locationCity'] as String,
-          locationDistrict: map['locationDistrict'] as String,
-          locationWard: map['locationWard'] as String,
-          locationDetail: map['locationDetail'] as String,
-          slotDurationHours: (map['slotDurationHours'] as num).toDouble(),
-        );
-      });
-    } catch (_) {
-      await _clearDraft();
+  void _clearDraft() => BookingDraftStore.clear(widget.tutorId);
+
+  /// Draft chỉ sống trong phiên chạy app nên chỉ hỏi lại khi người dùng thực sự
+  /// bỏ dở giữa chừng, thay vì tự nhảy bước như bản lưu xuống đĩa trước đây.
+  Future<void> _restoreDraftIfAny() async {
+    final draft = BookingDraftStore.read(widget.tutorId);
+    if (draft == null || !mounted) return;
+
+    final resume = await AppConfirmSheet.show(
+      context,
+      title: 'Tiếp tục đặt lịch?',
+      message:
+          'Bạn đang đặt lịch với ${widget.profile.displayName}, dừng ở bước '
+          '${draft.step + 1}/5 — ${_StepIndicator.labelAt(draft.step)}. '
+          'Bạn muốn tiếp tục hay bắt đầu lại?',
+      confirmLabel: 'Tiếp tục',
+      cancelLabel: 'Bắt đầu lại',
+      useRootNavigator: false,
+    );
+    if (!mounted) return;
+
+    // Vuốt bỏ (null) = chưa quyết định → giữ nguyên draft, mở lại vẫn hỏi.
+    if (resume == null) return;
+
+    if (!resume) {
+      _clearDraft();
+      return;
     }
-  }
 
-  Future<void> _clearDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_draftKey);
+    setState(() {
+      _step = draft.step;
+      // Giữ studentId vừa lấy từ token, phần còn lại lấy nguyên từ draft.
+      _form = draft.form.copyWith(studentId: _form.studentId);
+    });
   }
 
   @override
@@ -140,8 +126,23 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
   }
 
   Future<void> _initSheet() async {
-    await _loadDraft();
+    unawaited(_loadBookedSlots());
     await _resolveRole();
+    if (!mounted) return;
+    // Đợi sheet vào xong rồi mới hỏi, nếu không modal confirm bị chồng lên
+    // animation của chính sheet này và không hiện ra.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    // Chạy sau _resolveRole để studentId từ draft không bị ghi đè.
+    await _restoreDraftIfAny();
+  }
+
+  @override
+  void dispose() {
+    // Bắt mọi kiểu đóng sheet (nút X, vuốt xuống, back) — nếu chỉ lưu ở _next
+    // thì thoát giữa chừng là mất sạch những gì đã chọn.
+    _saveDraft();
+    super.dispose();
   }
 
   Future<void> _resolveRole() async {
@@ -171,6 +172,20 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
     }
   }
 
+  /// Lấy dư 2 tháng để đủ phủ cửa sổ đặt lịch kể cả khi lùi ngày bắt đầu.
+  Future<void> _loadBookedSlots() async {
+    final now = DateTime.now();
+    final slots = await ref
+        .read(bookingDatasourceProvider)
+        .getTutorBookedSlots(
+          widget.tutorId,
+          start: DateTime(now.year, now.month, now.day),
+          end: DateTime(now.year, now.month + 2, now.day),
+        );
+    if (!mounted) return;
+    setState(() => _bookedSlots = slots);
+  }
+
   Future<void> _loadStudents() async {
     setState(() => _loadingStudents = true);
     try {
@@ -182,6 +197,11 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       setState(() => _loadingStudents = false);
     }
   }
+
+  /// BE chặn vì chưa xác minh CCCD → cho lối đi thẳng tới màn xác minh.
+  bool get _needsAgeVerification => ref
+      .read(bookingEligibilityProvider)
+      .maybeWhen(data: (e) => e.needAgeVerification, orElse: () => false);
 
   bool get _startDateValid {
     final d = DateTime.tryParse(_form.startDate);
@@ -196,8 +216,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
           ? _form.subjectId != 0
           : _form.studentId.isNotEmpty && _form.subjectId != 0,
     1 =>
-      !_form.needsLocation ||
-          (_form.locationCity.isNotEmpty && _form.locationDistrict.isNotEmpty),
+      _form.bookingMode == BookingMode.manual || _form.selectedPackage != null,
     2 => _form.schedule.isNotEmpty && _startDateValid,
     _ => true,
   };
@@ -207,8 +226,50 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       _showValidationError();
       return;
     }
+    // Chọn gói xong thì lịch đã cố định, đổ thẳng vào form để bước 3 chỉ còn
+    // xác nhận ngày bắt đầu.
+    if (_step == 1 && _form.bookingMode == BookingMode.package) {
+      _applyPackageSchedule();
+    }
     setState(() => _step++);
-    unawaited(_saveDraft());
+    _saveDraft();
+  }
+
+  /// fixedSlots lưu UTC — phải quy về local, bỏ qua là lệch 7 tiếng.
+  void _applyPackageSchedule() {
+    final pkg = _form.selectedPackage;
+    if (pkg == null) return;
+
+    final local =
+        pkg.fixedSlots
+            .map(
+              (s) => fixedSlotToLocal(
+                isoDayOfWeek: s.dayOfWeek,
+                startUtc: s.startTime,
+                endUtc: s.endTime,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final d = a.dayOfWeek.compareTo(b.dayOfWeek);
+            return d != 0
+                ? d
+                : toMins(a.startTime).compareTo(toMins(b.startTime));
+          });
+
+    setState(() {
+      _form = _form.copyWith(
+        schedule: local
+            .map(
+              (s) => ScheduleSlotDto(
+                dayOfWeek: s.dayOfWeek,
+                startTime: s.startTime,
+                endTime: s.endTime,
+              ),
+            )
+            .toList(),
+      );
+    });
   }
 
   void _showValidationError() {
@@ -219,7 +280,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
             : _form.studentId.isEmpty
             ? 'Vui lòng chọn học sinh.'
             : 'Vui lòng chọn môn học.',
-      1 => 'Vui lòng nhập Thành phố và Quận/Huyện.',
+      1 => 'Vui lòng chọn một gói của gia sư.',
       2 =>
         !_startDateValid
             ? 'Ngày bắt đầu không hợp lệ. Vui lòng chọn ngày từ hôm nay trở đi.'
@@ -233,7 +294,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
     final slots = <FlexibleSlotDto>[];
     final start = DateTime.tryParse(_form.startDate);
     if (start == null) return slots;
-    final windowEnd = DateTime(start.year, start.month + 1, start.day);
+    final windowEnd = bookingWindowEnd(start);
 
     for (final s in _form.schedule) {
       final startParts = s.startTime.split(':');
@@ -268,8 +329,12 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
   }
 
   Future<void> _submit() async {
-    // Guard the backend-required fields before sending a broken payload.
-    final packageId = widget.profile.flexiblePackageId;
+    final isPackage = _form.bookingMode == BookingMode.package;
+    // Gói cố định gửi packageId của gói đã chọn; tự chọn lịch thì dùng gói
+    // flexible mặc định của gia sư.
+    final packageId = isPackage
+        ? _form.selectedPackage?.packageId
+        : widget.profile.flexiblePackageId;
     if (_form.tutorSubjectGradePriceId == 0 || packageId == null) {
       setState(
         () => _error =
@@ -278,12 +343,45 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       return;
     }
 
+    // BE: gói cố định tự sinh buổi từ fixedSlots và chỉ cần totalSessions;
+    // gói flexible thì ngược lại — phải gửi đủ danh sách buổi.
+    final flexibleSlots = isPackage
+        ? const <FlexibleSlotDto>[]
+        : _buildFlexibleSlots();
+    final totalSessions = isPackage
+        ? _form.totalSessions
+        : flexibleSlots.length;
+
+    if (totalSessions <= 3) {
+      setState(
+        () => _error =
+            'Cần ít nhất 4 buổi học. Vui lòng chọn thêm khung giờ hoặc lùi ngày bắt đầu.',
+      );
+      return;
+    }
+
+    // BE chặn 400 nếu buổi lệch durationMinutesPerSession — bắt sớm để báo rõ
+    // thay vì đẩy nguyên lỗi kỹ thuật ra cho người dùng.
+    final requiredMins = _form.selectedGradePrice?.durationMinutesPerSession;
+    if (!isPackage && requiredMins != null) {
+      final wrong = _form.schedule.any(
+        (s) => (toMins(s.endTime) - toMins(s.startTime)) != requiredMins,
+      );
+      if (wrong) {
+        setState(
+          () => _error =
+              'Mỗi buổi học phải kéo dài $requiredMins phút theo quy định của gia sư. '
+              'Vui lòng chọn lại khung giờ.',
+        );
+        return;
+      }
+    }
+
     setState(() {
       _submitting = true;
       _error = null;
     });
     try {
-      final flexibleSlots = _buildFlexibleSlots();
       final res = await ref
           .read(bookingDatasourceProvider)
           .createBooking(
@@ -295,7 +393,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
               packageId: packageId,
               startDate: _form.startDate,
               teachingMode: _form.teachingMode,
-              totalSessions: flexibleSlots.length,
+              totalSessions: totalSessions,
               flexibleSlots: flexibleSlots,
               locationCity: _form.locationCity.isEmpty
                   ? null
@@ -311,20 +409,104 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
                   : _form.locationDetail,
             ),
           );
-      await _clearDraft();
+      _clearDraft();
+      // Booking đã tạo — chuyển sang bước trả tiền thay vì đóng luôn.
       setState(() {
-        _success = true;
         _successBookingId = res.bookingId;
+        _step = 4;
       });
-      unawaited(
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) Navigator.of(context).pop();
-        }),
-      );
+      await _loadPaymentSummary();
     } catch (e) {
       setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     } finally {
-      setState(() => _submitting = false);
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _loadPaymentSummary() async {
+    final id = _successBookingId;
+    if (id == null) return;
+    setState(() {
+      _payLoading = true;
+      _payError = null;
+    });
+    try {
+      final s = await ref.read(paymentDatasourceProvider).getPaymentSummary(id);
+      if (!mounted) return;
+      setState(() {
+        _paySummary = s;
+        // Ví đủ tiền thì ưu tiên, vì trả trong app nhanh hơn ra PayOS.
+        _payMethod = s.canPayWithWallet && s.walletBalance >= s.amount
+            ? PayMethod.wallet
+            : PayMethod.transfer;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _payError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _payLoading = false);
+    }
+  }
+
+  /// Người dùng chuyển khoản xong bấm "Tôi đã chuyển khoản" → đối soát.
+  Future<void> _checkPaid() async {
+    final id = _successBookingId;
+    if (id == null) return;
+    setState(() => _submitting = true);
+    try {
+      final status = await ref
+          .read(paymentDatasourceProvider)
+          .getPaymentStatus(id);
+      if (!mounted) return;
+      if (status.depositSettled) {
+        setState(() => _success = true);
+      } else {
+        AppToast.show(
+          context,
+          message:
+              'Chưa nhận được tiền. Nếu bạn vừa chuyển, đợi một lát rồi kiểm tra lại.',
+          type: AppToastType.warning,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// Ví thì trừ thẳng; chuyển khoản thì lấy thông tin để dựng QR trong app.
+  Future<void> _pay() async {
+    final id = _successBookingId;
+    if (id == null) return;
+
+    setState(() {
+      _submitting = true;
+      _payError = null;
+    });
+    final ds = ref.read(paymentDatasourceProvider);
+    try {
+      if (_payMethod == PayMethod.wallet) {
+        await ds.payWithWallet(id);
+        if (!mounted) return;
+        setState(() => _success = true);
+        return;
+      }
+
+      // Hiện QR ngay trong app (giống web) thay vì đẩy ra trang PayOS.
+      final info = await ds.getPaymentInfo(id);
+      if (!mounted) return;
+      setState(() => _payInfo = info);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _payError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -349,6 +531,15 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
             BookingErrorBanner(
               message: _error!,
               onDismiss: () => setState(() => _error = null),
+              actionLabel: _needsAgeVerification
+                  ? 'Đến xác minh độ tuổi'
+                  : null,
+              onAction: _needsAgeVerification
+                  ? () {
+                      Navigator.of(context).pop();
+                      unawaited(context.push(AppRoutes.studentVerifyIdentity));
+                    }
+                  : null,
             ),
           Expanded(
             child: _success
@@ -368,28 +559,39 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
                         userRole: _userRole,
                         onChanged: (v) {
                           setState(() => _form = v);
-                          unawaited(_saveDraft());
+                          _saveDraft();
                         },
                       ),
-                      1 => BookingStep2(
+                      1 => BookingStepMode(
                         form: _form,
+                        profile: widget.profile,
                         onChanged: (v) {
                           setState(() => _form = v);
-                          unawaited(_saveDraft());
+                          _saveDraft();
                         },
                       ),
                       2 => BookingStep3(
                         form: _form,
                         profile: widget.profile,
+                        bookedSlots: _bookedSlots,
                         onChanged: (v) {
                           setState(() => _form = v);
-                          unawaited(_saveDraft());
+                          _saveDraft();
                         },
                       ),
-                      _ => BookingStep4(
+                      3 => BookingStep4(
                         form: _form,
                         profile: widget.profile,
                         students: _students,
+                      ),
+                      _ => BookingStepPayment(
+                        summary: _paySummary,
+                        info: _payInfo,
+                        loading: _payLoading,
+                        method: _payMethod,
+                        onMethodChanged: (m) => setState(() => _payMethod = m),
+                        error: _payError,
+                        onRetry: () => unawaited(_loadPaymentSummary()),
                       ),
                     },
                   ),
@@ -398,9 +600,19 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
             _Footer(
               step: _step,
               submitting: _submitting,
-              onBack: _step > 0 ? () => setState(() => _step--) : null,
+              // Booking đã tạo ở bước 4 nên không cho lùi về sửa nữa.
+              onBack: _step > 0 && _step < 4
+                  ? () => setState(() => _step--)
+                  : null,
               onNext: _step < 3 ? _next : null,
-              onSubmit: _step == 3 ? _submit : null,
+              onSubmit: _step == 3
+                  ? _submit
+                  : _step == 4 && _showingQr
+                  ? () => unawaited(_checkPaid())
+                  : _step == 4 && _paySummary != null
+                  ? () => unawaited(_pay())
+                  : null,
+              payLabel: _showingQr ? 'Tôi đã chuyển khoản' : null,
             ),
         ],
       ),
@@ -475,90 +687,65 @@ class _Header extends StatelessWidget {
   );
 }
 
+/// Thanh tiến trình chia đoạn: mỗi bước một vạch, kèm tên bước hiện tại — gọn
+/// hơn hàng chấm tròn có nhãn, hợp với bề ngang máy điện thoại.
 class _StepIndicator extends StatelessWidget {
   const _StepIndicator({required this.step});
   final int step;
-  static const _labels = ['Môn học', 'Hình thức', 'Lịch học', 'Xác nhận'];
+  static const _labels = [
+    'Môn học',
+    'Cách đặt',
+    'Lịch học',
+    'Xác nhận',
+    'Thanh toán',
+  ];
+
+  static String labelAt(int step) => _labels[step.clamp(0, _labels.length - 1)];
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    child: Row(
+    padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < _labels.length; i++) ...[
-          if (i > 0)
-            Expanded(
-              child: Container(
-                height: 1,
-                color: i <= step ? AppColors.ink : AppColors.line,
+        Row(
+          children: [
+            Text(
+              _labels[step.clamp(0, _labels.length - 1)],
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
               ),
             ),
-          _StepDot(index: i, current: step, label: _labels[i]),
-        ],
+            const Spacer(),
+            Text(
+              'Bước ${step + 1}/${_labels.length}',
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.ink3),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            for (int i = 0; i < _labels.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: i <= step ? AppColors.ink : AppColors.line,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     ),
   );
-}
-
-class _StepDot extends StatelessWidget {
-  const _StepDot({
-    required this.index,
-    required this.current,
-    required this.label,
-  });
-  final int index;
-  final int current;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = index < current;
-    final active = index == current;
-    return Column(
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: done
-                ? AppColors.ink
-                : active
-                ? AppColors.gold
-                : AppColors.paper,
-            border: Border.all(
-              color: done || active ? Colors.transparent : AppColors.line,
-            ),
-          ),
-          child: Center(
-            child: done
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 13,
-                    color: AppColors.cream,
-                  )
-                : Text(
-                    '${index + 1}',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: active ? AppColors.ink : AppColors.ink3,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            color: active ? AppColors.ink : AppColors.ink3,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _Footer extends StatelessWidget {
@@ -568,12 +755,14 @@ class _Footer extends StatelessWidget {
     required this.onBack,
     required this.onNext,
     required this.onSubmit,
+    this.payLabel,
   });
   final int step;
   final bool submitting;
   final VoidCallback? onBack;
   final VoidCallback? onNext;
   final VoidCallback? onSubmit;
+  final String? payLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -600,7 +789,7 @@ class _Footer extends StatelessWidget {
                 ),
                 child: Text(
                   '← Quay lại',
-                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+                  style: GoogleFonts.inter(fontSize: 15, color: AppColors.ink3),
                 ),
               ),
             ),
@@ -609,7 +798,10 @@ class _Footer extends StatelessWidget {
             BookingPrimaryButton(label: 'Tiếp theo →', onTap: onNext!)
           else if (onSubmit != null)
             BookingPrimaryButton(
-              label: submitting ? 'Đang xử lý...' : 'Xác nhận đặt lịch',
+              label: submitting
+                  ? 'Đang xử lý...'
+                  : payLabel ??
+                        (step == 4 ? 'Thanh toán ngay' : 'Xác nhận đặt lịch'),
               onTap: submitting ? () {} : onSubmit!,
               gold: true,
             ),
@@ -678,7 +870,7 @@ class _SuccessView extends StatelessWidget {
                 border: Border.all(color: AppColors.line),
               ),
               child: Text(
-                'Mã booking: #$bookingId',
+                'Mã lịch đặt: #$bookingId',
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

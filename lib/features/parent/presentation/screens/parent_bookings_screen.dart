@@ -56,7 +56,7 @@ class _ParentBookingsPageState extends ConsumerState<ParentBookingsPage> {
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Booking của tôi'),
+        title: const Text('Lịch đặt của tôi'),
         centerTitle: true,
       ),
       body: Column(
@@ -312,7 +312,7 @@ class _EmptyState extends StatelessWidget {
             color: AppColors.ink4,
           ),
           const SizedBox(height: 12),
-          Text('Chưa có booking nào.', style: AppTextStyles.bodySmall()),
+          Text('Chưa có lịch đặt nào.', style: AppTextStyles.bodySmall()),
         ],
       ),
     );

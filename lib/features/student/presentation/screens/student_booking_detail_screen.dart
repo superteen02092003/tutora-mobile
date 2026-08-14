@@ -11,8 +11,8 @@ import 'package:tutora/features/student/data/datasources/booking_datasource.dart
 import 'package:tutora/features/student/data/datasources/payment_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/booking_detail_provider.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
+import 'package:tutora/shared/widgets/payment_qr_sheet.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class StudentBookingDetailScreen extends ConsumerWidget {
   const StudentBookingDetailScreen({required this.bookingId, super.key});
@@ -36,7 +36,7 @@ class StudentBookingDetailScreen extends ConsumerWidget {
         body: SafeArea(
           child: Column(
             children: [
-              const _NavBar(title: 'Chi tiết booking'),
+              const _NavBar(title: 'Chi tiết lịch đặt'),
               Expanded(
                 child: Center(
                   child: Padding(
@@ -45,7 +45,7 @@ class StudentBookingDetailScreen extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Không tải được booking',
+                          'Không tải được lịch đặt',
                           style: AppTextStyles.label(),
                         ),
                         const SizedBox(height: 6),
@@ -89,7 +89,7 @@ class _DetailScaffold extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            _NavBar(title: booking.subjectName ?? 'Chi tiết booking'),
+            _NavBar(title: booking.subjectName ?? 'Chi tiết lịch đặt'),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.only(bottom: bottomPad + 96),
@@ -166,17 +166,29 @@ class _StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg, icon, text) = switch (booking.statusType) {
-      BookingStatusType.pendingTutor => (
+      BookingStatusType.pendingDeposit => (
         const Color(0xFFFEF3C7),
         const Color(0xFF92400E),
-        Icons.hourglass_top_rounded,
-        'Đang chờ gia sư xác nhận',
+        Icons.payments_outlined,
+        'Chờ bạn thanh toán buổi học đầu tiên',
       ),
-      BookingStatusType.accepted => (
+      BookingStatusType.pendingTutor => (
         const Color(0xFFDBEAFE),
         const Color(0xFF1E40AF),
-        Icons.payments_outlined,
-        'Gia sư đã xác nhận · Chờ thanh toán buổi đầu',
+        Icons.hourglass_top_rounded,
+        'Đã trả phí buổi đầu · Chờ gia sư nhận lớp',
+      ),
+      BookingStatusType.depositPaid => (
+        const Color(0xFFE0E7FF),
+        const Color(0xFF3730A3),
+        Icons.check_circle_outline_rounded,
+        'Gia sư đã nhận lớp · Sẵn sàng vào học',
+      ),
+      BookingStatusType.pendingRemaining => (
+        const Color(0xFFFFEDD5),
+        const Color(0xFF9A3412),
+        Icons.account_balance_wallet_outlined,
+        'Cần thanh toán phần còn lại để học tiếp',
       ),
       BookingStatusType.active => (
         const Color(0xFFD1FAE5),
@@ -194,7 +206,7 @@ class _StatusBanner extends StatelessWidget {
         const Color(0xFFFFE4E6),
         const Color(0xFF9F1239),
         Icons.cancel_outlined,
-        'Booking đã bị hủy',
+        'Lịch đặt đã bị huỷ',
       ),
       BookingStatusType.paymentTimeout => (
         const Color(0xFFF3F4F6),
@@ -235,7 +247,7 @@ class _StatusBanner extends StatelessWidget {
                 ),
               ),
               if (booking.paymentDueAt != null &&
-                  booking.statusType == BookingStatusType.accepted)
+                  booking.statusType == BookingStatusType.pendingDeposit)
                 Text(
                   'Hạn: ${_fmtDate(booking.paymentDueAt!)}',
                   style: GoogleFonts.ibmPlexMono(
@@ -640,26 +652,45 @@ class _TimelineCard extends StatelessWidget {
     );
   }
 
+  /// Thứ tự thật của BE: tạo đơn → trả cọc buổi đầu → gia sư nhận lớp →
+  /// học → trả nốt phần còn lại → hoàn thành.
   List<_StepData> _buildSteps(BookingDetailDto b) {
     final idx = _statusIndex(b.statusType);
+    String? at(DateTime? d) =>
+        d == null ? null : DateFormat('dd/MM HH:mm').format(d);
+
+    final dueLabel = at(DateTime.tryParse(b.paymentDueAt ?? '')?.toLocal());
+
     return [
       _StepData(
-        label: 'Tạo booking',
+        label: 'Tạo lịch đặt',
         state: _stepState(0, idx),
-        sub: DateFormat('dd/MM HH:mm').format(b.createdAtDt),
+        sub: at(b.createdAtDt),
       ),
-      _StepData(label: 'Chờ gia sư', state: _stepState(1, idx)),
-      _StepData(label: 'Gia sư xác nhận', state: _stepState(2, idx)),
-      _StepData(label: 'Thanh toán buổi đầu', state: _stepState(3, idx)),
-      _StepData(label: 'Bắt đầu học', state: _stepState(4, idx)),
+      _StepData(
+        label: 'Thanh toán buổi đầu',
+        state: _stepState(1, idx),
+        sub:
+            at(b.depositPaidDt) ??
+            (idx == 1 && dueLabel != null ? 'Hạn $dueLabel' : null),
+      ),
+      _StepData(label: 'Gia sư nhận lớp', state: _stepState(2, idx)),
+      _StepData(label: 'Bắt đầu học', state: _stepState(3, idx)),
+      _StepData(
+        label: 'Thanh toán phần còn lại',
+        state: _stepState(4, idx),
+        sub: at(b.remainingPaidDt),
+      ),
       _StepData(label: 'Hoàn thành', state: _stepState(5, idx)),
     ];
   }
 
   int _statusIndex(BookingStatusType t) => switch (t) {
-    BookingStatusType.pendingTutor => 1,
-    BookingStatusType.accepted => 2,
-    BookingStatusType.active => 4,
+    BookingStatusType.pendingDeposit => 1,
+    BookingStatusType.pendingTutor => 2,
+    BookingStatusType.depositPaid => 3,
+    BookingStatusType.active => 3,
+    BookingStatusType.pendingRemaining => 4,
     BookingStatusType.completed => 5,
     BookingStatusType.cancelled => -1,
     BookingStatusType.paymentTimeout => -1,
@@ -812,12 +843,12 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
         color: AppColors.paper,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      child: booking.statusType == BookingStatusType.accepted
+      child: booking.statusType == BookingStatusType.pendingDeposit
           ? Row(
               children: [
                 Expanded(
                   child: _OutlineBtn(
-                    label: 'Hủy booking',
+                    label: 'Huỷ lịch đặt',
                     color: AppColors.oxblood,
                     onTap: _paying ? null : () => _showCancelSheet(context),
                   ),
@@ -833,55 +864,64 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
               ],
             )
           : _OutlineBtn(
-              label: 'Hủy booking',
+              label: 'Huỷ lịch đặt',
               color: AppColors.oxblood,
               onTap: () => _showCancelSheet(context),
             ),
     );
   }
 
-  /// Fetch the PayOS checkout link for the deposit phase,
-  /// open it in the external browser,
-  /// then poll payment status when the user returns and
-  /// refresh the booking detail on success.
+  /// Lấy thông tin chuyển khoản rồi mở QR ngay trong app — không đẩy ra
+  /// trình duyệt để tránh lạc mất người dùng ở trang trả về của PayOS.
   Future<void> _startDepositPayment() async {
     setState(() => _paying = true);
     try {
       final ds = ref.read(paymentDatasourceProvider);
       final info = await ds.getPaymentInfo(booking.bookingId);
-
-      if (!info.hasCheckoutUrl) {
-        throw Exception('Không nhận được liên kết thanh toán từ máy chủ.');
-      }
-
-      final uri = Uri.parse(info.checkoutUrl);
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched) {
-        throw Exception('Không mở được trang thanh toán.');
-      }
-
-      // User is on the PayOS page; when they come back, verify.
-      final status = await ds.getPaymentStatus(booking.bookingId);
       if (!mounted) return;
 
-      if (status.depositSettled) {
+      final paid = await showPaymentQrSheet(
+        context,
+        info: info,
+        onCheck: () => ds
+            .getPaymentStatus(booking.bookingId)
+            .then((s) => s.depositSettled),
+      );
+      if (!mounted) return;
+
+      if (paid ?? false) {
         ref.invalidate(bookingDetailProvider(booking.bookingId));
         AppToast.show(
           context,
           message: 'Thanh toán buổi học đầu thành công.',
           type: AppToastType.success,
         );
-      } else {
-        AppToast.show(
-          context,
-          message:
-              'Chưa ghi nhận thanh toán. Nếu bạn đã trả, vui lòng đợi giây lát rồi mở lại.',
-          type: AppToastType.warning,
-        );
       }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  Future<void> _cancelBooking() async {
+    setState(() => _paying = true);
+    try {
+      await ref
+          .read(bookingDatasourceProvider)
+          .cancelBooking(booking.bookingId);
+      if (!mounted) return;
+      ref.invalidate(bookingDetailProvider(booking.bookingId));
+      AppToast.show(
+        context,
+        message: 'Đã huỷ lịch đặt.',
+        type: AppToastType.success,
+      );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
@@ -921,7 +961,7 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Hủy booking?',
+                'Huỷ lịch đặt?',
                 style: GoogleFonts.bricolageGrotesque(
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
@@ -930,7 +970,7 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Bạn có chắc muốn hủy booking với ${booking.tutorName ?? 'gia sư'}?',
+                'Bạn có chắc muốn huỷ lịch đặt với ${booking.tutorName ?? 'gia sư'}?',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: AppColors.ink3,
@@ -956,7 +996,7 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Hủy trước khi gia sư xác nhận — hoàn tiền 100% nếu đã cọc.',
+                        'Huỷ trước khi gia sư nhận lớp — hoàn tiền 100% nếu đã thanh toán.',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           color: AppColors.ink2,
@@ -971,8 +1011,11 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
               SizedBox(
                 width: double.infinity,
                 child: _PrimaryBtn(
-                  label: 'Xác nhận hủy',
-                  onTap: () => Navigator.of(context).pop(),
+                  label: 'Xác nhận huỷ',
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    unawaited(_cancelBooking());
+                  },
                 ),
               ),
               const SizedBox(height: 8),

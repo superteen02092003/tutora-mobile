@@ -90,6 +90,26 @@ class SubjectGradePriceDto {
   final String currency;
 }
 
+/// Một buổi cố định trong gói của gia sư.
+class TutorPackageFixedSlotDto {
+  const TutorPackageFixedSlotDto({
+    required this.dayOfWeek,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  factory TutorPackageFixedSlotDto.fromJson(Map<String, dynamic> j) =>
+      TutorPackageFixedSlotDto(
+        dayOfWeek: (j['dayOfWeek'] as num?)?.toInt() ?? 0,
+        startTime: j['startTime'] as String? ?? '',
+        endTime: j['endTime'] as String? ?? '',
+      );
+
+  final int dayOfWeek;
+  final String startTime;
+  final String endTime;
+}
+
 /// A tutor booking package. packageType 1 = flexible; packageType 2 = fixed combo.
 class TutorPackageDto {
   const TutorPackageDto({
@@ -97,6 +117,7 @@ class TutorPackageDto {
     required this.packageType,
     this.name,
     this.isActive = true,
+    this.fixedSlots = const [],
   });
 
   factory TutorPackageDto.fromJson(Map<String, dynamic> j) => TutorPackageDto(
@@ -104,12 +125,23 @@ class TutorPackageDto {
     packageType: (j['packageType'] as num?)?.toInt() ?? 0,
     name: j['name'] as String?,
     isActive: j['isActive'] as bool? ?? true,
+    fixedSlots:
+        (j['fixedSlots'] as List<dynamic>?)
+            ?.map(
+              (e) =>
+                  TutorPackageFixedSlotDto.fromJson(e as Map<String, dynamic>),
+            )
+            .toList() ??
+        const [],
   );
 
   final int packageId;
   final int packageType;
   final String? name;
   final bool isActive;
+  final List<TutorPackageFixedSlotDto> fixedSlots;
+
+  bool get isFixed => packageType == 2;
 }
 
 class TutorDetailSubjectDto {
@@ -326,6 +358,11 @@ class TutorFullProfileDto {
     }
     return null;
   }
+
+  /// Các gói cố định còn hiệu lực và có ít nhất 1 buổi — dùng cho bước "Cách đặt".
+  List<TutorPackageDto> get fixedPackages => (packages ?? [])
+      .where((p) => p.isActive && p.isFixed && p.fixedSlots.isNotEmpty)
+      .toList();
 
   String get displayName => fullName ?? 'Gia sư';
 

@@ -18,6 +18,29 @@ class PaymentDatasource {
     }
   }
 
+  /// Số tiền + số dư ví cho đợt chưa trả. KHÔNG tạo link PayOS — chỉ gọi
+  /// [getPaymentInfo] khi người dùng thực sự chọn chuyển khoản.
+  Future<PaymentSummaryDto> getPaymentSummary(int bookingId) async {
+    try {
+      final res = await _dio.get<dynamic>(
+        '/bookings/$bookingId/payment/summary',
+      );
+      final data = res.data as Map<String, dynamic>;
+      final content = data['content'] as Map<String, dynamic>? ?? data;
+      return PaymentSummaryDto.fromJson(content);
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
+  Future<void> payWithWallet(int bookingId) async {
+    try {
+      await _dio.post<dynamic>('/bookings/$bookingId/pay/wallet');
+    } on DioException catch (e) {
+      throw _mapError(e);
+    }
+  }
+
   Future<PaymentStatusDto> getPaymentStatus(int bookingId) async {
     try {
       final res = await _dio.get<dynamic>(

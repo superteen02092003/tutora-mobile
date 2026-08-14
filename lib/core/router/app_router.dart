@@ -40,6 +40,7 @@ import 'package:tutora/features/student/presentation/screens/student_notificatio
 import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_solve_chat_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_solve_history_screen.dart';
+import 'package:tutora/features/student/presentation/screens/student_verify_identity_screen.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/v2/student_shell_v2.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
@@ -181,6 +182,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.studentBookings,
         builder: (context, _) => const StudentBookingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.studentVerifyIdentity,
+        builder: (context, _) => const StudentVerifyIdentityPage(),
       ),
       GoRoute(
         path: AppRoutes.studentBookingDetail,

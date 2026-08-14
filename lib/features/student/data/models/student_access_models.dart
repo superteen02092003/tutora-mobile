@@ -1,3 +1,41 @@
+/// Kết quả OCR sau khi upload 2 mặt CCCD.
+class CccdVerifyResult {
+  const CccdVerifyResult({
+    required this.ocrSuccess,
+    required this.message,
+    this.fullName,
+    this.dateOfBirth,
+    this.identityNumber,
+  });
+
+  factory CccdVerifyResult.fromJson(
+    Map<String, dynamic> j, {
+    String? fallbackMessage,
+  }) => CccdVerifyResult(
+    ocrSuccess: (j['ocrSuccess'] as bool?) ?? false,
+    message:
+        (j['message'] as String?) ??
+        fallbackMessage ??
+        'Đã gửi CCCD để xác minh.',
+    fullName: j['fullName'] as String?,
+    dateOfBirth: j['dateOfBirth'] as String?,
+    identityNumber: j['identityNumber'] as String?,
+  );
+
+  final bool ocrSuccess;
+  final String message;
+  final String? fullName;
+  final String? dateOfBirth;
+  final String? identityNumber;
+
+  /// Che 4 số cuối để không phơi số CCCD đầy đủ trên màn hình.
+  String? get maskedIdentity {
+    final id = identityNumber;
+    if (id == null || id.length < 4) return id;
+    return '${'•' * (id.length - 4)}${id.substring(id.length - 4)}';
+  }
+}
+
 /// Quyền đặt lịch của học sinh — map theo
 class BookingEligibilityDto {
   const BookingEligibilityDto({

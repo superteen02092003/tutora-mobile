@@ -2,6 +2,9 @@ import 'package:tutora/features/student/data/models/booking_models.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_constants.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
 
+/// Cách đặt lịch: tự chọn giờ rảnh của gia sư, hoặc lấy nguyên gói cố định.
+enum BookingMode { manual, package }
+
 class BookingForm {
   BookingForm({
     this.studentId = '',
@@ -15,7 +18,10 @@ class BookingForm {
     this.locationDistrict = '',
     this.locationWard = '',
     this.locationDetail = '',
-    this.slotDurationHours = 2.0,
+    // Chỉ là giá trị tạm trước khi chọn môn; sau đó luôn lấy theo bảng giá.
+    this.slotDurationHours = 1.0,
+    this.bookingMode = BookingMode.manual,
+    this.selectedPackage,
   }) : startDate =
            startDate ?? DateTime.now().toIso8601String().substring(0, 10);
 
@@ -33,6 +39,8 @@ class BookingForm {
   final String locationWard;
   final String locationDetail;
   final double slotDurationHours;
+  final BookingMode bookingMode;
+  final TutorPackageDto? selectedPackage;
 
   BookingForm copyWith({
     String? studentId,
@@ -47,6 +55,10 @@ class BookingForm {
     String? locationWard,
     String? locationDetail,
     double? slotDurationHours,
+    BookingMode? bookingMode,
+    TutorPackageDto? selectedPackage,
+    // copyWith dùng `??` nên không thể gán null; cờ này để bỏ chọn gói.
+    bool clearPackage = false,
   }) => BookingForm(
     studentId: studentId ?? this.studentId,
     subjectId: subjectId ?? this.subjectId,
@@ -61,18 +73,37 @@ class BookingForm {
     locationWard: locationWard ?? this.locationWard,
     locationDetail: locationDetail ?? this.locationDetail,
     slotDurationHours: slotDurationHours ?? this.slotDurationHours,
+    bookingMode: bookingMode ?? this.bookingMode,
+    selectedPackage: clearPackage
+        ? null
+        : (selectedPackage ?? this.selectedPackage),
   );
 
   bool get needsLocation =>
       teachingMode == 'offline' || teachingMode == 'hybrid';
 
-  double get totalHoursPerMonth {
-    double h = 0;
+  /// Số buổi thật trong cửa sổ đặt lịch — đếm theo ngày, KHÔNG nhân ×4.
+  int get totalSessions {
+    final start = DateTime.tryParse(startDate);
+    if (start == null || schedule.isEmpty) return 0;
+    var n = 0;
     for (final s in schedule) {
-      final startM = toMins(s.startTime);
-      final endM = toMins(s.endTime);
-      h += (endM - startM) / 60.0;
+      n += sessionDatesInWindow(start: start, weekdays: [s.dayOfWeek]).length;
     }
-    return h * 4;
+    return n;
+  }
+
+  /// Tổng giờ tương ứng với [totalSessions].
+  double get totalHours {
+    final start = DateTime.tryParse(startDate);
+    if (start == null) return 0;
+    var h = 0.0;
+    for (final s in schedule) {
+      final hours = (toMins(s.endTime) - toMins(s.startTime)) / 60.0;
+      h +=
+          hours *
+          sessionDatesInWindow(start: start, weekdays: [s.dayOfWeek]).length;
+    }
+    return h;
   }
 }

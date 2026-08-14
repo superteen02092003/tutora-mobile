@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/student/data/datasources/booking_datasource.dart';
 import 'package:tutora/features/student/data/models/booking_models.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_draft_store.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_form.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_shared.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_step1.dart';
@@ -18,6 +17,7 @@ import 'package:tutora/features/student/presentation/widgets/booking_step2.dart'
 import 'package:tutora/features/student/presentation/widgets/booking_step3.dart';
 import 'package:tutora/features/student/presentation/widgets/booking_step4.dart';
 import 'package:tutora/features/tutor_search/data/models/tutor_detail_models.dart';
+import 'package:tutora/shared/widgets/app_confirm_sheet.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 Future<void> showParentBookingSheet(
@@ -68,70 +68,42 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
   int? _successBookingId;
   String _userRole = 'Student';
 
-  String get _draftKey => 'booking_draft_${widget.tutorId}';
-
-  Future<void> _saveDraft() async {
+  void _saveDraft() {
     if (_success) return;
-    final prefs = await SharedPreferences.getInstance();
-    final scheduleJson = jsonEncode(
-      _form.schedule.map((s) => s.toJson()).toList(),
-    );
-    await prefs.setString(
-      _draftKey,
-      jsonEncode({
-        'step': _step,
-        'studentId': _form.studentId,
-        'subjectId': _form.subjectId,
-        'teachingMode': _form.teachingMode,
-        'startDate': _form.startDate,
-        'schedule': scheduleJson,
-        'locationCity': _form.locationCity,
-        'locationDistrict': _form.locationDistrict,
-        'locationWard': _form.locationWard,
-        'locationDetail': _form.locationDetail,
-        'slotDurationHours': _form.slotDurationHours,
-      }),
-    );
+    BookingDraftStore.save(widget.tutorId, step: _step, form: _form);
   }
 
-  Future<void> _loadDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_draftKey);
-    if (raw == null) return;
-    try {
-      final map = jsonDecode(raw) as Map<String, dynamic>;
-      final scheduleRaw =
-          jsonDecode(map['schedule'] as String) as List<dynamic>;
-      final schedule = scheduleRaw
-          .map((e) => ScheduleSlotDto.fromJson(e as Map<String, dynamic>))
-          .toList();
-      final subjectId = map['subjectId'] as int;
-      final gradePrice = _resolveGradePrice(subjectId);
-      setState(() {
-        _step = (map['step'] as int).clamp(0, 2); // max step 2, not 3
-        _form = BookingForm(
-          studentId: map['studentId'] as String,
-          subjectId: subjectId,
-          tutorSubjectGradePriceId: gradePrice?.id ?? 0,
-          selectedGradePrice: gradePrice,
-          teachingMode: map['teachingMode'] as String,
-          startDate: map['startDate'] as String,
-          schedule: schedule,
-          locationCity: map['locationCity'] as String,
-          locationDistrict: map['locationDistrict'] as String,
-          locationWard: map['locationWard'] as String,
-          locationDetail: map['locationDetail'] as String,
-          slotDurationHours: (map['slotDurationHours'] as num).toDouble(),
-        );
-      });
-    } catch (_) {
-      await _clearDraft();
+  void _clearDraft() => BookingDraftStore.clear(widget.tutorId);
+
+  /// Draft chỉ sống trong phiên chạy app nên chỉ hỏi lại khi người dùng thực sự
+  /// bỏ dở giữa chừng, thay vì tự nhảy bước như bản lưu xuống đĩa trước đây.
+  Future<void> _restoreDraftIfAny() async {
+    final draft = BookingDraftStore.read(widget.tutorId);
+    if (draft == null || !mounted) return;
+
+    final resume = await AppConfirmSheet.show(
+      context,
+      title: 'Tiếp tục đặt lịch?',
+      message:
+          'Bạn đang đặt lịch với ${widget.profile.displayName} và dừng ở '
+          'bước ${draft.step + 1}/4. Bạn muốn tiếp tục hay bắt đầu lại?',
+      confirmLabel: 'Tiếp tục',
+      cancelLabel: 'Bắt đầu lại',
+    );
+    if (!mounted) return;
+
+    // Vuốt bỏ (null) = chưa quyết định → giữ nguyên draft, mở lại vẫn hỏi.
+    if (resume == null) return;
+
+    if (!resume) {
+      _clearDraft();
+      return;
     }
-  }
 
-  Future<void> _clearDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_draftKey);
+    setState(() {
+      _step = draft.step;
+      _form = draft.form;
+    });
   }
 
   @override
@@ -142,8 +114,9 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
   }
 
   Future<void> _initSheet() async {
-    await _loadDraft();
     await _resolveRole();
+    // Chạy sau _resolveRole để học sinh đã chọn trong draft không bị ghi đè.
+    await _restoreDraftIfAny();
   }
 
   Future<void> _resolveRole() async {
@@ -210,7 +183,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       return;
     }
     setState(() => _step++);
-    unawaited(_saveDraft());
+    _saveDraft();
   }
 
   void _showValidationError() {
@@ -229,14 +202,6 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
       _ => '',
     };
     AppToast.show(context, message: msg, type: AppToastType.error);
-  }
-
-  SubjectGradePriceDto? _resolveGradePrice(int subjectId) {
-    final prices = widget.profile.subjectGradePrices ?? [];
-    for (final p in prices) {
-      if (p.subjectId == subjectId) return p;
-    }
-    return null;
   }
 
   List<FlexibleSlotDto> _buildFlexibleSlots() {
@@ -318,7 +283,7 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
                   : _form.locationDetail,
             ),
           );
-      await _clearDraft();
+      _clearDraft();
       setState(() {
         _success = true;
         _successBookingId = res.bookingId;
@@ -378,22 +343,24 @@ class _BookingSheetState extends ConsumerState<_BookingSheet> {
                         userRole: _userRole,
                         onChanged: (v) {
                           setState(() => _form = v);
-                          unawaited(_saveDraft());
+                          _saveDraft();
                         },
                       ),
                       1 => BookingStep2(
                         form: _form,
                         onChanged: (v) {
                           setState(() => _form = v);
-                          unawaited(_saveDraft());
+                          _saveDraft();
                         },
                       ),
                       2 => BookingStep3(
                         form: _form,
                         profile: widget.profile,
+                        // Sheet phụ huynh chưa nối booked-slots.
+                        bookedSlots: const [],
                         onChanged: (v) {
                           setState(() => _form = v);
-                          unawaited(_saveDraft());
+                          _saveDraft();
                         },
                       ),
                       _ => BookingStep4(
@@ -688,7 +655,7 @@ class _SuccessView extends StatelessWidget {
                 border: Border.all(color: AppColors.line),
               ),
               child: Text(
-                'Mã booking: #$bookingId',
+                'Mã lịch đặt: #$bookingId',
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

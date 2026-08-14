@@ -134,6 +134,9 @@ class BookingDetailDto {
     this.packageType,
     this.startDate,
     this.paymentDueAt,
+    this.depositPaidAt,
+    this.remainingPaidAt,
+    this.cancelledAt,
     this.depositAmount,
     this.remainingAmount,
     this.paymentCode,
@@ -167,6 +170,9 @@ class BookingDetailDto {
       packageType: (j['packageType'] as num?)?.toInt(),
       startDate: j['startDate'] as String?,
       paymentDueAt: j['paymentDueAt'] as String?,
+      depositPaidAt: j['depositPaidAt'] as String?,
+      remainingPaidAt: j['remainingPaidAt'] as String?,
+      cancelledAt: j['cancelledAt'] as String?,
       depositAmount: (j['depositAmount'] as num?)?.toDouble(),
       remainingAmount: (j['remainingAmount'] as num?)?.toDouble(),
       paymentCode: j['paymentCode'] as String?,
@@ -198,6 +204,15 @@ class BookingDetailDto {
   final int? packageType;
   final String? startDate;
   final String? paymentDueAt;
+  final String? depositPaidAt;
+  final String? remainingPaidAt;
+  final String? cancelledAt;
+
+  DateTime? get depositPaidDt =>
+      DateTime.tryParse(depositPaidAt ?? '')?.toLocal();
+  DateTime? get remainingPaidDt =>
+      DateTime.tryParse(remainingPaidAt ?? '')?.toLocal();
+  DateTime? get cancelledDt => DateTime.tryParse(cancelledAt ?? '')?.toLocal();
   final double? depositAmount;
   final double? remainingAmount;
   final String? paymentCode;
@@ -212,20 +227,17 @@ class BookingDetailDto {
       DateTime.tryParse(createdAt)?.toLocal() ?? DateTime.now();
 
   BookingStatusType get statusType => switch (status.toLowerCase()) {
+    'pending_payment' || 'accepted' => BookingStatusType.pendingDeposit,
     'pending_tutor' => BookingStatusType.pendingTutor,
-    'accepted' ||
-    'pending_payment' ||
-    'deposit_paid' => BookingStatusType.accepted,
-    'paid' ||
-    'ongoing' ||
-    'active' ||
-    'pending_remaining_payment' => BookingStatusType.active,
+    'deposit_paid' => BookingStatusType.depositPaid,
+    'pending_remaining_payment' => BookingStatusType.pendingRemaining,
+    'paid' || 'ongoing' || 'active' => BookingStatusType.active,
     'completed' || 'closed' => BookingStatusType.completed,
     'cancelled' ||
     'cancelled_noshow' ||
     'refunded' => BookingStatusType.cancelled,
     'payment_timeout' => BookingStatusType.paymentTimeout,
-    _ => BookingStatusType.pendingTutor,
+    _ => BookingStatusType.pendingDeposit,
   };
 
   bool get canCancel => const {
@@ -294,27 +306,28 @@ class StudentBookingDto {
       DateTime.tryParse(createdAt)?.toLocal() ?? DateTime.now();
 
   BookingStatusType get statusType => switch (status.toLowerCase()) {
+    'pending_payment' || 'accepted' => BookingStatusType.pendingDeposit,
     'pending_tutor' => BookingStatusType.pendingTutor,
-    'accepted' ||
-    'pending_payment' ||
-    'deposit_paid' => BookingStatusType.accepted,
-    'paid' ||
-    'ongoing' ||
-    'active' ||
-    'pending_remaining_payment' => BookingStatusType.active,
+    'deposit_paid' => BookingStatusType.depositPaid,
+    'pending_remaining_payment' => BookingStatusType.pendingRemaining,
+    'paid' || 'ongoing' || 'active' => BookingStatusType.active,
     'completed' || 'closed' => BookingStatusType.completed,
     'cancelled' ||
     'cancelled_noshow' ||
     'refunded' => BookingStatusType.cancelled,
     'payment_timeout' => BookingStatusType.paymentTimeout,
-    _ => BookingStatusType.pendingTutor,
+    _ => BookingStatusType.pendingDeposit,
   };
 }
 
+/// Theo đúng luồng BE: pending_payment → (trả cọc) → pending_tutor →
+/// deposit_paid → ongoing → pending_remaining_payment → completed.
 enum BookingStatusType {
+  pendingDeposit,
   pendingTutor,
-  accepted,
+  depositPaid,
   active,
+  pendingRemaining,
   completed,
   cancelled,
   paymentTimeout,
