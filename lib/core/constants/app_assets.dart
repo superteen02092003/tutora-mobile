@@ -12,4 +12,7 @@ abstract final class AppAssets {
   /// Minh hoạ khi chưa có dữ liệu.
   static const String emptyClasses = mascot;
   static const String emptyAsk = mascot;
+
+  /// Minh hoạ "đã xác minh CCCD" ở màn Xác minh thông tin.
+  static const String verifiedIdentity = mascot;
 }

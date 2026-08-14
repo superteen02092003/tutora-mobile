@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/features/student/data/models/profile_models.dart';
+import 'package:tutora/features/student/data/models/student_access_models.dart';
 
 class ProfileDatasource {
   const ProfileDatasource(this._dio, this._storage);
@@ -58,6 +59,36 @@ class ProfileDatasource {
     );
     final content = res.data?['content'] as Map<String, dynamic>?;
     return (content?['avatarUrl'] as String?) ?? '';
+  }
+
+  /// POST /api/students/me/verify-cccd — 422 là lỗi người dùng sửa được
+  /// (ảnh mờ, chưa đủ tuổi...) nên phải giữ nguyên message của BE.
+  Future<CccdVerifyResult> verifyCccd({
+    required String frontPath,
+    required String backPath,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'FrontImage': await MultipartFile.fromFile(frontPath),
+        'BackImage': await MultipartFile.fromFile(backPath),
+      });
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/students/me/verify-cccd',
+        data: formData,
+      );
+      final body = res.data ?? const {};
+      final content = body['content'] as Map<String, dynamic>? ?? const {};
+      return CccdVerifyResult.fromJson(
+        content,
+        fallbackMessage: body['message'] as String?,
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final msg = data is Map<String, dynamic>
+          ? data['message'] as String?
+          : null;
+      throw Exception(msg ?? 'Không xác minh được CCCD, vui lòng thử lại.');
+    }
   }
 }
 

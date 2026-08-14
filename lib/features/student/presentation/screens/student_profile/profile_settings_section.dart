@@ -24,6 +24,9 @@ class ProfileSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifOn = ref.watch(profileProvider).notifOn;
     final isParentManaged = ref.watch(isParentManagedProvider);
+    final needVerify = ref
+        .watch(bookingEligibilityProvider)
+        .maybeWhen(data: (e) => e.needAgeVerification, orElse: () => false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,6 +40,13 @@ class ProfileSettingsSection extends ConsumerWidget {
               sub: ref.watch(profileProvider).profile?.email,
               onTap: onEditInfo,
             ),
+            if (!isParentManaged)
+              SettingRow(
+                icon: Icons.badge_outlined,
+                label: 'Xác minh thông tin',
+                sub: needVerify ? 'Chưa xác minh độ tuổi' : 'Đã xác minh',
+                onTap: () => context.push(AppRoutes.studentVerifyIdentity),
+              ),
             SettingRow(
               icon: Icons.lock_outline_rounded,
               label: 'Bảo mật & Mật khẩu',
@@ -67,7 +77,7 @@ class ProfileSettingsSection extends ConsumerWidget {
             if (!isParentManaged)
               SettingRow(
                 icon: Icons.receipt_long_outlined,
-                label: 'Booking của tôi',
+                label: 'Lịch đặt của tôi',
                 sub: 'Xem lịch sử đặt gia sư',
                 onTap: () => context.push(AppRoutes.studentBookings),
               ),

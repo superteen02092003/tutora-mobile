@@ -26,6 +26,7 @@ abstract final class AppRoutes {
 
   // Student sub-routes
   static const studentBookings = '/student/bookings';
+  static const studentVerifyIdentity = '/student/verify-identity';
   static const studentBookingDetail = '/student/bookings/:id';
   static const studentMessages = '/student/messages';
   static const studentCapturePlaceholder = '/student/capture-stub';
