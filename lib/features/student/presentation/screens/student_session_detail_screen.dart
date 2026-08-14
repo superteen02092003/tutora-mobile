@@ -11,6 +11,7 @@ import 'package:tutora/features/student/data/models/lesson_models.dart';
 import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
 import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
 import 'package:tutora/shared/live_session/live_session_call_screen.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/class_interaction_sheets.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
@@ -904,19 +905,22 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
 
   Future<void> _confirmLesson() async {
     setState(() => _busy = true);
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final ds = ref.read(classSessionDatasourceProvider);
       await ds.confirmClassSession(lesson.lessonId);
       if (!mounted) return;
       ref.invalidate(lessonDetailProvider(lesson.lessonId));
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Đã xác nhận buổi học. Cảm ơn bạn!')),
+      AppToast.show(
+        context,
+        message: 'Đã xác nhận buổi học. Cảm ơn bạn!',
+        type: AppToastType.success,
       );
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -924,25 +928,25 @@ class _ActiveActionsState extends ConsumerState<_ActiveActions> {
   }
 
   Future<void> _openFeedback(int id) async {
-    final messenger = ScaffoldMessenger.of(context);
     final ok = await showFeedbackSheet(context, id);
     if ((ok ?? false) && mounted) {
       ref.invalidate(canLeaveFeedbackProvider(id));
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Cảm ơn đánh giá của bạn!')),
+      AppToast.show(
+        context,
+        message: 'Cảm ơn đánh giá của bạn!',
+        type: AppToastType.success,
       );
     }
   }
 
   Future<void> _openDispute(int id) async {
-    final messenger = ScaffoldMessenger.of(context);
     final ok = await showDisputeSheet(context, id);
     if ((ok ?? false) && mounted) {
       ref.invalidate(lessonDetailProvider(id));
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Đã gửi khiếu nại. Chúng tôi sẽ xem xét sớm.'),
-        ),
+      AppToast.show(
+        context,
+        message: 'Đã gửi khiếu nại. Chúng tôi sẽ xem xét sớm.',
+        type: AppToastType.success,
       );
     }
   }

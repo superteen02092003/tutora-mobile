@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/student/data/datasources/ai_solve_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/ai_solve_provider.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 /// Lịch sử các phiên giải toán của user (gắn userId, nạp từ BE).
 class StudentSolveHistoryPage extends ConsumerWidget {
@@ -155,8 +156,10 @@ class StudentSolveHistoryPage extends ConsumerWidget {
       ref.invalidate(solveHistoryProvider);
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Xoá không thành công, thử lại nhé.')),
+        AppToast.show(
+          context,
+          message: 'Xoá không thành công, thử lại nhé.',
+          type: AppToastType.error,
         );
       }
     }
@@ -191,8 +194,10 @@ class StudentSolveHistoryPage extends ConsumerWidget {
       ref.invalidate(solveHistoryProvider);
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Xoá không thành công, thử lại nhé.')),
+        AppToast.show(
+          context,
+          message: 'Xoá không thành công, thử lại nhé.',
+          type: AppToastType.error,
         );
       }
     }

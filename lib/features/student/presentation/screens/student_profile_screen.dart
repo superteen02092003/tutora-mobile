@@ -4,6 +4,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/student/presentation/providers/profile_provider.dart';
+import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
 import 'package:tutora/features/student/presentation/screens/change_password_screen.dart';
 import 'package:tutora/features/student/presentation/screens/edit_info_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_profile/profile_hero_header.dart';
@@ -43,6 +44,7 @@ class _StudentProfilePageState extends ConsumerState<StudentProfilePage>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(profileProvider);
+    final isParentManaged = ref.watch(isParentManagedProvider);
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     if (state.isLoading) {
@@ -82,14 +84,17 @@ class _StudentProfilePageState extends ConsumerState<StudentProfilePage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ProfileWalletCard(
-                    onDetailTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const ProfileWalletDetailScreen(),
+                  // Ví chỉ dành cho học sinh tự đăng ký.
+                  if (!isParentManaged) ...[
+                    ProfileWalletCard(
+                      onDetailTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ProfileWalletDetailScreen(),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 14),
+                  ],
                   // TODO: "Lịch sử học gần đây" — chờ endpoint riêng, tạm ẩn.
                   // const ProfileSectionLabel('Lịch sử học gần đây'),
                   // ProfileRecentHistory(onViewAll: () {}),
