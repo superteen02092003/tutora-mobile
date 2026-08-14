@@ -39,6 +39,33 @@ class TutorUserDto {
 }
 
 // PUT /api/users/{id}
+/// GET /api/tutors/me/profile — hồ sơ nghề nghiệp gia sư tự sửa được.
+class TutorSelfProfileDto {
+  const TutorSelfProfileDto({
+    required this.headline,
+    required this.bio,
+    required this.teachingMode,
+    required this.isAcceptingBookings,
+  });
+
+  factory TutorSelfProfileDto.fromJson(Map<String, dynamic> json) {
+    final c = json['content'] as Map<String, dynamic>? ?? json;
+    return TutorSelfProfileDto(
+      headline: c['headline'] as String? ?? '',
+      bio: c['bio'] as String? ?? '',
+      teachingMode: c['teachingMode'] as String? ?? '',
+      isAcceptingBookings: c['isAcceptingBookings'] as bool? ?? true,
+    );
+  }
+
+  final String headline;
+  final String bio;
+  final String teachingMode;
+
+  /// Còn nhận yêu cầu đặt lịch mới hay đang tạm dừng.
+  final bool isAcceptingBookings;
+}
+
 class UpdateTutorUserRequest {
   const UpdateTutorUserRequest({
     required this.fullName,

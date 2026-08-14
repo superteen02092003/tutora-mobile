@@ -42,12 +42,12 @@ import 'package:tutora/features/student/presentation/screens/student_solve_chat_
 import 'package:tutora/features/student/presentation/screens/student_solve_history_screen.dart';
 import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/v2/student_shell_v2.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_contribute_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_messages_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
 // Auth-only routes — no role guard needed
@@ -284,16 +284,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.tutorContribute,
-                builder: (context, _) => const TutorContributeScreen(),
+                path: AppRoutes.tutorSchedule,
+                builder: (context, _) => const TutorScheduleScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.tutorSchedule,
-                builder: (context, _) => const TutorScheduleScreen(),
+                path: AppRoutes.tutorWallet,
+                builder: (context, _) => const TutorWalletScreen(),
               ),
             ],
           ),

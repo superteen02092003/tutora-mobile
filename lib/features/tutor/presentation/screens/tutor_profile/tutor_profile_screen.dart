@@ -8,7 +8,13 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:tutora/features/tutor/data/datasources/tutor_profile_datasource.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_dispute_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_bookings/tutor_booking_requests_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_disputes/tutor_disputes_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_feedbacks/tutor_feedbacks_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_certificates_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_change_password_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_intro_screen.dart';
@@ -16,11 +22,12 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_e
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_pricing_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_verification_progress_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_availability_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_bank_account_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_withdrawals_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
-import 'package:tutora/shared/widgets/web_only_banner.dart';
 
 class TutorProfileScreen extends ConsumerStatefulWidget {
   const TutorProfileScreen({super.key});
@@ -158,33 +165,40 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
                 ),
                 const SizedBox(height: 14),
 
-                // Booking & đánh giá (web-only)
+                // Booking & đánh giá
                 const SectionLabel('Yêu cầu & đánh giá'),
                 SectionCard(
                   children: [
+                    const _AcceptingBookingsRow(),
                     SettingRow(
                       icon: Icons.event_available_outlined,
                       label: 'Yêu cầu đặt lịch',
-                      sub: 'Xem trên web để chấp nhận hoặc từ chối',
-                      trailing: const _WebBadge(),
+                      sub: 'Nhận hoặc từ chối yêu cầu từ phụ huynh',
+                      trailing: const _PendingBookingBadge(),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const WebOnlyScreen(
-                            title: 'Yêu cầu đặt lịch',
-                          ),
+                          builder: (_) => const TutorBookingRequestsScreen(),
                         ),
                       ),
                     ),
                     SettingRow(
                       icon: Icons.star_outline_rounded,
                       label: 'Đánh giá từ phụ huynh',
-                      sub: 'Xem trên web để xem và trả lời đánh giá',
-                      trailing: const _WebBadge(),
+                      sub: 'Trả lời đánh giá trên web',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const WebOnlyScreen(
-                            title: 'Đánh giá của tôi',
-                          ),
+                          builder: (_) => const TutorFeedbacksScreen(),
+                        ),
+                      ),
+                    ),
+                    SettingRow(
+                      icon: Icons.gavel_rounded,
+                      label: 'Khiếu nại',
+                      sub: 'Phản hồi khiếu nại về buổi dạy của bạn',
+                      trailing: const _OpenDisputeBadge(),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const TutorDisputesScreen(),
                         ),
                       ),
                     ),
@@ -215,22 +229,21 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
                 SectionCard(
                   children: [
                     SettingRow(
-                      icon: Icons.account_balance_wallet_outlined,
+                      icon: Icons.account_balance_outlined,
                       label: 'Tài khoản ngân hàng',
-                      onTap: () => AppToast.show(
-                        context,
-                        message: 'Đang phát triển',
+                      sub: 'Nơi nhận tiền khi rút',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const TutorBankAccountScreen(),
+                        ),
                       ),
                     ),
                     SettingRow(
                       icon: Icons.south_rounded,
                       label: 'Lịch sử rút tiền',
-                      trailing: const _WebBadge(),
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const WebOnlyScreen(
-                            title: 'Lịch sử rút tiền',
-                          ),
+                          builder: (_) => const TutorWithdrawalsScreen(),
                         ),
                       ),
                     ),
@@ -667,32 +680,118 @@ class _WalletBanner extends StatelessWidget {
   }
 }
 
-class _WebBadge extends StatelessWidget {
-  const _WebBadge();
+/// Công tắc tạm dừng nhận yêu cầu đặt lịch mới.
+///
+/// Khi tắt, gia sư bị ẩn khỏi marketplace — nói rõ điều đó ở phụ đề vì đây là
+/// hệ quả không hiển nhiên từ chữ "tạm dừng".
+class _AcceptingBookingsRow extends ConsumerStatefulWidget {
+  const _AcceptingBookingsRow();
+
+  @override
+  ConsumerState<_AcceptingBookingsRow> createState() =>
+      _AcceptingBookingsRowState();
+}
+
+class _AcceptingBookingsRowState extends ConsumerState<_AcceptingBookingsRow> {
+  bool _saving = false;
+
+  Future<void> _toggle({required bool value}) async {
+    setState(() => _saving = true);
+    try {
+      await ref
+          .read(tutorProfileDatasourceProvider)
+          .setAcceptingBookings(accepting: value);
+      if (!mounted) return;
+      ref.invalidate(tutorSelfProfileProvider);
+      AppToast.show(
+        context,
+        message: value
+            ? 'Đã mở nhận yêu cầu đặt lịch.'
+            : 'Đã tạm dừng. Bạn sẽ không hiện trong tìm kiếm.',
+        type: AppToastType.success,
+      );
+    } catch (_) {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: 'Không đổi được trạng thái. Thử lại sau.',
+          type: AppToastType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.cream2,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.laptop_rounded, size: 11, color: AppColors.ink3),
-          const SizedBox(width: 3),
-          Text(
-            'Web',
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink3,
-            ),
-          ),
-        ],
+    final profile = ref.watch(tutorSelfProfileProvider);
+    final accepting = profile.valueOrNull?.isAcceptingBookings ?? true;
+    final ready = profile.hasValue && !_saving;
+
+    return SettingRow(
+      icon: accepting
+          ? Icons.toggle_on_rounded
+          : Icons.pause_circle_outline_rounded,
+      label: 'Nhận yêu cầu mới',
+      sub: accepting
+          ? 'Đang hiện trong tìm kiếm của phụ huynh'
+          : 'Đang tạm dừng, bạn bị ẩn khỏi tìm kiếm',
+      trailing: Switch(
+        value: accepting,
+        onChanged: ready ? (v) => _toggle(value: v) : null,
       ),
     );
   }
+}
+
+/// Badge số việc cần xử lý ở cuối một hàng cài đặt. Khi không có việc nào thì
+/// hiện mũi tên thường — badge chỉ xuất hiện lúc thật sự cần gia sư hành động.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge(this.count);
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 0) {
+      return const Icon(
+        Icons.chevron_right_rounded,
+        size: 18,
+        color: AppColors.ink4,
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.oxblood,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$count',
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.paper,
+        ),
+      ),
+    );
+  }
+}
+
+class _OpenDisputeBadge extends ConsumerWidget {
+  const _OpenDisputeBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) =>
+      _CountBadge(ref.watch(openDisputeCountProvider));
+}
+
+class _PendingBookingBadge extends ConsumerWidget {
+  const _PendingBookingBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) =>
+      _CountBadge(ref.watch(pendingBookingsProvider).length);
 }

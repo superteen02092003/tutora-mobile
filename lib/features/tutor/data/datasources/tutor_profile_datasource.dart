@@ -35,6 +35,33 @@ class TutorProfileDatasource {
     return TutorUserDto.fromJson(res.data!);
   }
 
+  /// GET /api/tutors/me/profile — hồ sơ gia sư tự sửa được.
+  ///
+  /// Khác `/users/profile` (thông tin tài khoản chung): endpoint này mang các
+  /// trường nghề nghiệp, trong đó có cờ đang nhận booking hay không.
+  Future<TutorSelfProfileDto> getSelfProfile() async {
+    final res = await _dio.get<Map<String, dynamic>>('/tutors/me/profile');
+    final content = res.data?['content'];
+    return TutorSelfProfileDto.fromJson(
+      content is Map<String, dynamic> ? content : (res.data ?? const {}),
+    );
+  }
+
+  /// PUT /api/tutors/{id}/profile/accepting-bookings — tạm dừng / mở lại nhận
+  /// booking. Khi tắt, gia sư bị ẩn khỏi marketplace.
+  Future<bool> setAcceptingBookings({required bool accepting}) async {
+    final userId = await _getUserId();
+    final res = await _dio.put<Map<String, dynamic>>(
+      '/tutors/$userId/profile/accepting-bookings',
+      data: {'accepting': accepting},
+    );
+    final content = res.data?['content'];
+    if (content is Map<String, dynamic>) {
+      return content['accepting'] as bool? ?? accepting;
+    }
+    return accepting;
+  }
+
   // PUT /api/users/{id}
   Future<void> updateUser(UpdateTutorUserRequest request) async {
     final userId = await _getUserId();

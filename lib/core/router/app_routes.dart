@@ -35,16 +35,17 @@ abstract final class AppRoutes {
   static const tutorDetail = '/student/search/tutor/:id';
   static const booking = '/student/search/booking/:tutorId';
 
-  // Tutor shell tabs
+  // Tutor shell tabs — Trang chủ · Lịch · Ví · Tin nhắn · Tôi
   static const tutorHome = '/tutor/home';
-  static const tutorContribute = '/tutor/contribute';
   static const tutorSchedule = '/tutor/schedule';
+  static const tutorWallet = '/tutor/wallet';
   static const tutorMessages = '/tutor/messages';
   static const tutorProfile = '/tutor/profile';
 
   // Tutor sub-routes
   static const tutorBookingDetail = '/tutor/schedule/booking/:id';
   static const tutorNotifications = '/tutor/notifications';
+  static const tutorDisputes = '/tutor/disputes';
 
   // Parent shell tabs
   static const parentHome = '/parent/home';

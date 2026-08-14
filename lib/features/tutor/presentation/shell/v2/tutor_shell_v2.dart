@@ -1,64 +1,39 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lottie/lottie.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
+import 'package:tutora/shared/providers/notification_provider.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
-import 'package:tutora/shared/widgets/floating_pill_nav_bar.dart';
+import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
-/// Tutor shell v2 — floating glassmorphism pill bar.
-class TutorShellV2 extends StatefulWidget {
+/// Shell gia sư — 5 tab: Trang chủ · Lịch · Ví · Tin nhắn · Tôi.
+///
+/// Thanh tab cố định (không ẩn khi cuộn): trên mobile gia sư chủ yếu liếc
+/// nhanh rồi nhảy tab, nên thanh biến mất lúc cuộn gây hụt tay.
+class TutorShellV2 extends ConsumerStatefulWidget {
   const TutorShellV2({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  State<TutorShellV2> createState() => _TutorShellV2State();
+  ConsumerState<TutorShellV2> createState() => _TutorShellV2State();
 }
 
-class _TutorShellV2State extends State<TutorShellV2> {
+class _TutorShellV2State extends ConsumerState<TutorShellV2> {
   final _scrollNotifier = ValueNotifier<int>(-1);
-  final _navVisible = ValueNotifier<bool>(true);
-
-  static const _items = [
-    PillNavItem(
-      index: 0,
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'Trang chủ',
-    ),
-    PillNavItem(
-      index: 1,
-      icon: Icons.add_box_outlined,
-      activeIcon: Icons.add_box_rounded,
-      label: 'Diễn đàn',
-    ),
-    PillNavItem(
-      index: 3,
-      icon: Icons.chat_bubble_outline_rounded,
-      activeIcon: Icons.chat_bubble_rounded,
-      label: 'Tin nhắn',
-    ),
-    PillNavItem(
-      index: 4,
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'Tôi',
-    ),
-  ];
 
   @override
   void dispose() {
     _scrollNotifier.dispose();
-    _navVisible.dispose();
     super.dispose();
   }
 
   void _onTap(int index) {
-    _navVisible.value = true;
     final current = widget.navigationShell.currentIndex;
     if (index == current) {
+      // Chạm lại tab đang mở → cuộn nội dung lên đầu.
       _scrollNotifier.value = index;
       _scrollNotifier.value = -1;
       widget.navigationShell.goBranch(index, initialLocation: true);
@@ -77,7 +52,42 @@ class _TutorShellV2State extends State<TutorShellV2> {
 
   @override
   Widget build(BuildContext context) {
-    final current = widget.navigationShell.currentIndex;
+    // Badge tab "Tôi": khiếu nại và việc hồ sơ cần xử lý nằm trong đó.
+    final unread = ref.watch(unreadCountProvider).value ?? 0;
+
+    final items = [
+      const TutorNavItem(
+        index: 0,
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: 'Trang chủ',
+      ),
+      const TutorNavItem(
+        index: 1,
+        icon: Icons.calendar_today_outlined,
+        activeIcon: Icons.calendar_month_rounded,
+        label: 'Lịch',
+      ),
+      const TutorNavItem(
+        index: 2,
+        icon: Icons.account_balance_wallet_outlined,
+        activeIcon: Icons.account_balance_wallet_rounded,
+        label: 'Ví',
+      ),
+      TutorNavItem(
+        index: 3,
+        icon: Icons.chat_bubble_outline_rounded,
+        activeIcon: Icons.chat_bubble_rounded,
+        label: 'Tin nhắn',
+        badgeCount: unread,
+      ),
+      const TutorNavItem(
+        index: 4,
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Tôi',
+      ),
+    ];
 
     return PopScope(
       canPop: false,
@@ -91,43 +101,11 @@ class _TutorShellV2State extends State<TutorShellV2> {
       child: TutorShellScrollNotifier(
         notifier: _scrollNotifier,
         child: Scaffold(
-          extendBody: true,
-          body: Builder(
-            builder: (context) {
-              final mq = MediaQuery.of(context);
-              return MediaQuery(
-                data: mq.copyWith(
-                  padding: mq.padding.copyWith(
-                    bottom: mq.padding.bottom + kFloatingNavHeight,
-                  ),
-                ),
-                child: HideOnScroll(
-                  visible: _navVisible,
-                  child: AuthListener(child: widget.navigationShell),
-                ),
-              );
-            },
-          ),
-          bottomNavigationBar: ValueListenableBuilder<bool>(
-            valueListenable: _navVisible,
-            builder: (context, visible, _) => FloatingPillNavBar(
-              items: _items,
-              currentIndex: current,
-              onTap: _onTap,
-              visible: visible,
-              actionChild: Transform.scale(
-                scale: 2,
-                child: Lottie.asset(
-                  'assets/icons/calendar-red.json',
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.contain,
-                  repeat: true,
-                ),
-              ),
-              actionIsActive: current == 2,
-              onActionTap: () => _onTap(2),
-            ),
+          body: AuthListener(child: widget.navigationShell),
+          bottomNavigationBar: TutorNavBar(
+            items: items,
+            currentIndex: widget.navigationShell.currentIndex,
+            onTap: _onTap,
           ),
         ),
       ),
