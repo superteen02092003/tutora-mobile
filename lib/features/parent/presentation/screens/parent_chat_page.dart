@@ -85,7 +85,7 @@ class _ParentChatPageState extends ConsumerState<ParentChatPage> {
       onTap: _focusNode.unfocus,
       child: Scaffold(
         resizeToAvoidBottomInset: false,
-        backgroundColor: const Color(0xFFFAFAF7),
+        backgroundColor: AppColors.cream,
         body: SafeArea(
           bottom: false,
           child: Column(
@@ -119,7 +119,11 @@ class _ParentChatPageState extends ConsumerState<ParentChatPage> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    UserAvatar(name: widget.channel.otherUserName, size: 38),
+                    UserAvatar(
+                      name: widget.channel.otherUserName,
+                      imageUrl: widget.channel.otherUserAvatarUrl,
+                      size: 46,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -167,6 +171,7 @@ class _ParentChatPageState extends ConsumerState<ParentChatPage> {
                         itemBuilder: (_, i) => MessageBubble(
                           msg: roomState.messages[i],
                           otherUserName: widget.channel.otherUserName,
+                          otherUserAvatarUrl: widget.channel.otherUserAvatarUrl,
                           currentUserId: roomState.currentUserId,
                         ),
                       ),

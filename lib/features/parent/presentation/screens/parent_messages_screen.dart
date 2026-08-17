@@ -263,7 +263,11 @@ class _ConvoItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            UserAvatar(name: channel.otherUserName, size: 46),
+            UserAvatar(
+              name: channel.otherUserName,
+              imageUrl: channel.otherUserAvatarUrl,
+              size: 54,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

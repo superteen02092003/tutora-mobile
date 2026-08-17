@@ -39,10 +39,11 @@ class ChatDatasource {
     );
     final body = res.data ?? {};
     final list = (body['content'] as List<dynamic>?) ?? [];
-    return list
+    final messages = list
         .whereType<Map<String, dynamic>>()
         .map(ChatMessageDto.fromJson)
         .toList();
+    return sortChatMessagesChronologically(messages);
   }
 
   Future<ChatMessageDto> sendMessage(int channelId, String content) async {
@@ -160,6 +161,26 @@ class ChatDatasource {
     await _hub?.stop();
     _hub = null;
   }
+}
+
+List<ChatMessageDto> sortChatMessagesChronologically(
+  Iterable<ChatMessageDto> messages,
+) {
+  final sorted = messages.toList()
+    ..sort((a, b) {
+      final byTime = _messageTime(a.createdAt).compareTo(
+        _messageTime(b.createdAt),
+      );
+      return byTime != 0 ? byTime : a.messageId.compareTo(b.messageId);
+    });
+  return sorted;
+}
+
+DateTime _messageTime(String value) {
+  if (value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  final safe = value.contains('Z') || value.contains('+') ? value : '${value}Z';
+  return DateTime.tryParse(safe) ??
+      DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 }
 
 final chatDatasourceProvider = Provider<ChatDatasource>((ref) {
