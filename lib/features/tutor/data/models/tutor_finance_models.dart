@@ -106,6 +106,9 @@ class TutorTransaction {
     required this.createdAt,
     this.referenceId,
     this.referenceTable,
+    this.providerTransactionId,
+    this.paidAt,
+    this.proofImageUrl,
   });
 
   factory TutorTransaction.fromJson(Map<String, dynamic> j) => TutorTransaction(
@@ -116,6 +119,9 @@ class TutorTransaction {
     createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '')?.toLocal(),
     referenceId: j['referenceId'] as int?,
     referenceTable: j['referenceTable'] as String?,
+    providerTransactionId: j['providerTransactionId'] as String?,
+    paidAt: DateTime.tryParse(j['paidAt'] as String? ?? '')?.toLocal(),
+    proofImageUrl: j['proofImageUrl'] as String?,
   );
 
   final int transactionId;
@@ -127,6 +133,9 @@ class TutorTransaction {
   final DateTime? createdAt;
   final int? referenceId;
   final String? referenceTable;
+  final String? providerTransactionId;
+  final DateTime? paidAt;
+  final String? proofImageUrl;
 
   /// Tiền vào ví (thu nhập/hoàn) so với tiền ra (rút).
   bool get isCredit => amount >= 0;

@@ -8,11 +8,10 @@ import 'package:tutora/features/tutor/data/datasources/tutor_finance_datasource.
 import 'package:tutora/features/tutor/data/models/tutor_finance_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_finance_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/bank_picker_sheet.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-/// Xem / thêm / sửa / xóa tài khoản ngân hàng nhận giải ngân.
-///
-/// Pop `true` khi có thay đổi (thêm/sửa/xóa) để màn ví refresh.
+/// Tài khoản nhận giải ngân — pop `true` khi có thay đổi để ví refresh.
 class TutorBankAccountScreen extends ConsumerStatefulWidget {
   const TutorBankAccountScreen({super.key});
 
@@ -187,9 +186,15 @@ class _TutorBankAccountScreenState
       body: SafeArea(
         child: Column(
           children: [
-            _AppBar(
-              onDelete: bankInfoAsync.valueOrNull?.isComplete ?? false
-                  ? (_deleting ? null : _delete)
+            TutorChildHeader(
+              title: 'Tài khoản ngân hàng',
+              action: bankInfoAsync.valueOrNull?.isComplete ?? false
+                  ? IconButton(
+                      onPressed: _deleting ? null : _delete,
+                      tooltip: 'Xóa tài khoản',
+                      icon: const Icon(Icons.delete_outline_rounded, size: 21),
+                      color: AppColors.error,
+                    )
                   : null,
             ),
             Expanded(
@@ -306,48 +311,6 @@ class _TutorBankAccountScreenState
       color: AppColors.ink4,
     ),
   );
-}
-
-class _AppBar extends StatelessWidget {
-  const _AppBar({this.onDelete});
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
-      decoration: const BoxDecoration(
-        color: AppColors.cream,
-        border: Border(bottom: BorderSide(color: AppColors.line, width: 0.8)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            color: AppColors.ink,
-          ),
-          Expanded(
-            child: Text(
-              'Tài khoản ngân hàng',
-              style: AppTextStyles.h3(),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          SizedBox(
-            width: 48,
-            child: onDelete == null
-                ? null
-                : IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
-                    color: AppColors.error,
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _BankField extends StatelessWidget {
@@ -472,6 +435,11 @@ class _InputField extends StatelessWidget {
             style: style,
             decoration: InputDecoration(
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
               hintText: hint,
               hintStyle: GoogleFonts.inter(
                 fontSize: 14,
