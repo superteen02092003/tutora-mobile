@@ -16,7 +16,8 @@ import 'package:tutora/features/student/presentation/screens/student_class_detai
 import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
 import 'package:tutora/features/student/presentation/widgets/reschedule_sheet.dart';
 import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
-import 'package:tutora/shared/live_session/live_session_call_screen.dart';
+import 'package:tutora/shared/live_session/session_lobby_screen.dart';
+import 'package:tutora/shared/widgets/app_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/class_interaction_sheets.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
@@ -37,7 +38,7 @@ class StudentSessionDetailPage extends ConsumerWidget {
         child: async.when(
           loading: () => const Column(
             children: [
-              _NavBar(title: 'Buổi học'),
+              AppPageHeader(title: 'Buổi học'),
               Expanded(
                 child: Center(
                   child: CircularProgressIndicator(
@@ -50,7 +51,7 @@ class StudentSessionDetailPage extends ConsumerWidget {
           ),
           error: (e, _) => Column(
             children: [
-              const _NavBar(title: 'Buổi học'),
+              const AppPageHeader(title: 'Buổi học'),
               Expanded(
                 child: Center(
                   child: Padding(
@@ -107,13 +108,13 @@ class _DetailBody extends ConsumerWidget {
 
     return Column(
       children: [
-        _NavBar(
+        AppPageHeader(
           title: isDone
               ? 'Tổng kết buổi học'
               : isPending
               ? 'Xác nhận buổi học'
               : 'Chi tiết buổi học',
-          bookingId: lesson.bookingId,
+          trailing: _OpenClassButton(bookingId: lesson.bookingId),
         ),
         Expanded(
           child: RefreshIndicator(
@@ -148,77 +149,6 @@ class _DetailBody extends ConsumerWidget {
 }
 
 // Nav bar
-
-class _NavBar extends StatelessWidget {
-  const _NavBar({required this.title, this.bookingId});
-  final String title;
-  final int? bookingId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 14,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.ibmPlexSerif(
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-                color: AppColors.ink,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (bookingId != null)
-            GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => StudentClassDetailPage(bookingId: bookingId!),
-                ),
-              ),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.paper,
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: const Icon(
-                  Icons.grid_view_rounded,
-                  size: 15,
-                  color: AppColors.ink,
-                ),
-              ),
-            )
-          else
-            const SizedBox(width: 36),
-        ],
-      ),
-    );
-  }
-}
 
 // Hero card — trạng thái + đếm ngược
 
@@ -1311,7 +1241,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
     unawaited(
       Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => LiveSessionCallScreen(
+          builder: (_) => SessionLobbyScreen(
             classSessionId: lesson.lessonId,
             tutorName: lesson.tutorName,
           ),
@@ -1400,5 +1330,37 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
         type: AppToastType.error,
       );
     }
+  }
+}
+
+/// Nút mở màn Lớp học từ chi tiết buổi học.
+class _OpenClassButton extends StatelessWidget {
+  const _OpenClassButton({required this.bookingId});
+  final int? bookingId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (bookingId == null) return const SizedBox(width: 36);
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StudentClassDetailPage(bookingId: bookingId!),
+        ),
+      ),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.paper,
+          border: Border.all(color: AppColors.line),
+        ),
+        child: const Icon(
+          Icons.grid_view_rounded,
+          size: 15,
+          color: AppColors.ink,
+        ),
+      ),
+    );
   }
 }

@@ -16,7 +16,8 @@ import 'package:tutora/features/student/presentation/screens/student_booking_det
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
 import 'package:tutora/features/student/presentation/widgets/reschedule_sheet.dart';
-import 'package:tutora/shared/live_session/live_session_call_screen.dart';
+import 'package:tutora/shared/live_session/session_lobby_screen.dart';
+import 'package:tutora/shared/widgets/app_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
@@ -38,7 +39,7 @@ class StudentClassDetailPage extends ConsumerWidget {
         child: async.when(
           loading: () => const Column(
             children: [
-              _NavBar(title: 'Lớp học'),
+              AppPageHeader(title: 'Lớp học'),
               Expanded(
                 child: Center(
                   child: CircularProgressIndicator(
@@ -51,7 +52,7 @@ class StudentClassDetailPage extends ConsumerWidget {
           ),
           error: (e, _) => Column(
             children: [
-              const _NavBar(title: 'Lớp học'),
+              const AppPageHeader(title: 'Lớp học'),
               Expanded(
                 child: Center(
                   child: Padding(
@@ -133,7 +134,7 @@ class _ContentState extends ConsumerState<_Content>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _NavBar(title: klass.title),
+        AppPageHeader(title: klass.title),
         _ClassTabs(
           selected: _tabs.index,
           onSelect: (i) => _tabs.animateTo(i),
@@ -198,7 +199,7 @@ class _ContentState extends ConsumerState<_Content>
     unawaited(
       Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => LiveSessionCallScreen(
+          builder: (_) => SessionLobbyScreen(
             classSessionId: session.classSessionId,
             tutorName: klass.tutorName,
           ),
@@ -685,53 +686,6 @@ class _MaterialCard extends StatelessWidget {
 
 // Nav bar
 
-class _NavBar extends StatelessWidget {
-  const _NavBar({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 14,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.ibmPlexSerif(
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-                color: AppColors.ink,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 36),
-        ],
-      ),
-    );
-  }
-}
-
 // Progress header
 
 class _ProgressHeader extends StatelessWidget {
@@ -1050,12 +1004,40 @@ class _PaymentNotice extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   klass.remainingAmount != null && klass.remainingAmount! > 0
-                      ? 'Còn ${money.format(klass.remainingAmount)} đ. Các buổi tiếp theo sẽ mở khi phụ huynh thanh toán xong.'
-                      : 'Các buổi tiếp theo sẽ mở khi phụ huynh thanh toán xong.',
+                      ? 'Còn ${money.format(klass.remainingAmount)} đ. Các buổi tiếp theo mở khi thanh toán xong.'
+                      : 'Các buổi tiếp theo mở khi thanh toán xong.',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: AppColors.ink2,
                     height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StudentBookingDetailScreen(
+                        bookingId: klass.bookingId,
+                      ),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'Thanh toán phần còn lại',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.cream,
+                      ),
+                    ),
                   ),
                 ),
               ],
