@@ -2,16 +2,17 @@
 abstract final class AppAssets {
   static const String mascot = 'assets/mascot/sample.png';
 
-  /// Hero trang chủ (card "Buổi học sắp tới").
-  static const String heroUpcoming = mascot;
+  /// Hero trang chủ: có buổi sắp tới vs chưa có buổi nào.
+  static const String heroUpcoming = 'assets/mascot/next-lesson.png';
+  static const String heroNoLesson = 'assets/mascot/no-tutor.png';
 
   /// Minh hoạ ô hành động nhanh.
-  static const String actionSolve = mascot;
-  static const String actionFindTutor = mascot;
+  static const String actionSolve = 'assets/mascot/ai-solution.png';
+  static const String actionFindTutor = 'assets/mascot/explore.png';
 
   /// Minh hoạ khi chưa có dữ liệu.
-  static const String emptyClasses = mascot;
-  static const String emptyAsk = mascot;
+  static const String emptyClasses = heroNoLesson;
+  static const String emptyAsk = actionSolve;
 
   /// Minh hoạ "đã xác minh CCCD" ở màn Xác minh thông tin.
   static const String verifiedIdentity = mascot;
