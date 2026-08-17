@@ -46,10 +46,8 @@ class ClassSessionSlotDto {
   /// trong lịch và không tính vào tiến độ.
   bool get isLocked => state == ClassSessionState.reserved;
 
-  bool get isCounted =>
-      !isLocked &&
-      state != ClassSessionState.cancelled &&
-      state != ClassSessionState.noShow;
+  /// Buổi thật sự thuộc lớp. `no_show` VẪN tính
+  bool get isCounted => !isLocked && state != ClassSessionState.cancelled;
 
   bool get isFinished =>
       state == ClassSessionState.completed ||
@@ -202,7 +200,8 @@ ClassSessionState classSessionStateOf(String raw) =>
       'in_progress' => ClassSessionState.inProgress,
       'pending_confirmation' => ClassSessionState.pendingConfirmation,
       'completed' => ClassSessionState.completed,
-      'cancelled' => ClassSessionState.cancelled,
+      // cancelled_noshow = huỷ vì vắng, KHÁC no_show (buổi đã diễn ra).
+      'cancelled' || 'cancelled_noshow' => ClassSessionState.cancelled,
       'disputed' => ClassSessionState.disputed,
       'no_show' => ClassSessionState.noShow,
       _ => ClassSessionState.scheduled,

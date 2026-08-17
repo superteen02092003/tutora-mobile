@@ -191,6 +191,7 @@ class StudentLessonDetailDto extends StudentLessonDto {
 
   /// BE chặn đề xuất đổi lịch khi còn dưới 2 giờ trước giờ học đã đặt
   /// (ClassSessionRescheduleProposalService.MinHoursBeforeOriginalStart).
+  /// Giữ khớp với `kRescheduleCutoff` ở shared/widgets/reschedule_sheet.dart.
   static const rescheduleCutoff = Duration(hours: 2);
 
   /// Có được đề xuất đổi lịch buổi này không — khớp đúng ràng buộc của BE để

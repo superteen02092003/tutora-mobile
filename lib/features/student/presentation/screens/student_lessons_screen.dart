@@ -7,14 +7,14 @@ import 'package:intl/intl.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/features/student/data/models/class_models.dart';
 import 'package:tutora/features/student/presentation/providers/class_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_class_detail_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
-import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
+import 'package:tutora/shared/models/class_models.dart';
 import 'package:tutora/shared/widgets/app_calendar.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/class_widgets.dart';
 
 /// Trang Lịch học — hai chế độ xem:
 ///  • Danh sách: lớp học (kỳ học với 1 gia sư), mỗi lớp mở ra danh sách buổi.

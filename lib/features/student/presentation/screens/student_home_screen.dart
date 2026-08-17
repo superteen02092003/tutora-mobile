@@ -12,15 +12,15 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/student/data/datasources/ai_solve_datasource.dart';
-import 'package:tutora/features/student/data/models/class_models.dart';
 import 'package:tutora/features/student/presentation/providers/ai_solve_provider.dart';
 import 'package:tutora/features/student/presentation/providers/class_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_class_detail_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
-import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
 import 'package:tutora/shared/live_session/session_lobby_screen.dart';
+import 'package:tutora/shared/models/class_models.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/shared/widgets/class_widgets.dart';
 import 'package:tutora/shared/widgets/notification_bell.dart';
 
 class StudentHomePage extends ConsumerWidget {

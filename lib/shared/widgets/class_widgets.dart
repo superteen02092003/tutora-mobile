@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/features/student/data/models/class_models.dart';
+import 'package:tutora/shared/models/class_models.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 
 typedef ChipStyle = ({Color bg, Color fg, String label});

@@ -13,13 +13,13 @@ import 'package:tutora/features/student/presentation/providers/class_provider.da
 import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
 import 'package:tutora/features/student/presentation/screens/session_recording_player_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_class_detail_screen.dart';
-import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
-import 'package:tutora/features/student/presentation/widgets/reschedule_sheet.dart';
 import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
 import 'package:tutora/shared/live_session/session_lobby_screen.dart';
 import 'package:tutora/shared/widgets/app_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/class_interaction_sheets.dart';
+import 'package:tutora/shared/widgets/class_widgets.dart';
+import 'package:tutora/shared/widgets/reschedule_sheet.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
 

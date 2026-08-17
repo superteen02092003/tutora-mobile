@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
-import 'package:tutora/features/student/data/models/class_models.dart';
+import 'package:tutora/shared/models/class_models.dart';
 
 /// Lớp học của học sinh
 class ClassDatasource {

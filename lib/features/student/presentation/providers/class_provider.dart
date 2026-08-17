@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/student/data/datasources/class_datasource.dart';
-import 'package:tutora/features/student/data/models/class_models.dart';
+import 'package:tutora/shared/models/class_models.dart';
 
 class ClassListState {
   const ClassListState({
