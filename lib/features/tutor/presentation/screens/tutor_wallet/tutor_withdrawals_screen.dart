@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_finance_datasource.dart';
 import 'package:tutora/features/tutor/data/models/transaction_type_labels.dart';
 import 'package:tutora/features/tutor/data/models/tutor_finance_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_finance_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
 class TutorWithdrawalsScreen extends ConsumerWidget {
   const TutorWithdrawalsScreen({super.key});
@@ -23,7 +23,7 @@ class TutorWithdrawalsScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const _AppBar(title: 'Lịch sử rút tiền'),
+            const TutorChildHeader(title: 'Lịch sử rút tiền'),
             Expanded(
               child: async.when(
                 loading: () => const Center(
@@ -187,7 +187,7 @@ class _WithdrawalDetailScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            const _AppBar(title: 'Chi tiết rút tiền'),
+            const TutorChildHeader(title: 'Chi tiết rút tiền'),
             Expanded(
               child: async.when(
                 loading: () => const Center(
@@ -462,39 +462,6 @@ class _NoteBox extends StatelessWidget {
               height: 1.4,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AppBar extends StatelessWidget {
-  const _AppBar({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
-      decoration: const BoxDecoration(
-        color: AppColors.cream,
-        border: Border(bottom: BorderSide(color: AppColors.line, width: 0.8)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            color: AppColors.ink,
-          ),
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.h3(),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(width: 40),
         ],
       ),
     );

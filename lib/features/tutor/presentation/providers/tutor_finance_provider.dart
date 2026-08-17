@@ -31,6 +31,12 @@ final AutoDisposeFutureProvider<TutorWalletData> tutorWalletProvider =
       );
     });
 
+/// Chỉ số dư — cho Home.
+final AutoDisposeFutureProvider<TutorFinanceSummary> tutorBalanceProvider =
+    FutureProvider.autoDispose<TutorFinanceSummary>((ref) {
+      return ref.read(tutorFinanceDatasourceProvider).getSummary();
+    });
+
 /// Chỉ TK ngân hàng — dùng ở màn quản lý TK.
 final AutoDisposeFutureProvider<TutorBankInfo> tutorBankInfoProvider =
     FutureProvider.autoDispose<TutorBankInfo>((ref) {

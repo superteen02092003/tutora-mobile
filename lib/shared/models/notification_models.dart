@@ -16,16 +16,21 @@ class NotificationDto {
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) {
     return NotificationDto(
-      id: json['notificationid'] as int,
-      userId: json['userid'] as String? ?? '',
+      id:
+          (json['notificationid'] ?? json['notificationId'] ?? json['id'])
+              as int? ??
+          0,
+      userId: (json['userid'] ?? json['userId']) as String? ?? '',
       title: json['title'] as String? ?? '',
       message: json['message'] as String? ?? '',
-      isRead: json['isread'] as bool? ?? false,
-      createdAt: json['createdat'] != null
-          ? DateTime.tryParse(json['createdat'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      isRead: (json['isread'] ?? json['isRead']) as bool? ?? false,
+      createdAt:
+          DateTime.tryParse(
+            (json['createdat'] ?? json['createdAt']) as String? ?? '',
+          ) ??
+          DateTime.now(),
       type: json['type'] as String?,
-      referenceId: json['referenceid'] as String?,
+      referenceId: (json['referenceid'] ?? json['referenceId']) as String?,
     );
   }
 

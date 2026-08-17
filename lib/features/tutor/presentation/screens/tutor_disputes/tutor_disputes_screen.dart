@@ -8,10 +8,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_dispute_provi
 import 'package:tutora/features/tutor/presentation/screens/tutor_disputes/tutor_dispute_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
-/// Danh sách khiếu nại liên quan tới buổi dạy của gia sư.
-///
-/// Vào từ Hồ sơ. Việc chưa khép lại xếp lên trên vì có hạn 48h phản hồi;
-/// việc đã xong gom xuống dưới.
+/// Khiếu nại của gia sư — việc chưa khép lại (hạn 48h) xếp lên trên.
 class TutorDisputesScreen extends ConsumerWidget {
   const TutorDisputesScreen({super.key});
 
@@ -25,16 +22,13 @@ class TutorDisputesScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            TutorScreenHeader(
-              title: 'Khiếu nại',
-              subtitle: 'Phản hồi trong 48 giờ kể từ khi nhận',
-              actions: [
-                TutorHeaderButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: () => Navigator.of(context).pop(),
-                  tooltip: 'Quay lại',
-                ),
-              ],
+            const TutorChildHeader(title: 'Khiếu nại'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+              child: Text(
+                'Phản hồi trong 48 giờ kể từ khi nhận',
+                style: TutorType.rowSub(),
+              ),
             ),
             Expanded(
               child: async.when(

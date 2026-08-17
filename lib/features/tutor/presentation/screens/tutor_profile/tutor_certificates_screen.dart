@@ -8,6 +8,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/tutor/data/models/tutor_profile_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_form_widgets.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class TutorCertificatesScreen extends ConsumerStatefulWidget {
@@ -53,7 +54,7 @@ class _TutorCertificatesScreenState
       body: Column(
         children: [
           SizedBox(height: topPad),
-          TutorScreenHeader(
+          TutorChildHeader(
             title: 'Chứng chỉ & bằng cấp',
             onBack: () => Navigator.of(context).pop(),
           ),

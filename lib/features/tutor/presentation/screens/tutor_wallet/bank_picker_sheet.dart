@@ -10,6 +10,7 @@ Future<BankOption?> showBankPickerSheet(
 ) {
   return showModalBottomSheet<BankOption>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _BankPickerSheet(banks: banks),

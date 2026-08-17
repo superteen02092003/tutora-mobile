@@ -6,10 +6,7 @@ import 'package:tutora/features/tutor/data/datasources/tutor_feedback_datasource
 import 'package:tutora/features/tutor/data/models/tutor_feedback_models.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
-/// Đánh giá phụ huynh dành cho gia sư.
-///
-/// Chỉ đọc: trả lời đánh giá hiện chỉ có trên web, nên ở đây không dựng ô nhập
-/// để tránh hứa hẹn một hành động mobile chưa làm được.
+/// Đánh giá của phụ huynh — chỉ đọc, trả lời hiện chỉ có trên web.
 class TutorFeedbacksScreen extends ConsumerWidget {
   const TutorFeedbacksScreen({super.key});
 
@@ -23,16 +20,7 @@ class TutorFeedbacksScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            TutorScreenHeader(
-              title: 'Đánh giá',
-              actions: [
-                TutorHeaderButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: () => Navigator.of(context).pop(),
-                  tooltip: 'Quay lại',
-                ),
-              ],
-            ),
+            const TutorChildHeader(title: 'Đánh giá'),
             Expanded(
               child: async.when(
                 loading: () => const _FeedbackSkeleton(),

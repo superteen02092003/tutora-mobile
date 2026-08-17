@@ -1,21 +1,22 @@
+/// Tiền VND: nhóm 3 chữ số, ngăn bằng dấu phẩy.
 String fmtVnd(int n) {
-  if (n >= 1000000) {
-    final m = n ~/ 1000;
-    return '${m ~/ 1000}.${(m % 1000).toString().padLeft(3, '0')}';
+  final negative = n < 0;
+  final digits = n.abs().toString();
+  final buf = StringBuffer();
+
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(',');
+    buf.write(digits[i]);
   }
-  if (n >= 1000) return '${n ~/ 1000}.000';
-  return '$n';
+
+  return negative ? '-$buf' : buf.toString();
 }
 
 /// Format giá tiền VNĐ có cộng phí dịch vụ 5%.
 String formatPrice(double? price) {
   if (price == null || price == 0) return 'Thương lượng';
   final n = (price * 1.05).round();
-  final s = n.toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+$)'),
-    (m) => '${m[1]}.',
-  );
-  return '$sđ';
+  return '${fmtVnd(n)}đ';
 }
 
 List<String> formatGradeLevels(List<String> raw) {

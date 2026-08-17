@@ -11,9 +11,7 @@ class TutorFinanceException implements Exception {
   String toString() => message;
 }
 
-/// Gọi các endpoint tài chính gia sư dưới `/tutor/*` và `/banks`.
-///
-/// Mọi payload nằm trong envelope `{ content: ... }` (APIResponse của backend).
+/// Endpoint tài chính gia sư; payload nằm trong envelope `{ content: ... }`.
 class TutorFinanceDatasource {
   const TutorFinanceDatasource(this._dio);
 
@@ -37,6 +35,8 @@ class TutorFinanceDatasource {
     int page = 1,
     int pageSize = 20,
     String? type,
+    DateTime? from,
+    DateTime? to,
   }) async {
     final res = await _dio.get<dynamic>(
       '/tutor/finance/transactions',
@@ -44,13 +44,22 @@ class TutorFinanceDatasource {
         'page': page,
         'pageSize': pageSize,
         'type': ?type,
+        'from': ?from?.toUtc().toIso8601String(),
+        'to': ?to?.toUtc().toIso8601String(),
       },
     );
     return TutorTransactionPage.fromJson(_content(res));
   }
 
+  Future<TutorTransaction> getTransactionDetail(int transactionId) async {
+    final res = await _dio.get<dynamic>(
+      '/tutor/finance/transactions/$transactionId',
+    );
+    return TutorTransaction.fromJson(_content(res));
+  }
+
   Future<TutorBankInfo> getBankInfo() async {
-    final res = await _dio.get<dynamic>('/tutor/bank');
+    final res = await _dio.get<dynamic>('/bank-account');
     return TutorBankInfo.fromJson(_content(res));
   }
 
@@ -61,7 +70,7 @@ class TutorFinanceDatasource {
   }) async {
     try {
       final res = await _dio.put<dynamic>(
-        '/tutor/bank',
+        '/bank-account',
         data: {
           'bankName': bankName,
           'accountNumber': accountNumber,
@@ -76,7 +85,7 @@ class TutorFinanceDatasource {
 
   Future<void> deleteBankInfo() async {
     try {
-      await _dio.delete<dynamic>('/tutor/bank');
+      await _dio.delete<dynamic>('/bank-account');
     } on DioException catch (e) {
       throw TutorFinanceException(_messageOf(e, 'Không xóa được tài khoản.'));
     }

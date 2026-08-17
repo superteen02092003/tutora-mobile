@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_lesson_datasource.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 
-// ── Schedule (calendar + list) ─────────────────────────────────────────────
+// Schedule (calendar + list)
 
 class TutorScheduleState {
   const TutorScheduleState({
@@ -46,7 +46,11 @@ class TutorScheduleNotifier extends StateNotifier<TutorScheduleState> {
     state = state.copyWith(isLoading: true);
     try {
       final lessons = await _ds.getCalendar(from: from, to: to);
-      state = state.copyWith(isLoading: false, lessons: lessons);
+      // Buổi huỷ và buổi mới giữ chỗ không lên lịch dạy
+      state = state.copyWith(
+        isLoading: false,
+        lessons: lessons.where((l) => l.countsAsSession).toList(),
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -58,7 +62,7 @@ final tutorScheduleProvider =
       (ref) => TutorScheduleNotifier(ref.read(tutorLessonDatasourceProvider)),
     );
 
-// ── Lesson list (FE13) ─────────────────────────────────────────────────────
+// Lesson list (FE13)
 
 class TutorLessonListState {
   const TutorLessonListState({
@@ -109,7 +113,7 @@ final tutorLessonListProvider =
       (ref) => TutorLessonListNotifier(ref.read(tutorLessonDatasourceProvider)),
     );
 
-// ── Availability (FE14) ────────────────────────────────────────────────────
+// Availability (FE14
 
 class TutorAvailabilityState {
   const TutorAvailabilityState({
@@ -186,3 +190,52 @@ final tutorAvailabilityProvider =
       (ref) =>
           TutorAvailabilityNotifier(ref.read(tutorLessonDatasourceProvider)),
     );
+
+/// Danh sách lớp (booking) — nguồn cho tab "Lớp" ở màn Lịch dạy.
+final AutoDisposeFutureProvider<TutorClassPage> tutorClassesProvider =
+    FutureProvider.autoDispose<TutorClassPage>((ref) {
+      return ref.read(tutorLessonDatasourceProvider).getClasses();
+    });
+
+/// Buổi học của một lớp
+final AutoDisposeFutureProviderFamily<List<TutorLessonDto>, int>
+classSessionsProvider = FutureProvider.autoDispose
+    .family<List<TutorLessonDto>, int>((ref, bookingId) async {
+      final items = await ref
+          .read(tutorLessonDatasourceProvider)
+          .getLessons(bookingId: bookingId, pageSize: 100);
+
+      final canFilter = items.any((l) => l.bookingId != null);
+      final safe = canFilter
+          ? items
+                .where((l) => l.bookingId == bookingId && l.countsAsSession)
+                .toList()
+          : <TutorLessonDto>[];
+
+      return safe..sort((a, b) {
+        final x = a.startDt;
+        final y = b.startDt;
+        if (x == null || y == null) return 0;
+        return x.compareTo(y);
+      });
+    });
+
+/// Buổi đã dạy xong nhưng chưa gửi báo cáo — quét 14 ngày gần nhất.
+final AutoDisposeFutureProvider<List<TutorLessonDto>> awaitingReportProvider =
+    FutureProvider.autoDispose<List<TutorLessonDto>>((ref) async {
+      final now = DateTime.now();
+      final from = now.subtract(const Duration(days: 14));
+      String ymd(DateTime d) =>
+          '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+
+      final items = await ref
+          .read(tutorLessonDatasourceProvider)
+          .getCalendar(from: ymd(from), to: ymd(now));
+
+      return items.where((l) => l.isAwaitingReport).toList()..sort(
+        (a, b) =>
+            (b.startDt ?? DateTime(0)).compareTo(a.startDt ?? DateTime(0)),
+      );
+    });
