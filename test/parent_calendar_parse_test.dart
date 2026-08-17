@@ -137,4 +137,29 @@ void main() {
     // Thiếu field thì về 0, không crash.
     expect(ParentHomeStatsDto.fromJson(const {}).childrenLearning, 0);
   });
+
+  test('isPendingConfirm bám pending_confirmation, không phải completed', () {
+    ParentLessonDto make(String status, {String? ackedAt}) =>
+        ParentLessonDto.fromJson({
+          'classSessionId': 1,
+          'scheduledStart': '2026-08-20T01:30:00Z',
+          'scheduledEnd': '2026-08-20T02:30:00Z',
+          'status': status,
+          'parentAckAt': ?ackedAt,
+        });
+
+    // Bug cũ: đòi 'completed' — đúng status mà BE trả 400 khi xác nhận, nên nút
+    // "Xác nhận hoàn thành" không bao giờ hiện cho buổi thật sự đang chờ.
+    expect(make('pending_confirmation').isPendingConfirm, isTrue);
+    expect(make('completed').isPendingConfirm, isFalse);
+
+    // Đã xác nhận rồi thì không hỏi lại.
+    expect(
+      make(
+        'pending_confirmation',
+        ackedAt: '2026-08-20T04:00:00Z',
+      ).isPendingConfirm,
+      isFalse,
+    );
+  });
 }

@@ -11,6 +11,7 @@ import 'package:tutora/features/parent/data/datasources/parent_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home/parent_home_widgets.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home/parent_next_lesson_card.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_session_detail_screen.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_child_avatar_strip.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_section_header.dart';
@@ -65,21 +66,21 @@ class _HomeContentState extends ConsumerState<_HomeContent>
       ? AppRoutes.parentBookings
       : '${AppRoutes.parentBookings}?studentId=$studentId';
 
-  void _confirmLesson(ParentLessonDto lesson) {
-    unawaited(
-      ref
-          .read(parentDashboardProvider.notifier)
-          .confirmLesson(lesson.lessonId)
-          .then((_) {
-            if (mounted) {
-              AppToast.show(
-                context,
-                message: 'Đã xác nhận buổi học',
-                type: AppToastType.success,
-              );
-            }
-          }),
-    );
+  /// Banner "Cần xác nhận" chỉ ĐIỀU HƯỚNG, không tự xác nhận
+  void _openPendingConfirmation(List<ParentLessonDto> pending) {
+    if (pending.isEmpty) return;
+    if (pending.length == 1) {
+      unawaited(
+        Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) =>
+                ParentSessionDetailScreen(lessonId: pending.first.lessonId),
+          ),
+        ),
+      );
+      return;
+    }
+    unawaited(context.push(_calendarRoute(_selectedStudentId)));
   }
 
   Future<void> _reschedule(ParentLessonDto lesson, String? selectedId) async {
@@ -144,6 +145,12 @@ class _HomeContentState extends ConsumerState<_HomeContent>
     final stats = ref
         .watch(parentHomeStatsProvider(selectedId ?? ''))
         .valueOrNull;
+
+    // Endpoint pending trả buổi của MỌI con — phải lọc theo con đang chọn, nếu
+    // không banner đếm cả con khác rồi lệch với ô "Chờ xác nhận".
+    final pendingLessons = selectedId == null
+        ? dash.pendingLessons
+        : dash.pendingLessons.where((l) => l.studentId == selectedId).toList();
 
     final childClasses = selectedId == null
         ? const AsyncValue<List<StudentClassDto>>.data([])
@@ -233,11 +240,11 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                             context.push(_calendarRoute(selectedId)),
                       ),
                     ],
-                    if (dash.pendingLessons.isNotEmpty) ...[
+                    if (pendingLessons.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.md),
                       ParentConfirmBanner(
-                        count: dash.pendingLessons.length,
-                        onTap: () => _confirmLesson(dash.pendingLessons.first),
+                        count: pendingLessons.length,
+                        onTap: () => _openPendingConfirmation(pendingLessons),
                       ),
                     ],
                     const SizedBox(height: AppSpacing.lg),
@@ -245,8 +252,7 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                       weekCount: stats?.sessionsThisWeek ?? 0,
                       childrenCount: stats?.childrenLearning ?? 0,
                       pendingCount:
-                          stats?.pendingConfirmation ??
-                          dash.pendingLessons.length,
+                          stats?.pendingConfirmation ?? pendingLessons.length,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     ParentQuickAccessGrid(

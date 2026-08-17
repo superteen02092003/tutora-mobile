@@ -163,7 +163,9 @@ class ParentLessonDto {
   final String? tutorNotes;
   final bool requiresRemainingPayment;
 
-  bool get isPendingConfirm => status == 'completed' && parentAckedAt == null;
+  /// Chờ phụ huynh xác nhận.
+  bool get isPendingConfirm =>
+      status == 'pending_confirmation' && parentAckedAt == null;
 
   /// Buổi giữ chỗ, chờ gia sư nhận lịch — phụ huynh đã trả cọc nên vẫn phải thấy.
   bool get isReserved => status == 'reserved';
