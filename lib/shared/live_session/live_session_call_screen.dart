@@ -40,6 +40,9 @@ class _LiveSessionCallScreenState extends ConsumerState<LiveSessionCallScreen> {
   bool _muted = false;
   bool _camOff = false;
   int? _remoteUid;
+
+  /// Mọi stream phía bên kia (camera + share màn hình / bảng vẽ).
+  final List<int> _remoteUids = [];
   bool _leaving = false;
 
   Timer? _heartbeatTimer;
@@ -121,11 +124,20 @@ class _LiveSessionCallScreenState extends ConsumerState<LiveSessionCallScreen> {
         onJoinChannelSuccess: (connection, elapsed) {
           if (mounted) setState(() => _phase = _Phase.joined);
         },
+        // Share màn hình / bảng vẽ là stream THỨ HAI với uid khác.
         onUserJoined: (connection, remoteUid, elapsed) {
-          if (mounted) setState(() => _remoteUid = remoteUid);
+          if (!mounted) return;
+          setState(() {
+            _remoteUids.add(remoteUid);
+            _remoteUid = _remoteUids.last;
+          });
         },
         onUserOffline: (connection, remoteUid, reason) {
-          if (mounted) setState(() => _remoteUid = null);
+          if (!mounted) return;
+          setState(() {
+            _remoteUids.remove(remoteUid);
+            _remoteUid = _remoteUids.isEmpty ? null : _remoteUids.last;
+          });
         },
         // Token sắp hết hạn (TTL ~120s): join lại để lấy token mới rồi renew.
         onTokenPrivilegeWillExpire: (connection, token) {
@@ -298,6 +310,7 @@ class _LiveSessionCallScreenState extends ConsumerState<LiveSessionCallScreen> {
           _buildStage(),
           _buildLocalPreview(),
           _buildTopBar(),
+          _buildStreamSwitcher(),
           _buildControls(),
         ],
       ),
@@ -319,9 +332,14 @@ class _LiveSessionCallScreenState extends ConsumerState<LiveSessionCallScreen> {
     final engine = _engine;
     if (engine != null && _remoteUid != null) {
       return AgoraVideoView(
+        // Fit thay vì Hidden (mặc định): share màn hình tỉ lệ khác camera,
+        // để Hidden là bị cắt mất mép.
         controller: VideoViewController.remote(
           rtcEngine: engine,
-          canvas: VideoCanvas(uid: _remoteUid),
+          canvas: VideoCanvas(
+            uid: _remoteUid,
+            renderMode: RenderModeType.renderModeFit,
+          ),
           connection: RtcConnection(channelId: _room?.channel),
         ),
       );
@@ -340,6 +358,51 @@ class _LiveSessionCallScreenState extends ConsumerState<LiveSessionCallScreen> {
             style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Có 2 luồng (camera + share) thì cho đổi qua lại.
+  Widget _buildStreamSwitcher() {
+    if (_remoteUids.length < 2 || _phase != _Phase.joined) {
+      return const SizedBox.shrink();
+    }
+    return Positioned(
+      top: 220,
+      right: 16,
+      child: GestureDetector(
+        onTap: () {
+          final i = _remoteUids.indexOf(_remoteUid ?? _remoteUids.first);
+          setState(
+            () => _remoteUid = _remoteUids[(i + 1) % _remoteUids.length],
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.swap_horiz_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Đổi luồng',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

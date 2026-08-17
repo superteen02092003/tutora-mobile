@@ -68,8 +68,10 @@ class _PaymentQrSheetState extends State<_PaymentQrSheet> {
     final qr = info.vietQrImageUrl;
 
     return SafeArea(
-      top: false,
       child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
         margin: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: AppColors.cream,
@@ -235,23 +237,28 @@ class _CopyRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      SizedBox(
-        width: 104,
-        child: Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 14, color: AppColors.ink3),
-        ),
-      ),
+      // Nhãn trên, giá trị dưới — số TK / nội dung dài không bị bóp thành cột.
       Expanded(
-        child: Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+          ],
         ),
       ),
+      const SizedBox(width: 10),
       GestureDetector(
         onTap: () async {
           await Clipboard.setData(ClipboardData(text: value));

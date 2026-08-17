@@ -247,6 +247,13 @@ class BookingDetailDto {
     'deposit_paid',
     'active',
   }.contains(status);
+
+  /// Buổi đầu đã xong, cần trả nốt để mở các buổi còn lại.
+  bool get needsRemainingPayment =>
+      status.toLowerCase() == 'pending_remaining_payment';
+
+  /// Có nút thao tác ở cuối màn hình hay không.
+  bool get hasBottomAction => canCancel || needsRemainingPayment;
 }
 
 // Booking list

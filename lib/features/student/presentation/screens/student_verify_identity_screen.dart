@@ -10,6 +10,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/features/student/data/datasources/profile_datasource.dart';
 import 'package:tutora/features/student/data/models/student_access_models.dart';
 import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
+import 'package:tutora/shared/widgets/app_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class StudentVerifyIdentityPage extends ConsumerStatefulWidget {
@@ -87,186 +88,185 @@ class _StudentVerifyIdentityPageState
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: const BackButton(color: AppColors.ink),
-        title: Text(
-          'Xác minh thông tin',
-          style: GoogleFonts.bricolageGrotesque(
-            fontSize: 19,
-            fontWeight: FontWeight.w800,
-            color: AppColors.ink,
-          ),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-        children: [
-          if (verified)
-            const _StatusBanner(
-              icon: Icons.verified_rounded,
-              color: AppColors.green,
-              title: 'Đã xác minh độ tuổi',
-              message: 'Bạn có thể đặt lịch học bình thường.',
-            )
-          else
-            const _StatusBanner(
-              icon: Icons.info_outline_rounded,
-              color: Color(0xFFB0821B),
-              title: 'Chưa xác minh độ tuổi',
-              message:
-                  'Tutora cần xác minh bạn đủ 16 tuổi trước khi tự đặt lịch học. '
-                  'Chụp 2 mặt CCCD để xác minh.',
-            ),
-
-          if (verified) ...[
-            const SizedBox(height: 12),
-            Center(
-              child: Image.asset(
-                AppAssets.verifiedIdentity,
-                width: MediaQuery.of(context).size.width * 0.78,
-                fit: BoxFit.contain,
-              ),
-            ),
-            if (_result?.fullName != null ||
-                _result?.dateOfBirth != null ||
-                _result?.maskedIdentity != null) ...[
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.paper,
-                  border: Border.all(color: AppColors.line),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: Column(
-                  children: [
-                    if (_result?.fullName != null)
-                      _InfoRow('Họ tên', _result!.fullName!),
-                    if (_result?.dateOfBirth != null)
-                      _InfoRow('Ngày sinh', _result!.dateOfBirth!),
-                    if (_result?.maskedIdentity != null)
-                      _InfoRow('Số CCCD', _result!.maskedIdentity!),
-                  ],
-                ),
-              ),
-            ],
-          ] else ...[
-            const SizedBox(height: 24),
-            Text(
-              'Ảnh CCCD',
-              style: GoogleFonts.bricolageGrotesque(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Chụp rõ nét, đủ 4 góc, không loá sáng.',
-              style: GoogleFonts.inter(fontSize: 15, color: AppColors.ink3),
-            ),
-            const SizedBox(height: 14),
-            _PhotoTile(
-              label: 'Mặt trước',
-              path: _frontPath,
-              onTap: () => _pick(front: true),
-            ),
-            const SizedBox(height: 12),
-            _PhotoTile(
-              label: 'Mặt sau',
-              path: _backPath,
-              onTap: () => _pick(front: false),
-            ),
-          ],
-
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFDECEC),
-                border: Border.all(color: const Color(0xFFF3C9C9)),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const AppPageHeader(title: 'Xác minh thông tin'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    size: 20,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        height: 1.5,
-                        color: AppColors.ink2,
+                  if (verified)
+                    const _StatusBanner(
+                      icon: Icons.verified_rounded,
+                      color: AppColors.green,
+                      title: 'Đã xác minh độ tuổi',
+                      message: 'Bạn có thể đặt lịch học bình thường.',
+                    )
+                  else
+                    const _StatusBanner(
+                      icon: Icons.info_outline_rounded,
+                      color: Color(0xFFB0821B),
+                      title: 'Chưa xác minh độ tuổi',
+                      message:
+                          'Tutora cần xác minh bạn đủ 16 tuổi trước khi tự đặt lịch học. '
+                          'Chụp 2 mặt CCCD để xác minh.',
+                    ),
+
+                  if (verified) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Image.asset(
+                        AppAssets.verifiedIdentity,
+                        width: MediaQuery.of(context).size.width * 0.78,
+                        fit: BoxFit.contain,
                       ),
                     ),
-                  ),
+                    if (_result?.fullName != null ||
+                        _result?.dateOfBirth != null ||
+                        _result?.maskedIdentity != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.paper,
+                          border: Border.all(color: AppColors.line),
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                        ),
+                        child: Column(
+                          children: [
+                            if (_result?.fullName != null)
+                              _InfoRow('Họ tên', _result!.fullName!),
+                            if (_result?.dateOfBirth != null)
+                              _InfoRow('Ngày sinh', _result!.dateOfBirth!),
+                            if (_result?.maskedIdentity != null)
+                              _InfoRow('Số CCCD', _result!.maskedIdentity!),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ] else ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Ảnh CCCD',
+                      style: GoogleFonts.bricolageGrotesque(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chụp rõ nét, đủ 4 góc, không loá sáng.',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        color: AppColors.ink3,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _PhotoTile(
+                      label: 'Mặt trước',
+                      path: _frontPath,
+                      onTap: () => _pick(front: true),
+                    ),
+                    const SizedBox(height: 12),
+                    _PhotoTile(
+                      label: 'Mặt sau',
+                      path: _backPath,
+                      onTap: () => _pick(front: false),
+                    ),
+                  ],
+
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFDECEC),
+                        border: Border.all(color: const Color(0xFFF3C9C9)),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 20,
+                            color: AppColors.error,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                height: 1.5,
+                                color: AppColors.ink2,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (!verified && _result != null && _result!.ocrSuccess) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.paper,
+                        border: Border.all(color: AppColors.line),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Column(
+                        children: [
+                          _InfoRow('Họ tên', _result!.fullName ?? '—'),
+                          _InfoRow('Ngày sinh', _result!.dateOfBirth ?? '—'),
+                          _InfoRow('Số CCCD', _result!.maskedIdentity ?? '—'),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  if (!verified) ...[
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: _ready && !_submitting ? _submit : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 17),
+                        decoration: BoxDecoration(
+                          color: _ready ? AppColors.ink : AppColors.line,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Text(
+                          _submitting ? 'Đang xác minh...' : 'Gửi xác minh',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: _ready ? AppColors.cream : AppColors.ink4,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Ảnh CCCD chỉ dùng để xác minh độ tuổi và được lưu trữ mã hoá.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        height: 1.5,
+                        color: AppColors.ink4,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
-
-          if (!verified && _result != null && _result!.ocrSuccess) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Column(
-                children: [
-                  _InfoRow('Họ tên', _result!.fullName ?? '—'),
-                  _InfoRow('Ngày sinh', _result!.dateOfBirth ?? '—'),
-                  _InfoRow('Số CCCD', _result!.maskedIdentity ?? '—'),
-                ],
-              ),
-            ),
-          ],
-
-          if (!verified) ...[
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: _ready && !_submitting ? _submit : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 17),
-                decoration: BoxDecoration(
-                  color: _ready ? AppColors.ink : AppColors.line,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Text(
-                  _submitting ? 'Đang xác minh...' : 'Gửi xác minh',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: _ready ? AppColors.cream : AppColors.ink4,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Ảnh CCCD chỉ dùng để xác minh độ tuổi và được lưu trữ mã hoá.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 13.5,
-                height: 1.5,
-                color: AppColors.ink4,
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
