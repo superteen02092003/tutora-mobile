@@ -13,6 +13,8 @@ import 'package:tutora/shared/widgets/app_toast.dart';
 Future<bool?> showBankOtpSheet(BuildContext context, {required String phone}) {
   return showModalBottomSheet<bool>(
     context: context,
+    // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _BankOtpSheet(phone: phone),

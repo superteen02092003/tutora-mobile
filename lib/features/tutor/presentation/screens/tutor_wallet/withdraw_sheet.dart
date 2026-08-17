@@ -15,6 +15,8 @@ Future<bool?> showWithdrawSheet(
 }) {
   return showModalBottomSheet<bool>(
     context: context,
+    // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _WithdrawSheet(available: available),
