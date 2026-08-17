@@ -6,12 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
+import 'package:tutora/shared/widgets/floating_pill_nav_bar.dart';
 import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
 /// Shell gia sư — 5 tab: Trang chủ · Lịch · Ví · Tin nhắn · Tôi.
-///
-/// Thanh tab cố định (không ẩn khi cuộn): trên mobile gia sư chủ yếu liếc
-/// nhanh rồi nhảy tab, nên thanh biến mất lúc cuộn gây hụt tay.
 class TutorShellV2 extends ConsumerStatefulWidget {
   const TutorShellV2({required this.navigationShell, super.key});
 
@@ -23,14 +21,17 @@ class TutorShellV2 extends ConsumerStatefulWidget {
 
 class _TutorShellV2State extends ConsumerState<TutorShellV2> {
   final _scrollNotifier = ValueNotifier<int>(-1);
+  final _navVisible = ValueNotifier<bool>(true);
 
   @override
   void dispose() {
     _scrollNotifier.dispose();
+    _navVisible.dispose();
     super.dispose();
   }
 
   void _onTap(int index) {
+    _navVisible.value = true;
     final current = widget.navigationShell.currentIndex;
     if (index == current) {
       // Chạm lại tab đang mở → cuộn nội dung lên đầu.
@@ -103,11 +104,22 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
         child: Scaffold(
           // Thanh tab trong suốt → nội dung phải chạy xuống dưới nó.
           extendBody: true,
-          body: AuthListener(child: widget.navigationShell),
-          bottomNavigationBar: TutorNavBar(
-            items: items,
-            currentIndex: widget.navigationShell.currentIndex,
-            onTap: _onTap,
+          body: HideOnScroll(
+            visible: _navVisible,
+            child: AuthListener(child: widget.navigationShell),
+          ),
+          bottomNavigationBar: ValueListenableBuilder<bool>(
+            valueListenable: _navVisible,
+            builder: (context, visible, _) => AnimatedSlide(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              offset: visible ? Offset.zero : const Offset(0, 1.6),
+              child: TutorNavBar(
+                items: items,
+                currentIndex: widget.navigationShell.currentIndex,
+                onTap: _onTap,
+              ),
+            ),
           ),
         ),
       ),

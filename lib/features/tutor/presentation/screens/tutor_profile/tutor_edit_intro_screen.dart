@@ -5,6 +5,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/tutor/data/models/tutor_profile_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_form_widgets.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class TutorEditIntroScreen extends ConsumerStatefulWidget {
@@ -98,7 +99,7 @@ class _TutorEditIntroScreenState extends ConsumerState<TutorEditIntroScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            TutorScreenHeader(
+            TutorChildHeader(
               title: 'Giới thiệu & kinh nghiệm',
               onBack: () => Navigator.of(context).pop(),
             ),

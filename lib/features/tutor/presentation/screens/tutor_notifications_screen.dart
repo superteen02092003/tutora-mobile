@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/models/notification_models.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
 
@@ -47,32 +48,17 @@ class _TutorNotificationsScreenState
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 16, 4),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 18,
-                      color: AppColors.ink,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  Expanded(
-                    child: Text('Thông báo', style: AppTextStyles.h3()),
-                  ),
-                  if (hasUnread)
-                    GestureDetector(
-                      onTap: () =>
+            TutorChildHeader(
+              title: 'Thông báo',
+              action: hasUnread
+                  ? IconButton(
+                      onPressed: () =>
                           ref.read(notificationProvider.notifier).markAllRead(),
-                      child: Text(
-                        'Đánh dấu tất cả đã đọc',
-                        style: AppTextStyles.label(color: AppColors.oxblood),
-                      ),
-                    ),
-                ],
-              ),
+                      tooltip: 'Đánh dấu tất cả đã đọc',
+                      icon: const Icon(Icons.done_all_rounded, size: 21),
+                      color: AppColors.oxblood,
+                    )
+                  : null,
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),

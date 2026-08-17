@@ -10,8 +10,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_dispute_provi
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-/// Chi tiết một khiếu nại: nội dung người học nêu, phản hồi của gia sư,
-/// và luồng trao đổi riêng với admin.
+/// Chi tiết khiếu nại: nội dung, phản hồi gia sư, trao đổi với admin.
 class TutorDisputeDetailScreen extends ConsumerStatefulWidget {
   const TutorDisputeDetailScreen({required this.classSessionId, super.key});
 
@@ -27,8 +26,7 @@ class _TutorDisputeDetailScreenState
   bool _submitting = false;
   bool _uploading = false;
 
-  /// Nộp thêm ảnh bằng chứng. Với khiếu nại "vắng mặt" thì ảnh thường có sức
-  /// nặng hơn lời giải trình, nên để riêng một hành động thay vì gộp vào sheet.
+  /// Nộp ảnh bằng chứng — để riêng vì ảnh nặng ký hơn lời giải trình.
   Future<void> _uploadEvidence() async {
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -105,16 +103,7 @@ class _TutorDisputeDetailScreenState
         bottom: false,
         child: Column(
           children: [
-            TutorScreenHeader(
-              title: 'Chi tiết khiếu nại',
-              actions: [
-                TutorHeaderButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: () => Navigator.of(context).pop(),
-                  tooltip: 'Quay lại',
-                ),
-              ],
-            ),
+            const TutorChildHeader(title: 'Chi tiết khiếu nại'),
             Expanded(
               child: async.when(
                 loading: () => const _DetailSkeleton(),

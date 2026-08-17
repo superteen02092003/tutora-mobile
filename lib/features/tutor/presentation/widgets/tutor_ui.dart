@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 
-/// Bộ widget nền cho các màn gia sư. Mọi màn dựng từ đây để spacing,
-/// bo góc và cỡ chữ không lệch nhau giữa các màn.
+/// Bộ widget nền cho màn gia sư — spacing, bo góc, cỡ chữ không lệch nhau.
 
-/// Tiêu đề đầu màn: một dòng tiêu đề + tối đa hai nút ở mép phải.
-///
-/// Không dùng AppBar vì AppBar của Material đặt tiêu đề 17px căn giữa —
-/// nhỏ và cân đối theo kiểu web. Ở đây tiêu đề to, căn trái, dính liền
-/// nội dung bên dưới.
+/// Tiêu đề đầu màn — to và căn trái, khác AppBar 17px căn giữa của Material.
 class TutorScreenHeader extends StatelessWidget {
   const TutorScreenHeader({
     required this.title,
@@ -49,6 +44,66 @@ class TutorScreenHeader extends StatelessWidget {
             const SizedBox(width: 8),
             action,
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Header dùng cho màn con: quay lại bên trái, tiêu đề giữa, action tùy chọn.
+class TutorChildHeader extends StatelessWidget {
+  const TutorChildHeader({
+    required this.title,
+    this.onBack,
+    this.action,
+    this.backgroundColor = Colors.transparent,
+    super.key,
+  });
+
+  final String title;
+  final VoidCallback? onBack;
+  final Widget? action;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      color: backgroundColor,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 60),
+            child: Semantics(
+              header: true,
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TutorType.rowTitle().copyWith(fontSize: 17),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 4,
+            child: IconButton(
+              onPressed: onBack ?? () => Navigator.of(context).pop(),
+              tooltip: 'Quay lại',
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+              color: TutorColors.ink,
+            ),
+          ),
+          Positioned(
+            right: 4,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(child: action),
+            ),
+          ),
         ],
       ),
     );
@@ -526,8 +581,7 @@ class TutorEmptyState extends StatelessWidget {
   }
 }
 
-/// Khối skeleton xám khi đang tải — thay cho spinner giữa màn, để bố cục
-/// không nhảy khi dữ liệu về.
+/// Skeleton xám khi tải — bố cục không nhảy khi dữ liệu về.
 class TutorSkeleton extends StatelessWidget {
   const TutorSkeleton({
     required this.height,

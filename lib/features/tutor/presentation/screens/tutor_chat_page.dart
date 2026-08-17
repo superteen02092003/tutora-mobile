@@ -84,6 +84,7 @@ class _TutorChatPageState extends ConsumerState<TutorChatPage> {
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
         builder: (_) => ChatMoreMenu(convoName: widget.channel.otherUserName),
       ),

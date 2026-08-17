@@ -1,45 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
-
-class TutorScreenHeader extends StatelessWidget {
-  const TutorScreenHeader({
-    required this.title,
-    required this.onBack,
-    super.key,
-  });
-
-  final String title;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.line, width: 0.8)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            color: AppColors.ink,
-          ),
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.h3(),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(width: 40),
-        ],
-      ),
-    );
-  }
-}
 
 class TutorFormField extends StatelessWidget {
   const TutorFormField({

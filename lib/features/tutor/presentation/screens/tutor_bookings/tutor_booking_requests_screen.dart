@@ -7,10 +7,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provi
 import 'package:tutora/features/tutor/presentation/widgets/booking_request_card.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
-/// Danh sách yêu cầu đặt lịch gửi tới gia sư.
-///
-/// Việc chờ quyết định (có hạn 24h) xếp trên; các yêu cầu đã xử lý gom xuống
-/// dưới để tra cứu.
+/// Yêu cầu đặt lịch — việc chờ quyết định (hạn 24h) xếp trên.
 class TutorBookingRequestsScreen extends ConsumerWidget {
   const TutorBookingRequestsScreen({super.key});
 
@@ -24,16 +21,13 @@ class TutorBookingRequestsScreen extends ConsumerWidget {
         bottom: false,
         child: Column(
           children: [
-            TutorScreenHeader(
-              title: 'Yêu cầu đặt lịch',
-              subtitle: 'Phản hồi trong 24 giờ kể từ khi nhận yêu cầu',
-              actions: [
-                TutorHeaderButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: () => Navigator.of(context).pop(),
-                  tooltip: 'Quay lại',
-                ),
-              ],
+            const TutorChildHeader(title: 'Yêu cầu đặt lịch'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+              child: Text(
+                'Phản hồi trong 24 giờ kể từ khi nhận yêu cầu',
+                style: TutorType.rowSub(),
+              ),
             ),
             Expanded(
               child: async.when(
