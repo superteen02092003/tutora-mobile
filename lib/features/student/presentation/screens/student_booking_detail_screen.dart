@@ -10,6 +10,8 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/student/data/datasources/booking_datasource.dart';
 import 'package:tutora/features/student/data/datasources/payment_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/booking_detail_provider.dart';
+import 'package:tutora/features/student/presentation/widgets/booking_constants.dart';
+import 'package:tutora/shared/widgets/app_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/payment_qr_sheet.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
@@ -36,7 +38,7 @@ class StudentBookingDetailScreen extends ConsumerWidget {
         body: SafeArea(
           child: Column(
             children: [
-              const _NavBar(title: 'Chi tiết lịch đặt'),
+              const AppPageHeader(title: 'Chi tiết lịch đặt'),
               Expanded(
                 child: Center(
                   child: Padding(
@@ -89,7 +91,7 @@ class _DetailScaffold extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            _NavBar(title: booking.subjectName ?? 'Chi tiết lịch đặt'),
+            AppPageHeader(title: booking.subjectName ?? 'Chi tiết lịch đặt'),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.only(bottom: bottomPad + 96),
@@ -103,56 +105,10 @@ class _DetailScaffold extends StatelessWidget {
                 ],
               ),
             ),
-            if (booking.canCancel)
+            if (booking.hasBottomAction)
               _BottomActions(booking: booking, bottomPad: bottomPad),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// Nav bar
-class _NavBar extends StatelessWidget {
-  const _NavBar({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.paper,
-                border: Border.all(color: AppColors.line),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 14,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.ibmPlexSerif(
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          const SizedBox(width: 36),
-        ],
       ),
     );
   }
@@ -449,7 +405,12 @@ class _ScheduleCard extends StatelessWidget {
       label: 'LỊCH HỌC',
       child: Column(
         children: booking.schedule.asMap().entries.map((e) {
-          final s = e.value;
+          // BE trả giờ UTC + thứ ISO — phải quy về local trước khi hiện.
+          final s = fixedSlotToLocal(
+            isoDayOfWeek: e.value.dayOfWeek,
+            startUtc: e.value.startTime,
+            endUtc: e.value.endTime,
+          );
           final day = _days[s.dayOfWeek % 7];
           return Column(
             children: [
@@ -843,7 +804,15 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
         color: AppColors.paper,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      child: booking.statusType == BookingStatusType.pendingDeposit
+      child: booking.needsRemainingPayment
+          ? _PrimaryBtn(
+              label: _paying
+                  ? 'Đang xử lý…'
+                  : 'Thanh toán phần còn lại'
+                        '${booking.remainingAmount != null ? ' · ${formatPrice(booking.remainingAmount!)}' : ''}',
+              onTap: _paying ? null : _payRemaining,
+            )
+          : booking.statusType == BookingStatusType.pendingDeposit
           ? Row(
               children: [
                 Expanded(
@@ -869,6 +838,43 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
               onTap: () => _showCancelSheet(context),
             ),
     );
+  }
+
+  /// Trả nốt phần còn lại — cùng endpoint, BE tự nhận diện đợt theo trạng thái.
+  Future<void> _payRemaining() async {
+    setState(() => _paying = true);
+    try {
+      final ds = ref.read(paymentDatasourceProvider);
+      final info = await ds.getPaymentInfo(booking.bookingId);
+      if (!mounted) return;
+
+      final paid = await showPaymentQrSheet(
+        context,
+        info: info,
+        onCheck: () => ds
+            .getPaymentStatus(booking.bookingId)
+            .then((s) => s.isRemainingPaid || s.isPaid),
+      );
+      if (!mounted) return;
+
+      if (paid ?? false) {
+        ref.invalidate(bookingDetailProvider(booking.bookingId));
+        AppToast.show(
+          context,
+          message: 'Đã thanh toán phần còn lại.',
+          type: AppToastType.success,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
   }
 
   /// Lấy thông tin chuyển khoản rồi mở QR ngay trong app — không đẩy ra
@@ -1090,18 +1096,28 @@ class _InfoRow extends StatelessWidget {
             child: Icon(icon, size: 14, color: AppColors.ink3),
           ),
           const SizedBox(width: 12),
+          // Nhãn trên, giá trị dưới: mã thanh toán dài sẽ không ép nhãn vỡ dòng.
           Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink4),
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.ink4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
