@@ -5,8 +5,10 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/parent/data/datasources/parent_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_classes_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_status_pill.dart';
 import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
+import 'package:tutora/shared/widgets/app_confirm_sheet.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/class_interaction_sheets.dart';
 
@@ -26,7 +28,25 @@ class _ParentSessionDetailScreenState
     extends ConsumerState<ParentSessionDetailScreen> {
   bool _confirming = false;
 
-  Future<void> _confirm() async {
+  /// Hỏi lại trước khi xác nhận: đây là lệnh giải ngân cho gia sư, không hoàn
+  /// tác được. Nhắc rõ buổi nào của con nào để phụ huynh không bấm nhầm buổi.
+  Future<void> _confirm(ParentLessonDto lesson) async {
+    final who = lesson.studentName ?? 'con bạn';
+    final ok = await AppConfirmSheet.show(
+      context,
+      title: 'Xác nhận buổi học?',
+      message:
+          'Buổi ${lesson.subjectName ?? 'học'} của $who ngày '
+          '${_date(lesson.startDt)}, ${_time(lesson.startDt)}–'
+          '${_time(lesson.endDt)}.\n\n'
+          'Sau khi xác nhận, học phí buổi này được chuyển cho gia sư và '
+          'không thể hoàn tác. Nếu buổi học có vấn đề, hãy khiếu nại thay vì '
+          'xác nhận.',
+      confirmLabel: 'Xác nhận',
+      cancelLabel: 'Để sau',
+    );
+    if (ok != true || !mounted) return;
+
     setState(() => _confirming = true);
     try {
       final resultMsg = await ref
@@ -46,12 +66,15 @@ class _ParentSessionDetailScreenState
       );
     } catch (_) {
       if (!mounted) return;
-      setState(() => _confirming = false);
       AppToast.show(
         context,
         message: 'Không xác nhận được, vui lòng thử lại.',
         type: AppToastType.error,
       );
+    } finally {
+      // Kể cả khi thành công: nếu buổi vẫn hiện trạng thái chờ (invalidate chưa
+      // kịp, BE trả khác kỳ vọng) thì nút phải bấm lại được, không kẹt "Đang...".
+      if (mounted) setState(() => _confirming = false);
     }
   }
 
@@ -61,11 +84,11 @@ class _ParentSessionDetailScreenState
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4F0),
+      backgroundColor: AppColors.cream,
       body: SafeArea(
         child: Column(
           children: [
-            const _AppBar(title: 'Chi tiết buổi học'),
+            const ParentPageHeader(title: 'Chi tiết buổi học'),
             Expanded(
               child: async.when(
                 loading: () => const Center(
@@ -97,7 +120,7 @@ class _ParentSessionDetailScreenState
                       const SizedBox(height: 20),
                       _ConfirmButton(
                         busy: _confirming,
-                        onTap: _confirming ? null : _confirm,
+                        onTap: _confirming ? null : () => _confirm(lesson),
                       ),
                     ],
                     ..._buildInteractions(lesson),
@@ -438,39 +461,6 @@ class _ConfirmButton extends StatelessWidget {
                   color: const Color(0xFFFFF1E6),
                 ),
               ),
-      ),
-    );
-  }
-}
-
-class _AppBar extends StatelessWidget {
-  const _AppBar({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
-      decoration: const BoxDecoration(
-        color: AppColors.cream,
-        border: Border(bottom: BorderSide(color: AppColors.line, width: 0.8)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            color: AppColors.ink,
-          ),
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.h3(),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(width: 40),
-        ],
       ),
     );
   }

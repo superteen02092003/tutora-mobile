@@ -8,6 +8,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 
 class ParentBookingsPage extends ConsumerStatefulWidget {
   const ParentBookingsPage({super.key});
@@ -44,38 +45,27 @@ class _ParentBookingsPageState extends ConsumerState<ParentBookingsPage> {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: AppColors.ink,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Lịch đặt của tôi'),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          _StatusFilterBar(
-            selected: _selectedStatus,
-            onChanged: _changeFilter,
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.ink,
-              backgroundColor: AppColors.paper,
-              onRefresh: () => ref
-                  .read(parentAllBookingsProvider(_selectedStatus).notifier)
-                  .load(),
-              child: _Body(state: state),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const ParentPageHeader(title: 'Lịch đặt của tôi'),
+            _StatusFilterBar(
+              selected: _selectedStatus,
+              onChanged: _changeFilter,
             ),
-          ),
-        ],
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.ink,
+                backgroundColor: AppColors.paper,
+                onRefresh: () => ref
+                    .read(parentAllBookingsProvider(_selectedStatus).notifier)
+                    .load(),
+                child: _Body(state: state),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -8,6 +8,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 
 class ParentStudentDetailPage extends ConsumerStatefulWidget {
   const ParentStudentDetailPage({required this.studentId, super.key});
@@ -52,108 +53,108 @@ class _ParentStudentDetailPageState
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: AppColors.ink,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(student?.fullName ?? 'Chi tiết học sinh'),
-        centerTitle: true,
-      ),
-      body: RefreshIndicator(
-        color: AppColors.ink,
-        backgroundColor: AppColors.paper,
-        onRefresh: () => ref
-            .read(parentStudentBookingsProvider(widget.studentId).notifier)
-            .load(),
-        child: ListView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
-          ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.paper,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: Row(
+            ParentPageHeader(title: student?.fullName ?? 'Chi tiết học sinh'),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.ink,
+                backgroundColor: AppColors.paper,
+                onRefresh: () => ref
+                    .read(
+                      parentStudentBookingsProvider(widget.studentId).notifier,
+                    )
+                    .load(),
+                child: ListView(
+                  padding: EdgeInsets.only(
+                    bottom:
+                        MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
+                  ),
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: AppColors.gold.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        initials,
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink2,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.paper,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.line),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: AppColors.gold.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                initials,
+                                style: GoogleFonts.inter(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.ink2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    student?.fullName ?? '—',
+                                    style: GoogleFonts.bricolageGrotesque(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.ink,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  if (student?.gradeLevel != null)
+                                    _InfoChip(student!.gradeLevel!),
+                                  if (student?.school != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      student!.school!,
+                                      style: AppTextStyles.bodySmall(),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            student?.fullName ?? '—',
-                            style: GoogleFonts.bricolageGrotesque(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.ink,
-                            ),
+
+                    const _SectionHeader('Lịch học đang có'),
+                    if (bookingsState.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.ink,
                           ),
-                          const SizedBox(height: 4),
-                          if (student?.gradeLevel != null)
-                            _InfoChip(student!.gradeLevel!),
-                          if (student?.school != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              student!.school!,
-                              style: AppTextStyles.bodySmall(),
-                            ),
-                          ],
-                        ],
+                        ),
+                      )
+                    else if (bookingsState.bookings.isEmpty)
+                      const _EmptyState(
+                        icon: Icons.calendar_today_outlined,
+                        message: 'Chưa có lịch học nào đang hoạt động',
+                      )
+                    else
+                      ...bookingsState.bookings.map(
+                        (b) => _BookingCard(booking: b),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
-
-            const _SectionHeader('Lịch học đang có'),
-            if (bookingsState.isLoading)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: CircularProgressIndicator(color: AppColors.ink),
-                ),
-              )
-            else if (bookingsState.bookings.isEmpty)
-              const _EmptyState(
-                icon: Icons.calendar_today_outlined,
-                message: 'Chưa có lịch học nào đang hoạt động',
-              )
-            else
-              ...bookingsState.bookings.map(
-                (b) => _BookingCard(booking: b),
-              ),
           ],
         ),
       ),
