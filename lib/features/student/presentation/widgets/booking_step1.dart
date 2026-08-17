@@ -54,6 +54,8 @@ class BookingStep1 extends StatelessWidget {
       slotDurationHours: duration != null ? duration / 60.0 : 1.0,
       // Đổi thời lượng thì các khung giờ đã chọn không còn hợp lệ.
       schedule: const [],
+      // Gói cố định gắn với một môn — giữ lại là gửi gói môn cũ cho môn mới.
+      clearPackage: true,
     );
   }
 

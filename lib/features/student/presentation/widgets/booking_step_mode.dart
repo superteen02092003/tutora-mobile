@@ -22,7 +22,10 @@ class BookingStepMode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final packages = profile.fixedPackages;
+    // Chỉ gói của môn đã chọn.
+    final packages = profile.fixedPackages
+        .where((p) => p.subjectId == null || p.subjectId == form.subjectId)
+        .toList();
     final hasPackages = packages.isNotEmpty;
     final isManual = form.bookingMode == BookingMode.manual;
 
@@ -48,7 +51,7 @@ class BookingStepMode extends StatelessWidget {
           title: 'Chọn gói cố định',
           subtitle: hasPackages
               ? 'Lấy nguyên lịch gia sư đã sắp sẵn, không cần chọn từng buổi.'
-              : 'Gia sư này chưa tạo gói cố định nào.',
+              : 'Gia sư chưa có gói cố định cho môn này.',
           selected: !isManual,
           disabled: !hasPackages,
           onTap: hasPackages
