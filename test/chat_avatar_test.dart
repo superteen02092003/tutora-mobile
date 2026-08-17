@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tutora/features/tutor/data/models/chat_models.dart';
+import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 
 void main() {
@@ -51,5 +52,43 @@ void main() {
 
     expect(find.byType(Image), findsOneWidget);
     expect(find.text('NQ'), findsNothing);
+  });
+
+  testWidgets('swiping a conversation left reveals and runs delete', (
+    tester,
+  ) async {
+    var deleted = false;
+    const channel = ChatChannelDto(
+      channelId: 12,
+      bookingId: 34,
+      otherUserId: 'tutor-1',
+      otherUserName: 'Nguyễn An',
+      otherUserAvatarUrl: '',
+      status: 'active',
+      lastMessageAt: '',
+      lastMessagePreview: 'Xin chào',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SwipeableConvoItem(
+            channel: channel,
+            onTap: () {},
+            onDelete: () => deleted = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.fling(
+      find.byType(SwipeableConvoItem),
+      const Offset(-250, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xoá'));
+
+    expect(deleted, isTrue);
   });
 }

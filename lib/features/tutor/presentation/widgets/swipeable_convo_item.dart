@@ -12,11 +12,13 @@ class SwipeableConvoItem extends StatefulWidget {
     required this.onTap,
     required this.onDelete,
     super.key,
+    this.avatarSize = 46,
   });
 
   final ChatChannelDto channel;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final double avatarSize;
 
   @override
   State<SwipeableConvoItem> createState() => _SwipeableConvoItemState();
@@ -111,6 +113,7 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
                 Transform.translate(offset: _slide.value, child: child),
             child: _ConvoItem(
               channel: widget.channel,
+              avatarSize: widget.avatarSize,
               onTap: _revealed ? _close : widget.onTap,
             ),
           ),
@@ -121,9 +124,14 @@ class _SwipeableConvoItemState extends State<SwipeableConvoItem>
 }
 
 class _ConvoItem extends StatelessWidget {
-  const _ConvoItem({required this.channel, required this.onTap});
+  const _ConvoItem({
+    required this.channel,
+    required this.avatarSize,
+    required this.onTap,
+  });
 
   final ChatChannelDto channel;
+  final double avatarSize;
   final VoidCallback onTap;
 
   @override
@@ -140,7 +148,11 @@ class _ConvoItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            UserAvatar(name: channel.otherUserName, size: 46),
+            UserAvatar(
+              name: channel.otherUserName,
+              imageUrl: channel.otherUserAvatarUrl,
+              size: avatarSize,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

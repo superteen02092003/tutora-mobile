@@ -10,7 +10,8 @@ import 'package:tutora/features/parent/presentation/providers/parent_chat_provid
 import 'package:tutora/features/parent/presentation/screens/parent_chat_page.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/features/tutor/data/models/chat_models.dart';
-import 'package:tutora/shared/widgets/user_avatar.dart';
+import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 class ParentMessagesScreen extends ConsumerStatefulWidget {
   const ParentMessagesScreen({super.key});
@@ -46,6 +47,14 @@ class _ParentMessagesScreenState extends ConsumerState<ParentMessagesScreen>
           builder: (_) => ParentChatPage(channel: channel),
         ),
       ),
+    );
+  }
+
+  void _deleteChannel(ChatChannelDto channel) {
+    AppToast.show(
+      context,
+      message: 'Đã xoá cuộc trò chuyện với ${channel.otherUserName}',
+      type: AppToastType.error,
     );
   }
 
@@ -227,84 +236,16 @@ class _ParentMessagesScreenState extends ConsumerState<ParentMessagesScreen>
                         itemCount: filtered.length,
                         itemBuilder: (_, i) {
                           final channel = filtered[i];
-                          return _ConvoItem(
+                          return SwipeableConvoItem(
                             key: ValueKey(channel.channelId),
                             channel: channel,
+                            avatarSize: 54,
                             onTap: () => _openChat(channel),
+                            onDelete: () => _deleteChannel(channel),
                           );
                         },
                       ),
                     ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ConvoItem extends StatelessWidget {
-  const _ConvoItem({required this.channel, required this.onTap, super.key});
-
-  final ChatChannelDto channel;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: const BoxDecoration(
-          color: AppColors.cream,
-          border: Border(
-            bottom: BorderSide(color: AppColors.line, width: 0.8),
-          ),
-        ),
-        child: Row(
-          children: [
-            UserAvatar(
-              name: channel.otherUserName,
-              imageUrl: channel.otherUserAvatarUrl,
-              size: 54,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          channel.otherUserName,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        channel.formattedTime,
-                        style: GoogleFonts.ibmPlexMono(
-                          fontSize: 10,
-                          color: AppColors.ink4,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    channel.displayPreview,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      color: AppColors.ink4,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
             ),
           ],
         ),
