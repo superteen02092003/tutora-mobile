@@ -36,7 +36,7 @@ class TutorFinanceSummary {
   final DateTime? lastWithdrawalAt;
 }
 
-/// GET /api/tutor/bank
+/// GET /api/bank-account
 class TutorBankInfo {
   const TutorBankInfo({
     this.bankName,

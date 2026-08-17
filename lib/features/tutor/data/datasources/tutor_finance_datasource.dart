@@ -50,7 +50,7 @@ class TutorFinanceDatasource {
   }
 
   Future<TutorBankInfo> getBankInfo() async {
-    final res = await _dio.get<dynamic>('/tutor/bank');
+    final res = await _dio.get<dynamic>('/bank-account');
     return TutorBankInfo.fromJson(_content(res));
   }
 
@@ -61,7 +61,7 @@ class TutorFinanceDatasource {
   }) async {
     try {
       final res = await _dio.put<dynamic>(
-        '/tutor/bank',
+        '/bank-account',
         data: {
           'bankName': bankName,
           'accountNumber': accountNumber,
@@ -76,7 +76,7 @@ class TutorFinanceDatasource {
 
   Future<void> deleteBankInfo() async {
     try {
-      await _dio.delete<dynamic>('/tutor/bank');
+      await _dio.delete<dynamic>('/bank-account');
     } on DioException catch (e) {
       throw TutorFinanceException(_messageOf(e, 'Không xóa được tài khoản.'));
     }
