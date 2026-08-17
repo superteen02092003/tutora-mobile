@@ -19,7 +19,7 @@ import 'package:tutora/features/student/presentation/screens/student_class_detai
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/features/student/presentation/shell/student_shell.dart';
 import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
-import 'package:tutora/shared/live_session/live_session_call_screen.dart';
+import 'package:tutora/shared/live_session/session_lobby_screen.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/notification_bell.dart';
 
@@ -423,7 +423,7 @@ class _JoinButton extends StatelessWidget {
           ? () => unawaited(
               Navigator.of(context, rootNavigator: true).push<void>(
                 MaterialPageRoute<void>(
-                  builder: (_) => LiveSessionCallScreen(
+                  builder: (_) => SessionLobbyScreen(
                     classSessionId: session.classSessionId,
                     tutorName: session.tutorName,
                   ),
@@ -538,7 +538,7 @@ class _UpcomingEmpty extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Image.asset(
-            AppAssets.heroUpcoming,
+            AppAssets.heroNoLesson,
             width: 78,
             height: 78,
             fit: BoxFit.contain,
