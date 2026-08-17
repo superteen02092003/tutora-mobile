@@ -7,6 +7,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -71,8 +72,7 @@ class _TutorAvailabilityScreenState
   // Selected weekday tab (1=Mon … 7=Sun)
   int _selDay = DateTime.now().weekday;
 
-  // Local draft: pending changes per weekday before saving
-  // Map<dayOfWeek, Set<slotTime>>  — null means "not yet overridden"
+  // Draft theo thứ trước khi lưu; null = chưa chỉnh.
   final Map<int, Set<String>> _draft = {};
 
   bool _saving = false;
@@ -170,34 +170,22 @@ class _TutorAvailabilityScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(8, 12, 16, 12),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.line, width: 0.8),
-                ),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 18,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text('Khung giờ rảnh', style: AppTextStyles.h3()),
-                  ),
-                  if (_isDirty)
-                    _SaveBtn(
-                      saving: _saving,
-                      onTap: () => unawaited(_save(slots)),
-                    ),
-                ],
-              ),
+            TutorChildHeader(
+              title: 'Khung giờ rảnh',
+              action: _isDirty
+                  ? IconButton(
+                      onPressed: _saving ? null : () => unawaited(_save(slots)),
+                      tooltip: 'Lưu thay đổi',
+                      icon: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_rounded, size: 22),
+                      color: AppColors.oxblood,
+                    )
+                  : null,
             ),
 
             if (avState.isLoading && slots.isEmpty)
@@ -602,34 +590,6 @@ class _SlotTag extends StatelessWidget {
 }
 
 // ── Save buttons ──────────────────────────────────────────────────────────────
-
-class _SaveBtn extends StatelessWidget {
-  const _SaveBtn({required this.saving, required this.onTap});
-  final bool saving;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: saving ? null : onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: saving ? AppColors.ink3 : AppColors.oxblood,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          saving ? 'Đang lưu…' : 'Lưu',
-          style: GoogleFonts.inter(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.cream,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _BottomSaveBtn extends StatelessWidget {
   const _BottomSaveBtn({

@@ -6,9 +6,11 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
+import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_finance_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_bookings/tutor_booking_requests_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
@@ -52,7 +54,8 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen>
     ref
       ..invalidate(tutorBalanceProvider)
       ..invalidate(tutorBookingsProvider)
-      ..invalidate(tutorWeekSessionsProvider);
+      ..invalidate(tutorWeekSessionsProvider)
+      ..invalidate(awaitingReportProvider);
     await ref.read(tutorDashboardProvider.notifier).load();
   }
 
@@ -101,8 +104,7 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen>
                 const _PendingBookingsSection(),
                 _NextLessonCard(sessions: data?.todaySessions ?? const []),
                 const SizedBox(height: TutorSurface.sectionGap),
-                // Lịch tuần bám ngay dưới buổi kế tiếp: cùng trả lời "sắp tới
-                // tôi dạy gì", tách ra xa thì phải cuộn mới nối được mạch.
+                // Lịch tuần bám dưới buổi kế tiếp — cùng một mạch đọc.
                 const _WeekScheduleSection(),
                 const SizedBox(height: TutorSurface.sectionGap),
                 _AwaitingReportCard(data: data),
@@ -563,17 +565,25 @@ class _NextLessonCard extends StatelessWidget {
 }
 
 /// Buổi đã dạy xong mà chưa gửi báo cáo.
-class _AwaitingReportCard extends StatelessWidget {
+class _AwaitingReportCard extends ConsumerWidget {
   const _AwaitingReportCard({required this.data});
 
   final TutorDashboardDto? data;
 
   @override
-  Widget build(BuildContext context) {
-    final count = data?.awaitingReport ?? 0;
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Dashboard là nguồn chính; quét lịch chỉ đỡ khi BE chưa có field này.
+    final fromDash = data?.awaitingReport ?? 0;
+    final scanned = ref.watch(awaitingReportProvider).value ?? const [];
+    final count = fromDash > 0 ? fromDash : scanned.length;
     if (count == 0) return const SizedBox.shrink();
 
-    final first = (data?.awaitingReportSessions ?? const []).firstOrNull;
+    final dashFirst = (data?.awaitingReportSessions ?? const []).firstOrNull;
+    final firstName =
+        dashFirst?.studentName ?? scanned.firstOrNull?.studentName;
+    final firstSince =
+        dashFirst?.sinceLabel ??
+        (scanned.isEmpty ? null : _sinceLabel(scanned.first));
 
     return Padding(
       padding: TutorSurface.screenPadding,
@@ -613,10 +623,10 @@ class _AwaitingReportCard extends StatelessWidget {
                       color: TutorStatusTone.pending,
                     ).copyWith(fontSize: 19),
                   ),
-                  if (first != null) ...[
+                  if (firstName != null) ...[
                     const SizedBox(height: 3),
                     Text(
-                      '${first.studentName} · ${first.sinceLabel}',
+                      '$firstName · ${firstSince ?? ''}',
                       style: TutorType.caption(color: TutorStatusTone.pending),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -838,6 +848,9 @@ class _Timeline extends StatelessWidget {
 
   /// Chiều cao một mốc giờ.
   static const double _slotHeight = 62;
+
+  /// Chiều cao thật của một thẻ buổi — dùng để chống chồng lấn.
+  static const double _cardHeight = 58;
   static const double _railWidth = 46;
 
   @override
@@ -845,14 +858,29 @@ class _Timeline extends StatelessWidget {
     final withTime = sessions.where((s) => s.startLocal != null).toList();
     if (withTime.isEmpty) return const SizedBox.shrink();
 
+    withTime.sort((a, b) => a.startLocal!.compareTo(b.startLocal!));
+
     final hours = withTime.map((s) => s.startLocal!.hour).toList();
     final startHour = hours.reduce((a, b) => a < b ? a : b);
     // +1 để buổi cuối còn một mốc trống bên dưới, không dính mép.
     final endHour = hours.reduce((a, b) => a > b ? a : b) + 1;
     final slots = endHour - startHour + 1;
 
+    // Hai buổi cách nhau ít phút sẽ chồng thẻ lên nhau — đẩy xuống cho đủ chỗ.
+    final tops = <double>[];
+    for (final s in withTime) {
+      final exact =
+          ((s.startLocal!.hour - startHour) + s.startLocal!.minute / 60) *
+          _slotHeight;
+      final min = tops.isEmpty ? exact : tops.last + _cardHeight + 6;
+      tops.add(exact > min ? exact : min);
+    }
+
+    final railHeight = slots * _slotHeight;
+    final needed = tops.last + _cardHeight + 8;
+
     return SizedBox(
-      height: slots * _slotHeight,
+      height: railHeight > needed ? railHeight : needed,
       child: Stack(
         children: [
           // Lớp dưới: trục giờ + đường kẻ đứt.
@@ -882,15 +910,12 @@ class _Timeline extends StatelessWidget {
             ],
           ),
           // Lớp trên: thẻ buổi học, đặt theo phút thật trong ngày.
-          for (final s in withTime)
+          for (var i = 0; i < withTime.length; i++)
             Positioned(
-              top:
-                  ((s.startLocal!.hour - startHour) +
-                      s.startLocal!.minute / 60) *
-                  _slotHeight,
+              top: tops[i],
               left: _railWidth + 6,
               right: 0,
-              child: _TimelineCard(session: s),
+              child: _TimelineCard(session: withTime[i]),
             ),
         ],
       ),
@@ -936,8 +961,7 @@ class _TimelineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Trạng thái chỉ đổi viền + vạch màu; nền luôn trắng và chữ luôn đen đậm
-    // để buổi đã qua vẫn đọc được, không chìm.
+    // Chỉ viền + vạch đổi màu; chữ luôn đen đậm để buổi đã qua vẫn đọc được.
     final (Color tone, String? chip) = switch (session) {
       _ when session.isCancelled => (TutorColors.danger, 'Đã huỷ'),
       _ when session.needsReport => (TutorColors.warning, 'Chờ báo cáo'),
@@ -1109,6 +1133,16 @@ class _DisputeRow extends StatelessWidget {
       onTap: () => context.push(AppRoutes.tutorDisputes),
     );
   }
+}
+
+/// "3 giờ trước" — đo buổi kết thúc bao lâu rồi.
+String _sinceLabel(TutorLessonDto l) {
+  final ref = DateTime.tryParse(l.checkOutTime ?? '')?.toLocal() ?? l.startDt;
+  if (ref == null) return '';
+  final diff = DateTime.now().difference(ref);
+  if (diff.inMinutes < 60) return 'vừa xong';
+  if (diff.inHours < 24) return '${diff.inHours} giờ trước';
+  return '${diff.inDays} ngày trước';
 }
 
 class _RowIcon extends StatelessWidget {
