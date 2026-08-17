@@ -60,7 +60,7 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
         index: 0,
         icon: Icons.home_outlined,
         activeIcon: Icons.home_rounded,
-        label: 'Trang chủ',
+        label: 'Home',
       ),
       const TutorNavItem(
         index: 1,
@@ -78,7 +78,7 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
         index: 3,
         icon: Icons.chat_bubble_outline_rounded,
         activeIcon: Icons.chat_bubble_rounded,
-        label: 'Tin nhắn',
+        label: 'Chat',
         badgeCount: unread,
       ),
       const TutorNavItem(
@@ -101,6 +101,8 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
       child: TutorShellScrollNotifier(
         notifier: _scrollNotifier,
         child: Scaffold(
+          // Thanh tab trong suốt → nội dung phải chạy xuống dưới nó.
+          extendBody: true,
           body: AuthListener(child: widget.navigationShell),
           bottomNavigationBar: TutorNavBar(
             items: items,

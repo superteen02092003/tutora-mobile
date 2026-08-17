@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 
 /// Bộ widget nền cho các màn gia sư. Mọi màn dựng từ đây để spacing,
@@ -82,13 +82,13 @@ class TutorHeaderButton extends StatelessWidget {
         height: 40,
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.paper,
-          border: Border.fromBorderSide(BorderSide(color: AppColors.line)),
+          color: TutorColors.surface,
+          border: Border.fromBorderSide(BorderSide(color: TutorColors.line)),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, size: 19, color: AppColors.ink),
+            Icon(icon, size: 19, color: TutorColors.ink),
             if (badge)
               Positioned(
                 top: 9,
@@ -99,7 +99,7 @@ class TutorHeaderButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: TutorStatusTone.attention,
-                    border: Border.all(color: AppColors.paper, width: 1.2),
+                    border: Border.all(color: TutorColors.surface, width: 1.2),
                   ),
                 ),
               ),
@@ -147,21 +147,27 @@ class TutorSectionHeader extends StatelessWidget {
         children: [
           Expanded(child: Text(title, style: TutorType.sectionTitle())),
           if (trailingLabel != null)
-            GestureDetector(
+            InkWell(
               onTap: onTrailingTap,
-              behavior: HitTestBehavior.opaque,
-              child: Row(
-                children: [
-                  Text(
-                    trailingLabel!,
-                    style: TutorType.action(color: AppColors.ink3),
+              borderRadius: BorderRadius.circular(8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Row(
+                    children: [
+                      Text(
+                        trailingLabel!,
+                        style: TutorType.action(color: TutorColors.ink3),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 17,
+                        color: TutorColors.ink4,
+                      ),
+                    ],
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 17,
-                    color: AppColors.ink4,
-                  ),
-                ],
+                ),
               ),
             ),
         ],
@@ -178,6 +184,8 @@ class TutorCard extends StatelessWidget {
     this.padding = TutorSurface.cardPadding,
     this.color,
     this.borderColor,
+    this.shadow,
+    this.backgroundImage,
     super.key,
   });
 
@@ -186,13 +194,20 @@ class TutorCard extends StatelessWidget {
   final EdgeInsets padding;
   final Color? color;
   final Color? borderColor;
+  final DecorationImage? backgroundImage;
+
+  /// Bóng đổ tuỳ chọn — mặc định thẻ phẳng.
+  final List<BoxShadow>? shadow;
 
   @override
   Widget build(BuildContext context) {
     final content = Container(
       width: double.infinity,
       padding: padding,
-      decoration: TutorSurface.card(color: color, border: borderColor),
+      decoration: TutorSurface.card(
+        color: color,
+        border: borderColor,
+      ).copyWith(boxShadow: shadow, image: backgroundImage),
       child: child,
     );
 
@@ -316,8 +331,8 @@ class TutorButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onTap != null;
     final fg = filled
-        ? AppColors.cream
-        : (enabled ? AppColors.ink : AppColors.ink4);
+        ? TutorColors.bg
+        : (enabled ? TutorColors.ink : TutorColors.ink4);
 
     return Material(
       color: Colors.transparent,
@@ -333,12 +348,12 @@ class TutorButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: filled
-                ? (enabled ? AppColors.ink : AppColors.ink4)
+                ? (enabled ? TutorColors.ink : TutorColors.ink4)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(
               compact ? 999 : TutorSurface.radius,
             ),
-            border: filled ? null : Border.all(color: AppColors.line),
+            border: filled ? null : Border.all(color: TutorColors.line),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -433,13 +448,7 @@ class TutorAvatar extends StatelessWidget {
   final double size;
   final String? imageUrl;
 
-  static const _palette = [
-    Color(0xFF6B4A3A),
-    Color(0xFF3D4A3E),
-    Color(0xFF1A2238),
-    Color(0xFF631B1B),
-    Color(0xFF4A4058),
-  ];
+  static const List<Color> _palette = TutorColors.avatarPalette;
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +477,7 @@ class TutorAvatar extends StatelessWidget {
     child: Text(
       initial,
       style: TutorType.rowTitle(
-        color: AppColors.cream,
+        color: TutorColors.bg,
       ).copyWith(fontSize: size * 0.4),
     ),
   );
@@ -495,7 +504,7 @@ class TutorEmptyState extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       child: Column(
         children: [
-          Icon(icon, size: 30, color: AppColors.ink4),
+          Icon(icon, size: 30, color: TutorColors.ink4),
           const SizedBox(height: 12),
           Text(
             message,
@@ -537,7 +546,7 @@ class TutorSkeleton extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.cream2,
+        color: TutorColors.surfaceSunken,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
