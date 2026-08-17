@@ -49,6 +49,8 @@ class ProfileHeroHeader extends ConsumerWidget {
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        // Không có cờ này thì sheet nằm dưới bottom nav của shell.
+        useRootNavigator: true,
         backgroundColor: AppColors.paper,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -197,17 +199,7 @@ class ProfileHeroHeader extends ConsumerWidget {
                         letterSpacing: -0.01,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      profile.address.isNotEmpty
-                          ? profile.address
-                          : profile.email,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppColors.ink4,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     JoinedChip(
                       label: 'Tham gia ${formatJoined(profile.createdAt)}',
                     ),

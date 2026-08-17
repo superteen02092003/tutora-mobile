@@ -34,8 +34,8 @@ class ProfileWalletCard extends ConsumerWidget {
             child: Text(
               'Không tải được ví.',
               style: GoogleFonts.inter(
-                fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 15,
+                color: Colors.white.withValues(alpha: 0.85),
               ),
             ),
           ),
@@ -51,32 +51,33 @@ class ProfileWalletCard extends ConsumerWidget {
                 children: [
                   const Icon(
                     Icons.account_balance_wallet_outlined,
-                    size: 16,
+                    size: 19,
                     color: AppColors.gold,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'VÍ HỌC SINH',
                     style: GoogleFonts.inter(
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.1,
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
                   const Spacer(),
                   Text(
                     'Chi tiết',
                     style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
                   const SizedBox(width: 4),
                   Icon(
                     Icons.chevron_right_rounded,
-                    size: 14,
-                    color: Colors.white.withValues(alpha: 0.4),
+                    size: 18,
+                    color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ],
               ),
@@ -84,7 +85,7 @@ class ProfileWalletCard extends ConsumerWidget {
               Text(
                 '${_vnd.format(w.balance.round())} ₫',
                 style: GoogleFonts.ibmPlexMono(
-                  fontSize: 28,
+                  fontSize: 34,
                   fontWeight: FontWeight.w700,
                   color: AppColors.cream,
                   letterSpacing: -0.02,
@@ -95,8 +96,8 @@ class ProfileWalletCard extends ConsumerWidget {
               Text(
                 'Số dư khả dụng',
                 style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.8),
                 ),
               ),
               if (w.frozenBalance > 0) ...[
@@ -106,7 +107,7 @@ class ProfileWalletCard extends ConsumerWidget {
                     Text(
                       '${_vnd.format(w.frozenBalance.round())} ₫',
                       style: GoogleFonts.ibmPlexMono(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.gold,
                       ),
@@ -115,8 +116,8 @@ class ProfileWalletCard extends ConsumerWidget {
                     Text(
                       'đang giữ escrow',
                       style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 14,
+                        color: Colors.white.withValues(alpha: 0.75),
                       ),
                     ),
                   ],
