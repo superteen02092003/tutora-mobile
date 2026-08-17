@@ -50,3 +50,18 @@ final tutorDashboardProvider =
         ref.read(tutorDashboardDatasourceProvider),
       ),
     );
+
+/// Buổi học của tuần hiện tại (thứ hai → chủ nhật) — nguồn cho lịch tuần ở Home.
+///
+/// Tách khỏi dashboard vì dashboard chỉ trả buổi *sắp tới*: buổi đã dạy đầu
+/// tuần sẽ không có, và tuần trống trơn nếu buổi kế tiếp rơi sang tuần sau.
+final AutoDisposeFutureProvider<List<TutorWeekSessionDto>>
+tutorWeekSessionsProvider =
+    FutureProvider.autoDispose<List<TutorWeekSessionDto>>((ref) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final monday = today.subtract(Duration(days: today.weekday - 1));
+      return ref
+          .read(tutorDashboardDatasourceProvider)
+          .getCalendar(start: monday, end: monday.add(const Duration(days: 6)));
+    });

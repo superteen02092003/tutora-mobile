@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 
 class TutorBookingDetailScreen extends StatelessWidget {
@@ -13,23 +13,24 @@ class TutorBookingDetailScreen extends StatelessWidget {
 
   (String, ChipTone) get _chip => lessonChip(lesson.status);
 
+  // BE trả `in_progress` có gạch dưới — bản cũ so sai với 'inprogress'.
   Color get _heroColor => switch (lesson.status.toLowerCase()) {
     'scheduled' || 'confirmed' => const Color(0xFFFFF3CD),
-    'inprogress' => const Color(0xFFD5EDD9),
+    'reserved' => const Color(0xFFF0F1F5),
+    'in_progress' || 'inprogress' => const Color(0xFFD5EDD9),
+    'pending_confirmation' => const Color(0xFFFFF3CD),
     'completed' => const Color(0xFFD5E8F5),
     _ => const Color(0xFFFFDEDE),
   };
 
   Color get _heroBorder => switch (lesson.status.toLowerCase()) {
     'scheduled' || 'confirmed' => const Color(0xFF7A5900),
-    'inprogress' => AppColors.moss,
+    'reserved' => AppColors.ink4,
+    'in_progress' || 'inprogress' => AppColors.moss,
+    'pending_confirmation' => const Color(0xFF7A5900),
     'completed' => const Color(0xFF0D3F6B),
     _ => AppColors.oxblood,
   };
-
-  bool get _isDone =>
-      lesson.status.toLowerCase() == 'completed' ||
-      lesson.status.toLowerCase() == 'cancelled';
 
   @override
   Widget build(BuildContext context) {
@@ -42,35 +43,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.line, width: 0.8),
-                ),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 18,
-                    ),
-                    color: AppColors.ink,
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Chi tiết buổi dạy',
-                      style: AppTextStyles.h3(),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(width: 40),
-                ],
-              ),
-            ),
+            const TutorChildHeader(title: 'Chi tiết buổi dạy'),
 
             Expanded(
               child: ListView(
@@ -135,9 +108,22 @@ class TutorBookingDetailScreen extends StatelessWidget {
                         ),
                         _TimelineStep(
                           label: 'Đang diễn ra',
-                          done: ['inprogress', 'completed'].contains(
-                            lesson.status.toLowerCase(),
-                          ),
+                          done: const {
+                            'in_progress',
+                            'inprogress',
+                            'pending_confirmation',
+                            'completed',
+                            'disputed',
+                          }.contains(lesson.status.toLowerCase()),
+                          isLast: false,
+                        ),
+                        // Chờ xác nhận = báo cáo đã gửi, chưa xong hẳn.
+                        _TimelineStep(
+                          label: 'Chờ xác nhận',
+                          done: const {
+                            'pending_confirmation',
+                            'completed',
+                          }.contains(lesson.status.toLowerCase()),
                           isLast: false,
                         ),
                         _TimelineStep(
@@ -180,32 +166,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Status note
-                  if (!_isDone)
-                    _InfoCard(
-                      color: AppColors.cream2,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.info_outline_rounded,
-                            size: 16,
-                            color: AppColors.ink3,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Học sinh sẽ thanh toán qua escrow. Tiền sẽ được giải ngân sau buổi học hoàn thành.',
-                              style: GoogleFonts.inter(
-                                fontSize: 12.5,
-                                color: AppColors.ink3,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  // Bỏ ghi chú escrow: mâu thuẫn với thẻ trạng thái bên dưới.
                   if (lesson.status.toLowerCase() == 'completed')
                     _InfoCard(
                       color: const Color(0xFFD5E8F5),
@@ -223,6 +184,59 @@ class TutorBookingDetailScreen extends StatelessWidget {
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF0D3F6B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // Hai trạng thái này ảnh hưởng tới tiền nên phải nói rõ.
+                  if (lesson.status.toLowerCase() == 'disputed')
+                    _InfoCard(
+                      color: const Color(0xFFFFDEDE),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.gavel_rounded,
+                            size: 18,
+                            color: AppColors.oxblood,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Buổi học đang tranh chấp — tiền bị giữ tới khi '
+                              'được xử lý.',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.oxblood,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (const {
+                    'no_show',
+                    'cancelled_noshow',
+                  }.contains(lesson.status.toLowerCase()))
+                    _InfoCard(
+                      color: const Color(0xFFFFDEDE),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.person_off_outlined,
+                            size: 18,
+                            color: AppColors.oxblood,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Buổi học không diễn ra do có bên vắng mặt.',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.oxblood,
+                              ),
                             ),
                           ),
                         ],

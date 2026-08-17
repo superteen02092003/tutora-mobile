@@ -1,9 +1,7 @@
-import 'package:intl/intl.dart';
+import 'package:tutora/core/utils/format_utils.dart';
 
-final _vnd = NumberFormat('#,###', 'vi_VN');
-
-/// '1.250.000đ' — dùng thống nhất trong feature tài chính gia sư.
-String fmtMoney(double v) => '${_vnd.format(v.round())}đ';
+/// '1,250,000đ' — dùng chung [fmtVnd] để dấu ngăn nhóm khớp cả app.
+String fmtMoney(double v) => '${fmtVnd(v.round())}đ';
 
 /// '+1.250.000đ' / '-500.000đ' — có dấu cho dòng giao dịch.
 String fmtSignedMoney(double v) {
@@ -23,6 +21,7 @@ String transactionTypeLabel(String type) => switch (type) {
   'DepositPayment' => 'Thanh toán buổi đầu',
   'RemainingPayment' => 'Thanh toán còn lại',
   'BankVerification' => 'Xác minh ngân hàng',
+  'AdminCredit' => 'Điều chỉnh số dư',
   _ => 'Giao dịch',
 };
 

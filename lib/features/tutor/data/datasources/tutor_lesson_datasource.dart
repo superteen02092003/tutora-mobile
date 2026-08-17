@@ -13,6 +13,7 @@ class TutorLessonDatasource {
     String? status,
     String? from,
     String? to,
+    int? bookingId,
     int page = 1,
     int pageSize = 50,
   }) async {
@@ -24,6 +25,7 @@ class TutorLessonDatasource {
         'status': status,
         // Backend nhận `fromDate` (không có `to`).
         'fromDate': from,
+        'bookingId': bookingId,
       }..removeWhere((_, v) => v == null),
     );
     final content = res.data?['content'];
@@ -36,6 +38,26 @@ class TutorLessonDatasource {
         .toList();
   }
 
+  // GET /api/tutor/classes — danh sách lớp (booking), không phải buổi lẻ.
+  Future<TutorClassPage> getClasses({
+    int page = 1,
+    int pageSize = 50,
+    String? status,
+  }) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/tutor/classes',
+      queryParameters: {
+        'page': page,
+        'pageSize': pageSize,
+        'status': ?status,
+      },
+    );
+    final content = res.data?['content'];
+    return TutorClassPage.fromJson(
+      content is Map<String, dynamic> ? content : const {},
+    );
+  }
+
   // GET /api/tutor/class-sessions/calendar
   Future<List<TutorLessonDto>> getCalendar({
     required String from,
@@ -46,8 +68,7 @@ class TutorLessonDatasource {
       // Backend nhận `startDate`/`endDate`.
       queryParameters: {'startDate': from, 'endDate': to},
     );
-    // Backend trả CalendarDayResponse[] (mỗi ngày lồng danh sách buổi) →
-    // gộp phẳng thành danh sách buổi học.
+    // BE trả buổi lồng theo ngày → gộp phẳng.
     final content = res.data?['content'];
     final days = content is List ? content : <dynamic>[];
     return days

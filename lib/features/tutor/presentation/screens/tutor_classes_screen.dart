@@ -7,7 +7,6 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 
 const _kStatusFilters = <(String, String?)>[
