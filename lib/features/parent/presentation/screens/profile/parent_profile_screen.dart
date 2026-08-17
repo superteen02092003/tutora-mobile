@@ -56,6 +56,8 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+        useRootNavigator: true,
         backgroundColor: AppColors.paper,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -182,6 +184,8 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+        useRootNavigator: true,
         backgroundColor: AppColors.paper,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

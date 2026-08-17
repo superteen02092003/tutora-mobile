@@ -13,8 +13,9 @@ class ParentStudentDto {
     fullName: j['fullName'] as String? ?? '',
     gradeLevel: j['gradeLevel'] as String?,
     school: j['school'] as String?,
-    avatarUrl: j['avatarUrl'] as String?,
-    birthdate: j['birthdate'] as String?,
+    // BE trả `avatarURL` (StudentProfileResponse), khác camelCase của các DTO còn lại.
+    avatarUrl: (j['avatarUrl'] ?? j['avatarURL']) as String?,
+    birthdate: (j['birthdate'] ?? j['birthDate']) as String?,
   );
 
   final String studentId;
@@ -62,6 +63,30 @@ class AddStudentResult {
   final String fullName;
   final String username;
   final String temporaryPassword;
+}
+
+class ParentHomeStatsDto {
+  const ParentHomeStatsDto({
+    this.sessionsThisWeek = 0,
+    this.childrenLearning = 0,
+    this.childrenTotal = 0,
+    this.pendingConfirmation = 0,
+  });
+
+  factory ParentHomeStatsDto.fromJson(Map<String, dynamic> j) =>
+      ParentHomeStatsDto(
+        sessionsThisWeek: j['sessionsThisWeek'] as int? ?? 0,
+        childrenLearning: j['childrenLearning'] as int? ?? 0,
+        childrenTotal: j['childrenTotal'] as int? ?? 0,
+        pendingConfirmation: j['pendingConfirmation'] as int? ?? 0,
+      );
+
+  final int sessionsThisWeek;
+
+  /// Con CÓ booking đang hoạt động — khác [childrenTotal].
+  final int childrenLearning;
+  final int childrenTotal;
+  final int pendingConfirmation;
 }
 
 class ParentLessonDto {
@@ -139,6 +164,17 @@ class ParentLessonDto {
   final bool requiresRemainingPayment;
 
   bool get isPendingConfirm => status == 'completed' && parentAckedAt == null;
+
+  /// Buổi giữ chỗ, chờ gia sư nhận lịch — phụ huynh đã trả cọc nên vẫn phải thấy.
+  bool get isReserved => status == 'reserved';
+
+  /// Buổi còn hiệu lực trên Home: bỏ buổi đã xong và mọi dạng huỷ.
+  bool get isUpcoming => const {
+    'scheduled',
+    'reserved',
+    'in_progress',
+    'pending_confirmation',
+  }.contains(status);
 
   DateTime get startDt => DateTime.tryParse(scheduledStart) ?? DateTime.now();
   DateTime get endDt => DateTime.tryParse(scheduledEnd) ?? DateTime.now();

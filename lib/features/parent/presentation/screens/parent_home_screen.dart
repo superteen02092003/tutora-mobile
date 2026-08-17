@@ -6,38 +6,27 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/router/app_routes.dart';
-import 'package:tutora/core/storage/secure_storage.dart';
-import 'package:tutora/core/utils/jwt_utils.dart';
-import 'package:tutora/features/parent/data/models/parent_models.dart';
+// re-export parent_models: ParentLessonDto, ParentActionException.
+import 'package:tutora/features/parent/data/datasources/parent_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home/parent_home_widgets.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home/parent_next_lesson_card.dart';
 import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_child_avatar_strip.dart';
-import 'package:tutora/features/parent/presentation/widgets/parent_lesson_row.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_section_header.dart';
-import 'package:tutora/mock/parent_home_mock.dart' as mock;
 import 'package:tutora/shared/widgets/app_toast.dart';
+import 'package:tutora/shared/widgets/class_widgets.dart';
+import 'package:tutora/shared/widgets/reschedule_sheet.dart';
 
 class ParentHomePage extends ConsumerWidget {
   const ParentHomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<String?>(
-      future: ref.read(secureStorageProvider).getAccessToken(),
-      builder: (context, snap) {
-        final claims = snap.hasData ? parseJwt(snap.data!) : null;
-        final name = claims?.name ?? '';
-        return _HomeContent(parentName: name);
-      },
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => const _HomeContent();
 }
 
 class _HomeContent extends ConsumerStatefulWidget {
-  const _HomeContent({required this.parentName});
-  final String parentName;
+  const _HomeContent();
 
   @override
   ConsumerState<_HomeContent> createState() => _HomeContentState();
@@ -93,6 +82,38 @@ class _HomeContentState extends ConsumerState<_HomeContent>
     );
   }
 
+  Future<void> _reschedule(ParentLessonDto lesson, String? selectedId) async {
+    final choice = await showRescheduleSheet(
+      context,
+      currentStart: lesson.startDt,
+      currentEnd: lesson.endDt,
+    );
+    if (choice == null || !mounted) return;
+
+    try {
+      await ref
+          .read(parentDatasourceProvider)
+          .proposeReschedule(
+            lessonId: lesson.lessonId,
+            proposedStart: choice.start,
+            reason: choice.reason,
+          );
+      if (!mounted) return;
+      ref.invalidate(parentNextLessonProvider(selectedId ?? ''));
+      if (selectedId != null) {
+        ref.invalidate(parentChildLessonsProvider(selectedId));
+      }
+      AppToast.show(
+        context,
+        message: 'Đã gửi đề xuất đổi lịch, chờ gia sư phản hồi',
+        type: AppToastType.success,
+      );
+    } on ParentActionException catch (e) {
+      if (!mounted) return;
+      AppToast.show(context, message: e.message, type: AppToastType.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dash = ref.watch(parentDashboardProvider);
@@ -104,20 +125,39 @@ class _HomeContentState extends ConsumerState<_HomeContent>
         .where((s) => s.studentId == selectedId)
         .firstOrNull;
 
-    final allUpcoming =
-        [...dash.todayLessons, ...dash.weekLessons]
-            .where((l) => l.status != 'completed' && l.status != 'cancelled')
-            .toList()
-          ..sort((a, b) => a.startDt.compareTo(b.startDt));
+    // Lịch chung (calendar) không có studentId — con đang chọn phải lấy từ API riêng.
+    final childLessons = selectedId == null
+        ? const AsyncValue<List<ParentLessonDto>>.data([])
+        : ref.watch(parentChildLessonsProvider(selectedId));
 
-    final filteredLessons = selectedId == null
-        ? allUpcoming
-        : allUpcoming.where((l) => l.studentId == selectedId).toList();
+    final source = selectedId == null
+        ? dash.weekLessons
+        : childLessons.valueOrNull ?? const <ParentLessonDto>[];
 
-    // nextLesson scoped to selected student — with per-student mock fallback.
-    final nextLesson =
-        filteredLessons.firstOrNull ??
-        mock.mockNextLessonFor(selectedId, selectedStudent?.fullName);
+    final filteredLessons = source.where((l) => l.isUpcoming).toList()
+      ..sort((a, b) => a.startDt.compareTo(b.startDt));
+
+    // Buổi kế tiếp lấy từ API riêng — BE loại sẵn buổi giữ chỗ/bị khoá thanh toán.
+    final nextLesson = ref
+        .watch(parentNextLessonProvider(selectedId ?? ''))
+        .valueOrNull;
+    final stats = ref
+        .watch(parentHomeStatsProvider(selectedId ?? ''))
+        .valueOrNull;
+
+    final childClasses = selectedId == null
+        ? const AsyncValue<List<StudentClassDto>>.data([])
+        : ref.watch(parentChildClassesProvider(selectedId));
+
+    // Lớp đang học lên trước; lớp huỷ/hết hạn đã bị BE loại từ đầu.
+    final classes = [
+      ...(childClasses.valueOrNull ?? const <StudentClassDto>[]).where(
+        (k) => k.isOngoing,
+      ),
+      ...(childClasses.valueOrNull ?? const <StudentClassDto>[]).where(
+        (k) => !k.isOngoing,
+      ),
+    ];
 
     final topInset = MediaQuery.of(context).padding.top;
 
@@ -137,6 +177,14 @@ class _HomeContentState extends ConsumerState<_HomeContent>
               color: AppColors.ink,
               backgroundColor: AppColors.paper,
               onRefresh: () async {
+                if (selectedId != null) {
+                  ref
+                    ..invalidate(parentChildLessonsProvider(selectedId))
+                    ..invalidate(parentChildClassesProvider(selectedId));
+                }
+                ref
+                  ..invalidate(parentNextLessonProvider(selectedId ?? ''))
+                  ..invalidate(parentHomeStatsProvider(selectedId ?? ''));
                 await ref.read(parentDashboardProvider.notifier).load();
                 await ref.read(parentStudentsProvider.notifier).load();
               },
@@ -159,8 +207,13 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                       }
                     },
                     onNotif: () => context.push(AppRoutes.parentNotifications),
-                    selectedSubject: nextLesson?.subjectName,
-                    selectedTutor: nextLesson?.tutorName,
+                    // Header nói con đang học môn gì
+                    selectedSubject:
+                        nextLesson?.subjectName ??
+                        filteredLessons.firstOrNull?.subjectName,
+                    selectedTutor:
+                        nextLesson?.tutorName ??
+                        filteredLessons.firstOrNull?.tutorName,
                     onDark: true,
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -174,11 +227,8 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                       const SizedBox(height: AppSpacing.md),
                       ParentNextLessonCard(
                         lesson: nextLesson,
-                        onReportAbsence: () => AppToast.show(
-                          context,
-                          message: 'Tính năng báo vắng sẽ sớm ra mắt',
-                          type: AppToastType.info,
-                        ),
+                        onReschedule: () =>
+                            unawaited(_reschedule(nextLesson, selectedId)),
                         onViewInfo: () =>
                             context.push(_calendarRoute(selectedId)),
                       ),
@@ -192,9 +242,11 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                     ],
                     const SizedBox(height: AppSpacing.lg),
                     ParentQuickStats(
-                      weekCount: dash.weekLessons.length,
-                      childrenCount: students.students.length,
-                      pendingCount: dash.pendingLessons.length,
+                      weekCount: stats?.sessionsThisWeek ?? 0,
+                      childrenCount: stats?.childrenLearning ?? 0,
+                      pendingCount:
+                          stats?.pendingConfirmation ??
+                          dash.pendingLessons.length,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     ParentQuickAccessGrid(
@@ -208,20 +260,44 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                     const SizedBox(height: AppSpacing.lg),
                     ParentSectionHeader(
                       title: selectedStudent != null
-                          ? 'Buổi học của ${selectedStudent.fullName.trim().split(' ').lastOrNull ?? selectedStudent.fullName}'
-                          : 'Buổi học sắp tới',
+                          ? 'Lớp học của ${selectedStudent.fullName.trim().split(' ').lastOrNull ?? selectedStudent.fullName}'
+                          : 'Lớp học',
                       action: 'Xem tất cả',
-                      onAction: () => context.push(_calendarRoute(selectedId)),
+                      onAction: () => context.push(_bookingsRoute(selectedId)),
                     ),
-                    if (filteredLessons.isEmpty)
+                    if (childClasses.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(AppSpacing.lg),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      )
+                    else if (classes.isEmpty)
                       ParentNoLessonCta(
                         onFindTutor: () => context.go(AppRoutes.parentSearch),
                       )
                     else
-                      ...filteredLessons
+                      // Lớp đang học lên trước, mỗi lớp một card (không phải từng buổi).
+                      ...classes
                           .take(3)
                           .map(
-                            (l) => ParentLessonRow(lesson: l),
+                            (k) => Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: MediaQuery(
+                                data: MediaQuery.of(context).copyWith(
+                                  textScaler: MediaQuery.textScalerOf(
+                                    context,
+                                  ).clamp(minScaleFactor: 1.18),
+                                ),
+                                child: ClassCard(
+                                  klass: k,
+                                  onTap: () =>
+                                      context.push(_bookingsRoute(selectedId)),
+                                ),
+                              ),
+                            ),
                           ),
                   ],
                 ],

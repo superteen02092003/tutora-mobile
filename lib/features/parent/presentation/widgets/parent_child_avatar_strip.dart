@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
+import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class ParentChildAvatarStrip extends StatefulWidget {
   const ParentChildAvatarStrip({
@@ -159,7 +159,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                 Text(
                   selectedStudent.fullName.toUpperCase(),
                   style: GoogleFonts.bricolageGrotesque(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     letterSpacing: 0.4,
@@ -184,7 +184,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                             widget.selectedTutor,
                         ].join(' · '),
                         style: GoogleFonts.inter(
-                          fontSize: 15,
+                          fontSize: 16.5,
                           color: Colors.white,
                         ),
                         maxLines: 1,
@@ -196,7 +196,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                   Text(
                     'Chưa có lớp học',
                     style: GoogleFonts.inter(
-                      fontSize: 15,
+                      fontSize: 16.5,
                       fontStyle: FontStyle.italic,
                       color: Colors.white.withValues(alpha: 0.6),
                     ),
@@ -209,9 +209,6 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
     );
   }
 }
-
-String _cartoonAvatarUrl(String studentId) =>
-    'https://api.dicebear.com/9.x/adventurer/png?seed=$studentId';
 
 const _avatarBg = Color(0xFFD8E8F5);
 
@@ -228,12 +225,6 @@ class _ChildAvatarChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = student.fullName
-        .trim()
-        .split(' ')
-        .map((w) => w.isNotEmpty ? w[0] : '')
-        .take(2)
-        .join();
     final shortName =
         student.fullName.trim().split(' ').lastOrNull ?? student.fullName;
 
@@ -267,29 +258,17 @@ class _ChildAvatarChip extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  color: _avatarBg,
-                  alignment: Alignment.center,
-                  child: Image.network(
-                    (student.avatarUrl != null && student.avatarUrl!.isNotEmpty)
-                        ? student.avatarUrl!
-                        : _cartoonAvatarUrl(student.studentId),
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _Initials(initials),
-                  ),
-                ),
+              // Tròn vì ảnh avatar con thường không có nền trong suốt.
+              UserAvatar(
+                name: student.fullName,
+                imageUrl: student.avatarUrl,
+                size: 52,
               ),
               const SizedBox(height: 6),
               Text(
                 shortName.toUpperCase(),
                 style: GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: 13.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected ? const Color(0xFF2B5BBF) : Colors.white,
                 ),
@@ -300,23 +279,6 @@ class _ChildAvatarChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Initials extends StatelessWidget {
-  const _Initials(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: AppColors.ink2,
       ),
     );
   }
@@ -358,7 +320,7 @@ class _AddChildChip extends StatelessWidget {
               Text(
                 'Thêm con',
                 style: GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w500,
                   color: Colors.white.withValues(alpha: 0.8),
                 ),

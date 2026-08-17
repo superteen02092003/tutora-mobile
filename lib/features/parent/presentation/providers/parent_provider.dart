@@ -62,7 +62,8 @@ final gradeLevelsProvider = FutureProvider<List<GradeLevelDto>>((ref) async {
 
 final parentStudentsProvider =
     StateNotifierProvider<ParentStudentsNotifier, ParentStudentsState>((ref) {
-      return ParentStudentsNotifier(ref.watch(parentDatasourceProvider));
+      // read, không watch: watch làm notifier dựng lại và mất state đã load.
+      return ParentStudentsNotifier(ref.read(parentDatasourceProvider));
     });
 
 class ParentDashboardState {
@@ -143,8 +144,71 @@ class ParentDashboardNotifier extends StateNotifier<ParentDashboardState> {
 
 final parentDashboardProvider =
     StateNotifierProvider<ParentDashboardNotifier, ParentDashboardState>((ref) {
-      return ParentDashboardNotifier(ref.watch(parentDatasourceProvider));
+      return ParentDashboardNotifier(ref.read(parentDatasourceProvider));
     });
+
+/// Buổi kế tiếp
+final FutureProviderFamily<ParentLessonDto?, String> parentNextLessonProvider =
+    FutureProvider.family<ParentLessonDto?, String>((
+      ref,
+      studentId,
+    ) async {
+      return ref
+          .watch(parentDatasourceProvider)
+          .getNextLesson(
+            studentId: studentId.isEmpty ? null : studentId,
+          );
+    });
+
+/// Số liệu Home theo con đang chọn (chuỗi rỗng = mọi con).
+final FutureProviderFamily<ParentHomeStatsDto, String> parentHomeStatsProvider =
+    FutureProvider.family<ParentHomeStatsDto, String>((
+      ref,
+      studentId,
+    ) async {
+      return ref
+          .watch(parentDatasourceProvider)
+          .getHomeStats(
+            studentId: studentId.isEmpty ? null : studentId,
+          );
+    });
+
+/// Lớp học còn hiệu lực của con đang chọn
+final FutureProviderFamily<List<StudentClassDto>, String>
+parentChildClassesProvider =
+    FutureProvider.family<List<StudentClassDto>, String>((
+      ref,
+      studentId,
+    ) async {
+      final res = await ref
+          .watch(parentDatasourceProvider)
+          .getChildClasses(studentId: studentId, excludeClosed: true);
+      return res.items;
+    });
+
+/// Buổi học của con đang chọn
+final FutureProviderFamily<List<ParentLessonDto>, String>
+parentChildLessonsProvider = FutureProvider.family<List<ParentLessonDto>, String>((
+  ref,
+  studentId,
+) async {
+  final now = DateTime.now();
+  final weekStart = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).subtract(Duration(days: now.weekday - 1));
+  String fmt(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  return ref
+      .watch(parentDatasourceProvider)
+      .getChildLessons(
+        studentId: studentId,
+        startDate: fmt(weekStart),
+        endDate: fmt(weekStart.add(const Duration(days: 6))),
+      );
+});
 
 class ParentStudentBookingsState {
   const ParentStudentBookingsState({
@@ -196,7 +260,7 @@ parentStudentBookingsProvider =
       String
     >((ref, studentId) {
       return ParentStudentBookingsNotifier(
-        ref.watch(parentDatasourceProvider),
+        ref.read(parentDatasourceProvider),
         studentId,
       );
     });
@@ -250,7 +314,7 @@ parentAllBookingsProvider =
       String?
     >((ref, status) {
       return ParentAllBookingsNotifier(
-        ref.watch(parentDatasourceProvider),
+        ref.read(parentDatasourceProvider),
         status,
       );
     });

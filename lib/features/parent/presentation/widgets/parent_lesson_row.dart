@@ -67,7 +67,7 @@ class ParentLessonRow extends StatelessWidget {
                     Text(
                       dow,
                       style: GoogleFonts.inter(
-                        fontSize: 10,
+                        fontSize: 13,
                         color: AppColors.ink3,
                       ),
                     ),
@@ -94,7 +94,7 @@ class ParentLessonRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 16.5,
                         color: AppColors.ink,
                       ),
                     ),
