@@ -13,7 +13,6 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_finance_provi
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_bookings/tutor_booking_requests_screen.dart';
-import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/booking_request_card.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
@@ -27,17 +26,8 @@ class TutorHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<TutorHomeScreen> createState() => _TutorHomeScreenState();
 }
 
-class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen>
-    with TutorScrollToTopMixin {
+class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
   final _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      listenScrollToTop(context, 0, _scrollController);
-    });
-  }
 
   @override
   void dispose() {

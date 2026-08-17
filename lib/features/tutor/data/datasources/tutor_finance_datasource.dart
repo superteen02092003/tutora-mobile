@@ -5,8 +5,11 @@ import 'package:tutora/features/tutor/data/models/tutor_finance_models.dart';
 
 /// Lỗi nghiệp vụ ví/rút tiền — mang message tiếng Việt từ backend để UI hiển thị.
 class TutorFinanceException implements Exception {
-  const TutorFinanceException(this.message);
+  const TutorFinanceException(this.message, {this.errorCode});
   final String message;
+
+  /// Mã lỗi BE trả kèm, ví dụ OTP_COOLDOWN_ACTIVE.
+  final String? errorCode;
   @override
   String toString() => message;
 }
@@ -79,15 +82,61 @@ class TutorFinanceDatasource {
       );
       return TutorBankInfo.fromJson(_content(res));
     } on DioException catch (e) {
-      throw TutorFinanceException(_messageOf(e, 'Không lưu được tài khoản.'));
+      throw TutorFinanceException(
+        _messageOf(e, 'Không lưu được tài khoản.'),
+        errorCode: _codeOf(e),
+      );
     }
+  }
+
+  /// Gửi OTP về SĐT gia sư; BE bắt buộc xác thực trước khi lưu/xoá TK.
+  Future<void> sendBankOtp() async {
+    try {
+      await _dio.post<dynamic>('/bank-account/otp/send');
+    } on DioException catch (e) {
+      throw TutorFinanceException(
+        _messageOf(e, 'Không gửi được mã OTP.'),
+        errorCode: _codeOf(e),
+      );
+    }
+  }
+
+  /// Xác thực OTP; phê duyệt sống 15 phút, đủ cho một lần lưu.
+  Future<void> verifyBankOtp(String code) async {
+    try {
+      await _dio.post<dynamic>(
+        '/bank-account/otp/verify',
+        data: {'code': code},
+      );
+    } on DioException catch (e) {
+      throw TutorFinanceException(
+        _messageOf(e, 'Mã OTP không đúng.'),
+        errorCode: _codeOf(e),
+      );
+    }
+  }
+
+  /// Số giây phải chờ trước khi gửi lại, BE trả kèm OTP_COOLDOWN_ACTIVE.
+  static int? retryAfterOf(DioException e) {
+    final d = e.response?.data;
+    return d is Map && d['retryAfterSeconds'] is num
+        ? (d['retryAfterSeconds'] as num).toInt()
+        : null;
+  }
+
+  static String? _codeOf(DioException e) {
+    final d = e.response?.data;
+    return d is Map ? d['errorCode'] as String? : null;
   }
 
   Future<void> deleteBankInfo() async {
     try {
       await _dio.delete<dynamic>('/bank-account');
     } on DioException catch (e) {
-      throw TutorFinanceException(_messageOf(e, 'Không xóa được tài khoản.'));
+      throw TutorFinanceException(
+        _messageOf(e, 'Không xóa được tài khoản.'),
+        errorCode: _codeOf(e),
+      );
     }
   }
 

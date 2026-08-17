@@ -9,7 +9,6 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/models/chat_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_chat_page.dart';
-import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/swipeable_convo_item.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -21,18 +20,9 @@ class TutorMessagesScreen extends ConsumerStatefulWidget {
       _TutorMessagesScreenState();
 }
 
-class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
-    with TutorScrollToTopMixin {
+class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen> {
   final _scrollController = ScrollController();
   String _search = '';
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      listenScrollToTop(context, 3, _scrollController);
-    });
-  }
 
   @override
   void dispose() {

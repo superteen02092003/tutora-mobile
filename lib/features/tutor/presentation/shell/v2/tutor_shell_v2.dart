@@ -20,12 +20,11 @@ class TutorShellV2 extends ConsumerStatefulWidget {
 }
 
 class _TutorShellV2State extends ConsumerState<TutorShellV2> {
-  final _scrollNotifier = ValueNotifier<int>(-1);
+  final GlobalKey _bodyKey = GlobalKey();
   final _navVisible = ValueNotifier<bool>(true);
 
   @override
   void dispose() {
-    _scrollNotifier.dispose();
     _navVisible.dispose();
     super.dispose();
   }
@@ -34,10 +33,7 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
     _navVisible.value = true;
     final current = widget.navigationShell.currentIndex;
     if (index == current) {
-      // Chạm lại tab đang mở → cuộn nội dung lên đầu.
-      _scrollNotifier.value = index;
-      _scrollNotifier.value = -1;
-      widget.navigationShell.goBranch(index, initialLocation: true);
+      scrollVisibleTutorContentToTop(_bodyKey.currentContext);
     } else {
       widget.navigationShell.goBranch(index);
     }
@@ -99,26 +95,26 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
           unawaited(Navigator.of(context).maybePop());
         }
       },
-      child: TutorShellScrollNotifier(
-        notifier: _scrollNotifier,
-        child: Scaffold(
-          // Thanh tab trong suốt → nội dung phải chạy xuống dưới nó.
-          extendBody: true,
-          body: HideOnScroll(
-            visible: _navVisible,
+      child: Scaffold(
+        // Thanh tab trong suốt → nội dung phải chạy xuống dưới nó.
+        extendBody: true,
+        body: HideOnScroll(
+          visible: _navVisible,
+          child: KeyedSubtree(
+            key: _bodyKey,
             child: AuthListener(child: widget.navigationShell),
           ),
-          bottomNavigationBar: ValueListenableBuilder<bool>(
-            valueListenable: _navVisible,
-            builder: (context, visible, _) => AnimatedSlide(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-              offset: visible ? Offset.zero : const Offset(0, 1.6),
-              child: TutorNavBar(
-                items: items,
-                currentIndex: widget.navigationShell.currentIndex,
-                onTap: _onTap,
-              ),
+        ),
+        bottomNavigationBar: ValueListenableBuilder<bool>(
+          valueListenable: _navVisible,
+          builder: (context, visible, _) => AnimatedSlide(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            offset: visible ? Offset.zero : const Offset(0, 1.6),
+            child: TutorNavBar(
+              items: items,
+              currentIndex: widget.navigationShell.currentIndex,
+              onTap: _onTap,
             ),
           ),
         ),
