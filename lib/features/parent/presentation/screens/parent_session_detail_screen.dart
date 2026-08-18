@@ -5,6 +5,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/parent/data/datasources/parent_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_classes_provider.dart';
+import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 import 'package:tutora/features/parent/presentation/widgets/parent_status_pill.dart';
 import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
@@ -57,6 +58,12 @@ class _ParentSessionDetailScreenState
         ..invalidate(parentLessonDetailProvider(widget.lessonId))
         ..invalidate(parentPendingLessonsProvider)
         ..invalidate(parentUpcomingLessonsProvider);
+      // Tab Lớp học đọc từ provider riêng theo con — không nạp lại thì buổi vừa
+      // xác nhận vẫn hiện "Chờ xác nhận".
+      final childId = lesson.studentId;
+      if (childId != null) {
+        ref.invalidate(parentChildClassesProvider(childId));
+      }
       AppToast.show(
         context,
         message: (resultMsg?.isNotEmpty ?? false)
