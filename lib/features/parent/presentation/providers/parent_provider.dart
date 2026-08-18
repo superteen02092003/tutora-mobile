@@ -237,11 +237,15 @@ class ParentStudentBookingsNotifier
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     try {
-      final list = await _ds.getBookings(
-        studentId: studentId,
-        status: 'active',
+      // BE bỏ qua studentId ở /parent/bookings nên phải lọc ở client. Trước đây
+      // lọc status 'active' — giá trị BE không có nên danh sách luôn rỗng.
+      final page = await _ds.getBookings(pageSize: 50);
+      state = state.copyWith(
+        bookings: page.items
+            .where((b) => b.studentId == studentId && !b.isClosed)
+            .toList(),
+        isLoading: false,
       );
-      state = state.copyWith(bookings: list, isLoading: false);
     } catch (_) {
       state = state.copyWith(isLoading: false);
     }
@@ -267,20 +271,42 @@ parentStudentBookingsProvider =
 
 // All bookings (for bookings list page)
 
+/// Chi tiết một đơn đặt lịch.
+final AutoDisposeFutureProviderFamily<ParentBookingDto, int>
+parentBookingDetailProvider = FutureProvider.autoDispose
+    .family<ParentBookingDto, int>((ref, bookingId) {
+      return ref.watch(parentDatasourceProvider).getBookingDetail(bookingId);
+    });
+
 class ParentAllBookingsState {
   const ParentAllBookingsState({
     this.bookings = const [],
     this.isLoading = false,
+    this.page = 1,
+    this.totalPages = 1,
+    this.error,
   });
   final List<ParentBookingDto> bookings;
   final bool isLoading;
+  final int page;
+  final int totalPages;
+  final String? error;
+
+  bool get hasMore => page < totalPages;
 
   ParentAllBookingsState copyWith({
     List<ParentBookingDto>? bookings,
     bool? isLoading,
+    int? page,
+    int? totalPages,
+    String? error,
+    bool clearError = false,
   }) => ParentAllBookingsState(
     bookings: bookings ?? this.bookings,
     isLoading: isLoading ?? this.isLoading,
+    page: page ?? this.page,
+    totalPages: totalPages ?? this.totalPages,
+    error: clearError ? null : (error ?? this.error),
   );
 }
 
@@ -291,15 +317,28 @@ class ParentAllBookingsNotifier extends StateNotifier<ParentAllBookingsState> {
   final ParentDatasource _ds;
   final String? status;
 
-  Future<void> load() async {
-    state = state.copyWith(isLoading: true);
+  Future<void> load({bool reset = true}) async {
+    if (state.isLoading) return;
+    final nextPage = reset ? 1 : state.page + 1;
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final list = await _ds.getBookings(status: status);
-      state = state.copyWith(bookings: list, isLoading: false);
-    } catch (_) {
-      state = state.copyWith(isLoading: false);
+      final res = await _ds.getBookings(page: nextPage, status: status);
+      state = state.copyWith(
+        bookings: reset ? res.items : [...state.bookings, ...res.items],
+        page: res.currentPage,
+        totalPages: res.totalPages,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
+
+  Future<void> loadMore() =>
+      state.hasMore ? load(reset: false) : Future.value();
 }
 
 final StateNotifierProviderFamily<

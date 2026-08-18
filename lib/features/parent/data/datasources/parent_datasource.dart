@@ -208,30 +208,60 @@ class ParentDatasource {
     return AddStudentResult.fromJson(content);
   }
 
-  Future<List<ParentBookingDto>> getBookings({
+  /// Đơn đặt lịch của mọi con. `status` nhận nhiều giá trị cách nhau bằng dấu
+  /// phẩy.
+  Future<ParentBookingPage> getBookings({
     int page = 1,
     int pageSize = 20,
     String? status,
-    String? studentId,
   }) async {
     final res = await _dio.get<dynamic>(
       '/parent/bookings',
       queryParameters: {
         'page': page,
         'pageSize': pageSize,
-        if (status != null && status.isNotEmpty) 'status': status,
-        if (studentId != null && studentId.isNotEmpty) 'studentId': studentId,
+        'status': ?(status?.isEmpty ?? true) ? null : status,
       },
     );
     final data = res.data as Map<String, dynamic>;
-    final items =
-        (data['content'] as Map<String, dynamic>?)?['items']
-            as List<dynamic>? ??
-        data['content'] as List<dynamic>? ??
-        [];
-    return items
-        .map((e) => ParentBookingDto.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return ParentBookingPage.fromJson(data);
+  }
+
+  /// Chi tiết một đơn — có đủ classSessions, mốc thanh toán, lý do huỷ.
+  Future<ParentBookingDto> getBookingDetail(int bookingId) async {
+    final res = await _dio.get<dynamic>('/bookings/$bookingId');
+    final data = res.data as Map<String, dynamic>;
+    return ParentBookingDto.fromJson(data['content'] as Map<String, dynamic>);
+  }
+
+  /// Thông tin chuyển khoản cho đợt đang chờ trả.
+  Future<ParentPaymentInfo> getPaymentInfo(int bookingId) async {
+    try {
+      final res = await _dio.get<dynamic>('/bookings/$bookingId/payment');
+      final data = res.data as Map<String, dynamic>;
+      return ParentPaymentInfo.fromJson(
+        data['content'] as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw ParentActionException(
+        _message(e, 'Không lấy được thông tin thanh toán'),
+      );
+    }
+  }
+
+  /// Đối soát sau khi phụ huynh bảo đã chuyển khoản.
+  Future<ParentPaymentStatus> getPaymentStatus(int bookingId) async {
+    final res = await _dio.get<dynamic>('/bookings/$bookingId/payment/status');
+    final data = res.data as Map<String, dynamic>;
+    return ParentPaymentStatus.fromJson(
+      data['content'] as Map<String, dynamic>,
+    );
+  }
+
+  static String _message(DioException e, String fallback) {
+    final data = e.response?.data;
+    final msg = data is Map<String, dynamic> ? data['message'] : null;
+    return msg is String && msg.isNotEmpty ? msg : fallback;
   }
 }
 
