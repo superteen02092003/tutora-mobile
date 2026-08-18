@@ -9,6 +9,7 @@ import 'package:tutora/core/router/app_routes.dart';
 // re-export parent_models: ParentLessonDto, ParentActionException.
 import 'package:tutora/features/parent/data/datasources/parent_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/screens/parent_class_detail_screen.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home/parent_home_widgets.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_home/parent_next_lesson_card.dart';
 import 'package:tutora/features/parent/presentation/screens/parent_session_detail_screen.dart';
@@ -65,6 +66,16 @@ class _HomeContentState extends ConsumerState<_HomeContent>
   String _bookingsRoute(String? studentId) => studentId == null
       ? AppRoutes.parentBookings
       : '${AppRoutes.parentBookings}?studentId=$studentId';
+
+  void _openClass(StudentClassDto klass) {
+    unawaited(
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => ParentClassDetailScreen(klass: klass),
+        ),
+      ),
+    );
+  }
 
   /// Banner "Cần xác nhận" chỉ ĐIỀU HƯỚNG, không tự xác nhận
   void _openPendingConfirmation(List<ParentLessonDto> pending) {
@@ -269,7 +280,7 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                           ? 'Lớp học của ${selectedStudent.fullName.trim().split(' ').lastOrNull ?? selectedStudent.fullName}'
                           : 'Lớp học',
                       action: 'Xem tất cả',
-                      onAction: () => context.push(_bookingsRoute(selectedId)),
+                      onAction: () => context.go(AppRoutes.parentInfo),
                     ),
                     if (childClasses.isLoading)
                       const Padding(
@@ -299,8 +310,7 @@ class _HomeContentState extends ConsumerState<_HomeContent>
                                 ),
                                 child: ClassCard(
                                   klass: k,
-                                  onTap: () =>
-                                      context.push(_bookingsRoute(selectedId)),
+                                  onTap: () => _openClass(k),
                                 ),
                               ),
                             ),
