@@ -622,7 +622,7 @@ class _AcceptingBookingsRowState extends ConsumerState<_AcceptingBookingsRow> {
           .read(tutorProfileDatasourceProvider)
           .setAcceptingBookings(accepting: value);
       if (!mounted) return;
-      ref.invalidate(tutorSelfProfileProvider);
+      ref.invalidate(tutorAcceptingBookingsProvider);
       AppToast.show(
         context,
         message: value
@@ -645,8 +645,8 @@ class _AcceptingBookingsRowState extends ConsumerState<_AcceptingBookingsRow> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(tutorSelfProfileProvider);
-    final accepting = profile.valueOrNull?.isAcceptingBookings ?? true;
+    final profile = ref.watch(tutorAcceptingBookingsProvider);
+    final accepting = profile.valueOrNull ?? true;
     final ready = profile.hasValue && !_saving;
 
     return SettingRow(

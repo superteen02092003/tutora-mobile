@@ -184,6 +184,18 @@ class TutorFinanceDatasource {
     return TutorWithdrawal.fromJson(_content(res));
   }
 
+  /// Huỷ yêu cầu rút tiền còn đang chờ xử lý
+  Future<void> cancelWithdrawal(int id) async {
+    try {
+      await _dio.delete<dynamic>('/tutor/withdrawals/$id');
+    } on DioException catch (e) {
+      throw TutorFinanceException(
+        _messageOf(e, 'Không huỷ được yêu cầu rút tiền.'),
+        errorCode: _codeOf(e),
+      );
+    }
+  }
+
   static String _messageOf(DioException e, String fallback) {
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
