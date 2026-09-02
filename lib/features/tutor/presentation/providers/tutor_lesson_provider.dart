@@ -158,31 +158,36 @@ class TutorAvailabilityNotifier extends StateNotifier<TutorAvailabilityState> {
     }
   }
 
-  Future<bool> addSlot(CreateAvailabilityRequest request) async {
+  /// Lưu trọn danh sách lịch rảnh. Backend chỉ nhận cả danh sách một lần
+  /// (PUT), nên thêm/bớt một khung đều đi qua đây.
+  Future<bool> saveSlots(List<CreateAvailabilityRequest> slots) async {
     state = state.copyWith(isSaving: true);
     try {
-      await _ds.createAvailability(request);
-      await load();
+      final saved = await _ds.replaceAvailability(slots);
+      state = state.copyWith(isSaving: false, slots: saved);
       return true;
-    } catch (_) {
-      state = state.copyWith(isSaving: false);
+    } catch (e) {
+      state = state.copyWith(isSaving: false, error: e.toString());
       return false;
     }
   }
 
-  Future<bool> removeSlot(int availabilityId) async {
-    try {
-      await _ds.deleteAvailability(availabilityId);
-      state = state.copyWith(
-        slots: state.slots
-            .where((s) => s.availabilityId != availabilityId)
-            .toList(),
+  static CreateAvailabilityRequest _toRequest(TutorAvailabilityDto s) =>
+      CreateAvailabilityRequest(
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
       );
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
+
+  Future<bool> addSlot(CreateAvailabilityRequest request) =>
+      saveSlots([...state.slots.map(_toRequest), request]);
+
+  Future<bool> removeSlot(int availabilityId) => saveSlots(
+    state.slots
+        .where((s) => s.availabilityId != availabilityId)
+        .map(_toRequest)
+        .toList(),
+  );
 }
 
 final tutorAvailabilityProvider =
@@ -207,9 +212,7 @@ classSessionsProvider = FutureProvider.autoDispose
 
       final canFilter = items.any((l) => l.bookingId != null);
       final safe = canFilter
-          ? items
-                .where((l) => l.bookingId == bookingId && l.countsAsSession)
-                .toList()
+          ? items.where((l) => l.bookingId == bookingId).toList()
           : <TutorLessonDto>[];
 
       return safe..sort((a, b) {
