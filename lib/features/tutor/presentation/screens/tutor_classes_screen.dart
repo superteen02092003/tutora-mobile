@@ -279,7 +279,12 @@ class _LessonCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${lesson.subjectName} · ${lesson.timeStart}–${lesson.timeEnd}',
+                    [
+                      lesson.subjectName,
+                      '${lesson.timeStart}–${lesson.timeEnd}',
+                      // Buổi phụ / buổi học lại
+                      ?lesson.linkLabel,
+                    ].join(' · '),
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       color: AppColors.ink4,

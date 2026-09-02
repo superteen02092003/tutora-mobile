@@ -23,7 +23,6 @@ class TutorLessonDatasource {
         'page': page,
         'pageSize': pageSize,
         'status': status,
-        // Backend nhận `fromDate` (không có `to`).
         'fromDate': from,
         'bookingId': bookingId,
       }..removeWhere((_, v) => v == null),
@@ -38,7 +37,7 @@ class TutorLessonDatasource {
         .toList();
   }
 
-  // GET /api/tutor/classes — danh sách lớp (booking), không phải buổi lẻ.
+  // GET /api/tutor/classes: danh sách lớp
   Future<TutorClassPage> getClasses({
     int page = 1,
     int pageSize = 50,
@@ -68,17 +67,15 @@ class TutorLessonDatasource {
       // Backend nhận `startDate`/`endDate`.
       queryParameters: {'startDate': from, 'endDate': to},
     );
-    // BE trả buổi lồng theo ngày → gộp phẳng.
+    // BE trả buổi lồng theo ngày → gộp phẳng
     final content = res.data?['content'];
     final days = content is List ? content : <dynamic>[];
-    return days
-        .whereType<Map<String, dynamic>>()
-        .expand(
-          (day) => (day['classSessions'] as List<dynamic>? ?? [])
-              .whereType<Map<String, dynamic>>(),
-        )
-        .map(TutorLessonDto.fromJson)
-        .toList();
+    return days.whereType<Map<String, dynamic>>().expand((day) {
+      final date = DateTime.tryParse(day['date'] as String? ?? '');
+      return (day['classSessions'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map((j) => TutorLessonDto.fromJson(j, calendarDate: date));
+    }).toList();
   }
 
   // GET /api/tutor/availabilities
@@ -94,19 +91,20 @@ class TutorLessonDatasource {
         .toList();
   }
 
-  // POST /api/tutor/availabilities
-  Future<void> createAvailability(CreateAvailabilityRequest request) async {
-    await _dio.post<void>(
+  /// PUT /api/tutor/availabilities
+  Future<List<TutorAvailabilityDto>> replaceAvailability(
+    List<CreateAvailabilityRequest> slots,
+  ) async {
+    final res = await _dio.put<Map<String, dynamic>>(
       '/tutor/availabilities',
-      data: request.toJson(),
+      data: {'availabilities': slots.map((s) => s.toJson()).toList()},
     );
-  }
-
-  // DELETE /api/tutor/availabilities/{id}
-  Future<void> deleteAvailability(int availabilityId) async {
-    await _dio.delete<void>(
-      '/tutor/availabilities/$availabilityId',
-    );
+    final content = res.data?['content'];
+    final raw = content is List ? content : <dynamic>[];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(TutorAvailabilityDto.fromJson)
+        .toList();
   }
 }
 

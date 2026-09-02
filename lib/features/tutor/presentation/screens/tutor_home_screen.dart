@@ -662,10 +662,9 @@ class _WeekScheduleSectionState extends ConsumerState<_WeekScheduleSection> {
     List<TutorWeekSessionDto> all,
     DateTime day,
   ) {
-    return all.where((s) {
-      final dt = s.startLocal;
-      return dt != null && _dateOnly(dt) == day;
-    }).toList()..sort((a, b) => a.timeStart.compareTo(b.timeStart));
+    // Xếp theo ngày BE đã gom (buổi học sớm/muộn nằm đúng ngày đã học)
+    return all.where((s) => s.isActionable && s.dayKey == day).toList()
+      ..sort((a, b) => a.timeStart.compareTo(b.timeStart));
   }
 
   @override
@@ -954,6 +953,11 @@ class _TimelineCard extends StatelessWidget {
     // Chỉ viền + vạch đổi màu; chữ luôn đen đậm để buổi đã qua vẫn đọc được.
     final (Color tone, String? chip) = switch (session) {
       _ when session.isCancelled => (TutorColors.danger, 'Đã huỷ'),
+      _ when session.isContinuation && session.skipConfirmedByBothSides => (
+        TutorColors.ink3,
+        'Đã bỏ',
+      ),
+      _ when session.isInterrupted => (TutorColors.warning, 'Học dở dang'),
       _ when session.needsReport => (TutorColors.warning, 'Chờ báo cáo'),
       _ when session.isCompleted => (TutorColors.success, 'Hoàn thành'),
       _ when session.isLive => (TutorColors.accent, 'Đang dạy'),

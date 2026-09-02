@@ -214,11 +214,14 @@ class _ClassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // BE chỉ trả 4 giá trị cho lớp.
+    // DeriveClassStatus của BE: in_progress > pending_confirmation > scheduled
+    // > reserved > completed.
     final (Color tone, String label) = switch (item.status) {
       'completed' => (TutorColors.success, 'Đã xong'),
       'in_progress' => (TutorColors.accent, 'Đang dạy'),
       'pending_confirmation' => (TutorColors.warning, 'Chờ xác nhận'),
+      // Hết buổi đã mở, còn buổi giữ chỗ — lớp đứng lại chờ tiền đợt 2.
+      'reserved' => (TutorColors.warning, 'Chờ thanh toán'),
       _ => (TutorColors.primary, 'Đang học'),
     };
 
@@ -290,7 +293,7 @@ class _ClassCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${item.completedSessions}/${item.totalSessions} buổi',
+                '${item.completedSessions}/${item.totalWithReserved} buổi',
                 style: TutorType.caption(
                   color: TutorColors.ink,
                 ).copyWith(fontWeight: FontWeight.w700),
@@ -307,25 +310,38 @@ class _ClassCard extends StatelessWidget {
               valueColor: AlwaysStoppedAnimation(tone),
             ),
           ),
-          if (item.schedule.isNotEmpty || item.nextStartLocal != null) ...[
+          if (item.schedule.isNotEmpty ||
+              item.nextStartLocal != null ||
+              item.isWaitingRemainingPayment) ...[
             const SizedBox(height: 11),
             Container(height: 1, color: TutorColors.line),
             const SizedBox(height: 10),
             Row(
               children: [
                 Icon(
-                  item.nextStartLocal != null
-                      ? Icons.schedule_rounded
-                      : Icons.repeat_rounded,
+                  switch (item) {
+                    _ when item.nextStartLocal != null =>
+                      Icons.schedule_rounded,
+                    // Còn buổi giữ chỗ nhưng chưa mở: lý do là tiền, không
+                    // phải hết lịch — nói thẳng để gia sư khỏi đi hỏi.
+                    _ when item.isWaitingRemainingPayment =>
+                      Icons.lock_clock_rounded,
+                    _ => Icons.repeat_rounded,
+                  },
                   size: 14,
                   color: TutorColors.ink3,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    item.nextStartLocal != null
-                        ? 'Buổi tới ${_nextLabel(item.nextStartLocal!)}'
-                        : item.schedule,
+                    switch (item) {
+                      _ when item.nextStartLocal != null =>
+                        'Buổi tới ${_nextLabel(item.nextStartLocal!)}',
+                      _ when item.isWaitingRemainingPayment =>
+                        '${item.reservedSessions} buổi giữ chỗ · chờ phụ huynh '
+                            'thanh toán đợt 2',
+                      _ => item.schedule,
+                    },
                     style: TutorType.caption(color: TutorColors.ink2),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -943,6 +959,11 @@ class _SessionCard extends StatelessWidget {
     final (Color tone, String? chip) = switch (lesson) {
       _ when lesson.isDisputed => (TutorColors.danger, 'Tranh chấp'),
       _ when lesson.isNoShow => (TutorColors.danger, 'Vắng mặt'),
+      _ when lesson.isContinuation && lesson.skipConfirmedByBothSides => (
+        TutorColors.ink3,
+        'Đã bỏ',
+      ),
+      _ when lesson.isInterrupted => (TutorColors.warning, 'Học dở dang'),
       _ when lesson.isAwaitingReport => (TutorColors.warning, 'Chờ báo cáo'),
       _ when lesson.isPendingConfirmation => (
         TutorColors.warning,

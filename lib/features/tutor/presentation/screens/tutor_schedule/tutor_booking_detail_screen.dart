@@ -18,7 +18,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
     'scheduled' || 'confirmed' => const Color(0xFFFFF3CD),
     'reserved' => const Color(0xFFF0F1F5),
     'in_progress' || 'inprogress' => const Color(0xFFD5EDD9),
-    'pending_confirmation' => const Color(0xFFFFF3CD),
+    'pending_confirmation' || 'interrupted' => const Color(0xFFFFF3CD),
     'completed' => const Color(0xFFD5E8F5),
     _ => const Color(0xFFFFDEDE),
   };
@@ -27,7 +27,7 @@ class TutorBookingDetailScreen extends StatelessWidget {
     'scheduled' || 'confirmed' => const Color(0xFF7A5900),
     'reserved' => AppColors.ink4,
     'in_progress' || 'inprogress' => AppColors.moss,
-    'pending_confirmation' => const Color(0xFF7A5900),
+    'pending_confirmation' || 'interrupted' => const Color(0xFF7A5900),
     'completed' => const Color(0xFF0D3F6B),
     _ => AppColors.oxblood,
   };
@@ -58,6 +58,12 @@ class TutorBookingDetailScreen extends StatelessWidget {
                     heroBorder: _heroBorder,
                   ),
                   const SizedBox(height: 12),
+
+                  // Buổi phụ / buổi học lại: giải thích buổi này từ đâu ra.
+                  if (lesson.linkLabel != null) ...[
+                    _LinkedSessionNote(lesson: lesson),
+                    const SizedBox(height: 12),
+                  ],
 
                   // Student info card
                   _InfoCard(
@@ -511,6 +517,68 @@ class _TimelineStep extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Ghi chú cho buổi không nằm trong lịch gốc
+class _LinkedSessionNote extends StatelessWidget {
+  const _LinkedSessionNote({required this.lesson});
+
+  final TutorLessonDto lesson;
+
+  String get _body {
+    if (lesson.isDisputeRelearn) {
+      return 'Buổi học được tạo ra để học lại sau khi tranh chấp được hoà giải. Không tính '
+          'thêm vào số buổi của gói.';
+    }
+    if (lesson.skipConfirmedByBothSides) {
+      return 'Buổi phụ này đã được hai bên đồng ý bỏ.';
+    }
+    return 'Buổi học được tạo ra để học tiếp phần còn dở của buổi bị ngắt giữa chừng. '
+        'Không tính thêm vào số buổi của gói.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.cream2,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.link_rounded, size: 16, color: AppColors.ink4),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lesson.linkLabel!,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _body,
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    color: AppColors.ink4,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
