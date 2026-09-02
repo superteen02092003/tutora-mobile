@@ -8,6 +8,7 @@ class ChatChannelDto {
     required this.status,
     required this.lastMessageAt,
     required this.lastMessagePreview,
+    this.unreadCount = 0,
   });
 
   factory ChatChannelDto.fromJson(Map<String, dynamic> j) => ChatChannelDto(
@@ -19,6 +20,7 @@ class ChatChannelDto {
     status: j['status'] as String? ?? '',
     lastMessageAt: j['lastMessageAt'] as String? ?? '',
     lastMessagePreview: j['lastMessagePreview'] as String? ?? '',
+    unreadCount: j['unreadCount'] as int? ?? 0,
   );
 
   final int channelId;
@@ -29,6 +31,27 @@ class ChatChannelDto {
   final String status;
   final String lastMessageAt;
   final String lastMessagePreview;
+
+  /// Tin nhắn chưa đọc của riêng kênh này.
+  final int unreadCount;
+
+  bool get hasUnread => unreadCount > 0;
+
+  ChatChannelDto copyWith({
+    String? lastMessageAt,
+    String? lastMessagePreview,
+    int? unreadCount,
+  }) => ChatChannelDto(
+    channelId: channelId,
+    bookingId: bookingId,
+    otherUserId: otherUserId,
+    otherUserName: otherUserName,
+    otherUserAvatarUrl: otherUserAvatarUrl,
+    status: status,
+    lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+    lastMessagePreview: lastMessagePreview ?? this.lastMessagePreview,
+    unreadCount: unreadCount ?? this.unreadCount,
+  );
 
   String get displayPreview {
     final p = lastMessagePreview;

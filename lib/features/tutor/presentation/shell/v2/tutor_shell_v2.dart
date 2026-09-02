@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
-import 'package:tutora/shared/providers/notification_provider.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
 import 'package:tutora/shared/widgets/floating_pill_nav_bar.dart';
 import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
@@ -49,8 +49,7 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
 
   @override
   Widget build(BuildContext context) {
-    // Badge tab "Tôi": khiếu nại và việc hồ sơ cần xử lý nằm trong đó.
-    final unread = ref.watch(unreadCountProvider).value ?? 0;
+    final unread = ref.watch(chatUnreadTotalProvider);
 
     final items = [
       const TutorNavItem(

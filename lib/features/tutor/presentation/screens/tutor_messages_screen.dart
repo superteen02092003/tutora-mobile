@@ -20,12 +20,31 @@ class TutorMessagesScreen extends ConsumerStatefulWidget {
       _TutorMessagesScreenState();
 }
 
-class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen> {
+class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
+    with WidgetsBindingObserver {
   final _scrollController = ScrollController();
   String _search = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _reload();
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    unawaited(ref.read(channelListProvider.notifier).load());
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
   }

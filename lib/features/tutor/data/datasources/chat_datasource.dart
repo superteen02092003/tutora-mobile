@@ -18,6 +18,18 @@ class ChatDatasource {
   bool _joining = false;
 
   // REST
+  /// Tổng tin nhắn chưa đọc trên mọi kênh — nguồn cho badge tab Chat.
+  Future<int> getUnreadTotal() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/chat/unread-total-count',
+    );
+    final content = res.data?['content'];
+    if (content is Map<String, dynamic>) {
+      return content['unreadCount'] as int? ?? 0;
+    }
+    return 0;
+  }
+
   Future<List<ChatChannelDto>> getChannels() async {
     final res = await _dio.get<Map<String, dynamic>>('/chat/channels');
     final body = res.data ?? {};
@@ -82,12 +94,15 @@ class ChatDatasource {
       return _hub!;
     }
 
-    final token = await _storage.getAccessToken() ?? '';
     _hub = HubConnectionBuilder()
         .withUrl(
           '$appBaseUrl/hubs/chat',
           options: HttpConnectionOptions(
-            accessTokenFactory: () async => token,
+            // Đọc lại token mỗi lần kết nối, KHÔNG chụp vào biến: access
+            // token sống 60 phút, mà `withAutomaticReconnect` có thể nối lại
+            // sau đó — chụp sẵn thì lần nối lại nào cũng cầm token hết hạn.
+            accessTokenFactory: () async =>
+                await _storage.getAccessToken() ?? '',
             transport: HttpTransportType.WebSockets,
             skipNegotiation: true,
           ),

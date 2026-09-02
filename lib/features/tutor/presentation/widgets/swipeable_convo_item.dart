@@ -165,7 +165,10 @@ class _ConvoItem extends StatelessWidget {
                           channel.otherUserName,
                           style: GoogleFonts.inter(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            // Chưa đọc thì đậm hơn
+                            fontWeight: channel.hasUnread
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             color: AppColors.ink,
                           ),
                         ),
@@ -174,24 +177,76 @@ class _ConvoItem extends StatelessWidget {
                         channel.formattedTime,
                         style: GoogleFonts.ibmPlexMono(
                           fontSize: 10,
-                          color: AppColors.ink4,
+                          color: channel.hasUnread
+                              ? AppColors.ink
+                              : AppColors.ink4,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    channel.displayPreview,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      color: AppColors.ink4,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          channel.displayPreview,
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            fontWeight: channel.hasUnread
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            // Preview chưa đọc kéo lên màu chữ chính; đã đọc
+                            // thì chìm xuống ink4.
+                            color: channel.hasUnread
+                                ? AppColors.ink2
+                                : AppColors.ink4,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (channel.hasUnread) ...[
+                        const SizedBox(width: 8),
+                        _UnreadBadge(count: channel.unreadCount),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Chấm số tin chưa đọc ở cuối dòng hội thoại.
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    // Quá 99 thì con số hết ý nghĩa, chỉ cần biết là "rất nhiều".
+    final text = count > 99 ? '99+' : '$count';
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.oxblood,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          height: 1,
         ),
       ),
     );
