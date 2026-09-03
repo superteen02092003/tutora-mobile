@@ -120,13 +120,18 @@ final classListProvider =
     });
 
 /// Chi tiết một lớp học (booking) — dùng ở màn danh sách buổi trong lớp.
-final FutureProviderFamily<StudentClassDto, int> classDetailProvider =
-    FutureProvider.family<StudentClassDto, int>((ref, bookingId) async {
-      return ref.read(classDatasourceProvider).getClassDetail(bookingId);
-    });
+///
+/// `autoDispose` vì lịch buổi trong lớp đổi được (dời lịch, sinh buổi phụ).
+final AutoDisposeFutureProviderFamily<StudentClassDto, int>
+classDetailProvider = FutureProvider.autoDispose.family<StudentClassDto, int>((
+  ref,
+  bookingId,
+) async {
+  return ref.read(classDatasourceProvider).getClassDetail(bookingId);
+});
 
-/// Buổi học sắp tới gần nhất — card "Buổi học sắp tới" ở trang chủ.
-final FutureProvider<UpcomingSessionDto?> nextSessionProvider =
-    FutureProvider<UpcomingSessionDto?>((ref) async {
+/// Buổi học sắp tới gần nhất — card "Vào học nhanh" ở trang chủ.
+final AutoDisposeFutureProvider<UpcomingSessionDto?> nextSessionProvider =
+    FutureProvider.autoDispose<UpcomingSessionDto?>((ref) async {
       return ref.read(classDatasourceProvider).getNextSession();
     });

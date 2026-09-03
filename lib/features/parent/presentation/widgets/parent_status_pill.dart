@@ -48,7 +48,10 @@ class ParentStatusPill extends StatelessWidget {
               AppColors.oxblood,
             ),
             'no_show' => ('Vắng mặt', const Color(0xFFF1ECE0), AppColors.ink4),
-            'cancelled' || 'cancelled_noshow' => (
+            'cancelled' ||
+            'cancelled_noshow' ||
+            'cancelled_by_staff' ||
+            'cancelled_by_dispute' => (
               'Đã huỷ',
               const Color(0xFFF1ECE0),
               AppColors.ink4,

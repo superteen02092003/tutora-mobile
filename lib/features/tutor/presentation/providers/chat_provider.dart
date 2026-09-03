@@ -45,6 +45,20 @@ class ChannelListNotifier extends StateNotifier<ChannelListState> {
     }
   }
 
+  /// Xoá cuộc trò chuyện khỏi danh sách của mình.
+  Future<void> deleteChannel(int channelId) async {
+    final previous = state.channels;
+    state = state.copyWith(
+      channels: previous.where((c) => c.channelId != channelId).toList(),
+    );
+    try {
+      await _ds.deleteChannel(channelId);
+    } catch (e) {
+      state = state.copyWith(channels: previous);
+      rethrow;
+    }
+  }
+
   /// Cập nhật dòng xem trước khi có tin mới.
   void updateLastMessage(
     int channelId,

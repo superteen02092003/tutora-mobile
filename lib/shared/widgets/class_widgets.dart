@@ -518,13 +518,18 @@ class SessionCard extends StatelessWidget {
 
   bool get _canJoin => onJoin != null && session.canJoinNow;
 
-  Color get _railColor => switch (session.state) {
-    ClassSessionState.inProgress => AppColors.green,
-    ClassSessionState.scheduled => AppColors.moss,
-    ClassSessionState.pendingConfirmation => const Color(0xFFD8B46A),
-    ClassSessionState.disputed || ClassSessionState.noShow => AppColors.oxblood,
-    _ => AppColors.line,
-  };
+  /// Buổi phụ dùng rail màu khác hẳn nhóm màu trạng thái: nhìn dọc danh sách
+  /// là thấy ngay buổi nào không thuộc lịch gốc.
+  Color get _railColor => session.isExtra
+      ? AppColors.gold
+      : switch (session.state) {
+          ClassSessionState.inProgress => AppColors.green,
+          ClassSessionState.scheduled => AppColors.moss,
+          ClassSessionState.pendingConfirmation => const Color(0xFFD8B46A),
+          ClassSessionState.disputed ||
+          ClassSessionState.noShow => AppColors.oxblood,
+          _ => AppColors.line,
+        };
 
   @override
   Widget build(BuildContext context) {
@@ -533,11 +538,13 @@ class SessionCard extends StatelessWidget {
         session.state == ClassSessionState.completed ||
         session.state == ClassSessionState.cancelled;
 
-    final title =
-        subjectName ??
-        (showIndex && session.sessionIndex > 0
-            ? 'Buổi ${session.sessionIndex}'
-            : 'Buổi học');
+    // Buổi phụ / học lại KHÔNG có số thứ tự trong gói
+    final title = session.isExtra
+        ? (subjectName == null ? 'Buổi học phụ' : '$subjectName · Buổi học phụ')
+        : subjectName ??
+              (showIndex && session.sessionIndex > 0
+                  ? 'Buổi ${session.sessionIndex}'
+                  : 'Buổi học');
 
     return GestureDetector(
       onTap: onTap,
@@ -610,6 +617,27 @@ class SessionCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (session.isExtra &&
+                            session.originalClassSessionId != null) ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.subdirectory_arrow_right_rounded,
+                                size: 12,
+                                color: AppColors.ink4,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'Học bù cho buổi trước',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: AppColors.ink4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 7),
                         Row(
                           children: [

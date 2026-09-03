@@ -42,7 +42,11 @@ String parentMoney(double v) => '${_money.format(v.round())}đ';
       bg: AppColors.cream2,
       fg: AppColors.ink3,
     ),
-    'cancelled' || 'cancelled_noshow' || 'refunded' => (
+    'cancelled' ||
+    'cancelled_noshow' ||
+    'cancelled_by_staff' ||
+    'cancelled_by_dispute' ||
+    'refunded' => (
       label: 'Đã huỷ',
       bg: const Color(0xFFFFE4E6),
       fg: const Color(0xFF9F1239),

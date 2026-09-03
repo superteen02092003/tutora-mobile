@@ -11,6 +11,7 @@ import 'package:tutora/features/student/data/datasources/class_session_datasourc
 import 'package:tutora/features/student/data/datasources/material_datasource.dart';
 import 'package:tutora/features/student/presentation/providers/class_provider.dart';
 import 'package:tutora/features/student/presentation/providers/material_provider.dart';
+import 'package:tutora/features/student/presentation/providers/student_access_provider.dart';
 import 'package:tutora/features/student/presentation/screens/student_booking_detail_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_session_detail_screen.dart';
 import 'package:tutora/shared/live_session/session_lobby_screen.dart';
@@ -178,6 +179,9 @@ class _ContentState extends ConsumerState<_Content>
             reason: picked.reason,
           );
       if (!mounted) return;
+      // "Buổi sắp tới" ở Home phụ thuộc lịch vừa đổi — bỏ cache để lần sau mở
+      // Home là hỏi lại server.
+      ref.invalidate(nextSessionProvider);
       await widget.onRefresh();
       if (!mounted) return;
       AppToast.show(
@@ -965,13 +969,17 @@ class _InfoGrid extends StatelessWidget {
 
 // Payment notice
 
-class _PaymentNotice extends StatelessWidget {
+class _PaymentNotice extends ConsumerWidget {
   const _PaymentNotice({required this.klass});
   final StudentClassDto klass;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final money = NumberFormat.decimalPattern('vi_VN');
+    // Học sinh do phụ huynh quản lý KHÔNG có quyền thanh toán (BE trả
+    // canBook=false, STUDENT_MANAGED_BY_PARENT). Vẫn báo tình trạng để em biết
+    // vì sao lớp dừng, nhưng bỏ nút — bấm vào cũng chỉ dẫn tới ngõ cụt.
+    final parentManaged = ref.watch(isParentManagedProvider);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(14),
@@ -1012,34 +1020,48 @@ class _PaymentNotice extends StatelessWidget {
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => StudentBookingDetailScreen(
-                        bookingId: klass.bookingId,
-                      ),
-                    ),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.ink,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+                if (parentManaged)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      'Thanh toán phần còn lại',
+                      'Bố mẹ sẽ thanh toán giúp con.',
                       style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.cream,
+                        fontSize: 12.5,
+                        color: AppColors.ink3,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                else ...[
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => StudentBookingDetailScreen(
+                          bookingId: klass.bookingId,
+                        ),
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.ink,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Thanh toán phần còn lại',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.cream,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

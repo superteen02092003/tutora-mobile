@@ -32,7 +32,10 @@ class ParentClassDetailScreen extends ConsumerWidget {
     final bottomPad = MediaQuery.of(context).padding.bottom;
     // Hiện cả buổi giữ chỗ: phụ huynh đã trả cọc nên phải xem được lịch dự kiến,
     // pill trạng thái đã nói rõ buổi nào chưa mở.
-    final sessions = klass.sessions;
+    final chains = groupClassSessionChains(klass.sessions);
+    final hasExtra = chains.any(
+      (c) => c.parent.isExtra || c.children.isNotEmpty,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -47,13 +50,20 @@ class ParentClassDetailScreen extends ConsumerWidget {
                 children: [
                   _ClassSummary(klass: klass),
                   const SizedBox(height: 20),
-                  Text(
-                    'Các buổi học',
-                    style: GoogleFonts.bricolageGrotesque(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Các buổi học',
+                          style: GoogleFonts.bricolageGrotesque(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      if (hasExtra) const _ExtraSessionLegend(),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -64,7 +74,7 @@ class ParentClassDetailScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (sessions.isEmpty)
+                  if (chains.isEmpty)
                     Text(
                       'Lớp chưa có buổi nào được mở.',
                       style: GoogleFonts.inter(
@@ -73,11 +83,24 @@ class ParentClassDetailScreen extends ConsumerWidget {
                       ),
                     )
                   else
-                    for (final s in sessions)
+                    for (final chain in chains) ...[
                       _SessionCard(
-                        session: s,
-                        onTap: () => _openSession(context, s.classSessionId),
+                        session: chain.parent,
+                        onTap: () =>
+                            _openSession(context, chain.parent.classSessionId),
                       ),
+                      // Buổi phụ thụt vào để thấy rõ nó bám buổi ngay trên.
+                      for (final child in chain.children)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 24),
+                          child: _SessionCard(
+                            session: child,
+                            nested: true,
+                            onTap: () =>
+                                _openSession(context, child.classSessionId),
+                          ),
+                        ),
+                    ],
                 ],
               ),
             ),
@@ -246,15 +269,51 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
-/// Một buổi học trong lớp.
-class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session, required this.onTap});
-
-  final ClassSessionSlotDto session;
-  final VoidCallback onTap;
+/// Chú thích màu cho buổi sinh thêm, chỉ hiện khi lớp thực sự có buổi phụ.
+class _ExtraSessionLegend extends StatelessWidget {
+  const _ExtraSessionLegend();
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 3,
+          height: 12,
+          decoration: BoxDecoration(
+            color: AppColors.gold,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Buổi học phụ',
+          style: GoogleFonts.inter(fontSize: 12, color: AppColors.ink3),
+        ),
+      ],
+    );
+  }
+}
+
+/// Một buổi học trong lớp. `nested` = buổi phụ / học lại bám buổi ngay trên.
+class _SessionCard extends StatelessWidget {
+  const _SessionCard({
+    required this.session,
+    required this.onTap,
+    this.nested = false,
+  });
+
+  final ClassSessionSlotDto session;
+  final VoidCallback onTap;
+  final bool nested;
+
+  @override
+  Widget build(BuildContext context) {
+    // Buổi phụ KHÔNG có số thứ tự trong gói: đánh "Buổi 6" cho một buổi bù
+    // khiến phụ huynh tưởng gói dài thêm một buổi.
+    final isExtra = session.isExtra;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -265,7 +324,9 @@ class _SessionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.paper,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.line),
+            border: Border.all(
+              color: isExtra ? AppColors.gold : AppColors.line,
+            ),
           ),
           child: Row(
             children: [
@@ -274,17 +335,23 @@ class _SessionCard extends StatelessWidget {
                 height: 46,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.cream,
+                  color: isExtra ? AppColors.cream2 : AppColors.cream,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
-                child: Text(
-                  '${session.sessionIndex}',
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.ink2,
-                  ),
-                ),
+                child: isExtra
+                    ? const Icon(
+                        Icons.subdirectory_arrow_right_rounded,
+                        size: 20,
+                        color: AppColors.ink3,
+                      )
+                    : Text(
+                        '${session.sessionIndex}',
+                        style: GoogleFonts.bricolageGrotesque(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink2,
+                        ),
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -307,6 +374,22 @@ class _SessionCard extends StatelessWidget {
                         color: AppColors.ink3,
                       ),
                     ),
+                    // Nói rõ buổi này từ đâu ra, nếu không nó chỉ là một dòng
+                    // lạ xen giữa lịch.
+                    if (isExtra) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        session.isDisputeRelearn
+                            ? 'Buổi học lại sau khiếu nại'
+                            : nested
+                            ? 'Buổi phụ · học nốt buổi trên'
+                            : 'Buổi phụ · học nốt buổi gốc',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          color: AppColors.ink4,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     StatusPill(style: sessionChipStyle(session.state)),
                   ],

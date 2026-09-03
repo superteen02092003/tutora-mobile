@@ -59,13 +59,55 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
     );
   }
 
-  void _deleteChannel(ChatChannelDto channel) {
-    AppToast.show(
-      context,
-      message: 'Đã xoá cuộc trò chuyện với ${channel.otherUserName}',
-      type: AppToastType.error,
-    );
+  Future<void> _deleteChannel(ChatChannelDto channel) async {
+    final ok = await _confirmDelete(channel.otherUserName);
+    if (!ok || !mounted) return;
+
+    try {
+      await ref
+          .read(channelListProvider.notifier)
+          .deleteChannel(channel.channelId);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Đã xoá cuộc trò chuyện với ${channel.otherUserName}',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: 'Xoá không thành công, thử lại nhé.',
+        type: AppToastType.error,
+      );
+    }
   }
+
+  /// Xoá là xoá một phía — nói rõ để không ai tưởng đã thu hồi tin nhắn.
+  Future<bool> _confirmDelete(String otherUserName) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Xoá cuộc trò chuyện?'),
+          content: Text(
+            'Cuộc trò chuyện với $otherUserName sẽ biến mất khỏi danh sách của bạn. '
+            '$otherUserName vẫn thấy toàn bộ tin nhắn, và cuộc trò chuyện sẽ hiện lại nếu có tin nhắn mới.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Huỷ'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(
+                'Xoá',
+                style: TextStyle(color: AppColors.oxblood),
+              ),
+            ),
+          ],
+        ),
+      ) ??
+      false;
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +289,7 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
                             key: ValueKey(channel.channelId),
                             channel: channel,
                             onTap: () => _openChat(channel),
-                            onDelete: () => _deleteChannel(channel),
+                            onDelete: () => unawaited(_deleteChannel(channel)),
                           );
                         },
                       ),

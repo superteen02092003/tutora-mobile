@@ -75,7 +75,11 @@ class StudentLessonDto {
     'in_progress' => LessonStatusType.inProgress,
     'pending_confirmation' => LessonStatusType.pending,
     'completed' => LessonStatusType.done,
-    'cancelled' || 'no_show' => LessonStatusType.cancelled,
+    'cancelled' ||
+    'no_show' ||
+    'cancelled_noshow' => LessonStatusType.cancelled,
+    'disputed' => LessonStatusType.disputed,
+    'interrupted' => LessonStatusType.interrupted,
     _ => LessonStatusType.scheduled,
   };
 }
@@ -106,6 +110,10 @@ class StudentLessonDetailDto extends StudentLessonDto {
     this.checkoutTime,
     this.pendingReschedule,
     this.rescheduleProposals = const [],
+    this.isContinuation = false,
+    this.isDisputeRelearn = false,
+    this.originalClassSessionId,
+    this.skipConfirmedByBothSides = false,
   });
 
   factory StudentLessonDetailDto.fromJson(Map<String, dynamic> j) {
@@ -142,6 +150,10 @@ class StudentLessonDetailDto extends StudentLessonDto {
       rescheduleProposals: proposalsRaw
           .map((e) => RescheduleProposalDto.fromJson(e as Map<String, dynamic>))
           .toList(),
+      isContinuation: j['isContinuation'] as bool? ?? false,
+      isDisputeRelearn: j['isDisputeRelearn'] as bool? ?? false,
+      originalClassSessionId: (j['originalClassSessionId'] as num?)?.toInt(),
+      skipConfirmedByBothSides: j['skipConfirmedByBothSides'] as bool? ?? false,
     );
   }
 
@@ -171,6 +183,26 @@ class StudentLessonDetailDto extends StudentLessonDto {
   /// Toàn bộ lịch sử đề xuất đổi lịch, mới nhất trước.
   final List<RescheduleProposalDto> rescheduleProposals;
 
+  /// Buổi phụ — học nốt phần buổi gốc bị ngắt giữa chừng.
+  final bool isContinuation;
+
+  /// Buổi học lại — sau khi hoà giải tranh chấp.
+  final bool isDisputeRelearn;
+
+  /// Buổi gốc mà buổi này bám theo.
+  final int? originalClassSessionId;
+
+  /// Hai bên đã đồng ý bỏ buổi phụ này
+  final bool skipConfirmedByBothSides;
+
+  /// Buổi sinh thêm ngoài gói.
+  bool get isExtra => isContinuation || isDisputeRelearn;
+
+  /// Chặn thêm buổi phụ đã bị bỏ so với quy tắc chung ở lớp cha: status vẫn
+  /// `scheduled` nên cha cho vào, nhưng phòng đó không ai tới.
+  @override
+  bool get canJoinNow => super.canJoinNow && !skipConfirmedByBothSides;
+
   DateTime? get checkinDt =>
       checkinTime == null ? null : DateTime.tryParse(checkinTime!)?.toLocal();
   DateTime? get checkoutDt =>
@@ -189,20 +221,25 @@ class StudentLessonDetailDto extends StudentLessonDto {
       ? null
       : DateTime.tryParse(confirmDeadline!)?.toLocal();
 
-  /// BE chặn đề xuất đổi lịch khi còn dưới 2 giờ trước giờ học đã đặt
-  /// (ClassSessionRescheduleProposalService.MinHoursBeforeOriginalStart).
-  /// Giữ khớp với `kRescheduleCutoff` ở shared/widgets/reschedule_sheet.dart.
   static const rescheduleCutoff = Duration(hours: 2);
 
-  /// Có được đề xuất đổi lịch buổi này không — khớp đúng ràng buộc của BE để
-  /// UI không mời gọi một hành động chắc chắn bị từ chối:
-  ///  • buổi phải đang ở trạng thái `scheduled` (đã học/đang học/hủy đều không)
-  ///  • còn tối thiểu 2 giờ trước giờ bắt đầu
-  ///  • chưa có đề xuất nào đang chờ phản hồi
+  /// Có được đề xuất đổi lịch buổi này không
   bool get canProposeReschedule =>
       statusType == LessonStatusType.scheduled &&
       DateTime.now().isBefore(startDt.subtract(rescheduleCutoff)) &&
       !(pendingReschedule?.isPending ?? false);
+
+  /// Có được khiếu nại buổi này không
+  bool get canDispute {
+    if (statusType == LessonStatusType.disputed) return false;
+    if (statusType == LessonStatusType.pending ||
+        statusType == LessonStatusType.done) {
+      return true;
+    }
+    // Trước giờ học thì chưa có gì để khiếu nại.
+    return statusType == LessonStatusType.scheduled &&
+        !DateTime.now().isBefore(startDt);
+  }
 
   /// Lý do không đổi lịch được, để hiện cho học sinh thay vì im lặng ẩn nút.
   String? get rescheduleBlockReason {
@@ -344,4 +381,10 @@ enum LessonStatusType {
   pending,
   done,
   cancelled,
+
+  /// Đang có khiếu nại — chờ admin xử lý, không vào lớp và không khiếu nại lại.
+  disputed,
+
+  /// Buổi gốc bị báo ngắt giữa chừng, chờ buổi phụ hoặc báo cáo.
+  interrupted,
 }

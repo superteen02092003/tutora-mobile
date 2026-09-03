@@ -9,6 +9,9 @@ class ClassSessionSlotDto {
     required this.scheduledEnd,
     required this.status,
     this.price,
+    this.isContinuation = false,
+    this.isDisputeRelearn = false,
+    this.originalClassSessionId,
   });
 
   factory ClassSessionSlotDto.fromJson(Map<String, dynamic> j) =>
@@ -19,6 +22,9 @@ class ClassSessionSlotDto {
         scheduledEnd: j['scheduledEnd'] as String? ?? '',
         status: j['status'] as String? ?? '',
         price: (j['classSessionPrice'] as num?)?.toDouble(),
+        isContinuation: j['isContinuation'] as bool? ?? false,
+        isDisputeRelearn: j['isDisputeRelearn'] as bool? ?? false,
+        originalClassSessionId: (j['originalClassSessionId'] as num?)?.toInt(),
       );
 
   final int classSessionId;
@@ -29,6 +35,21 @@ class ClassSessionSlotDto {
   final String scheduledEnd;
   final String status;
   final double? price;
+
+  /// Buổi phụ — học nốt phần buổi gốc bị ngắt giữa chừng.
+  final bool isContinuation;
+
+  /// Buổi học lại — sau khi hoà giải tranh chấp.
+  final bool isDisputeRelearn;
+
+  /// Buổi gốc mà buổi này bám theo.
+  final int? originalClassSessionId;
+
+  /// Buổi sinh thêm ngoài gói.
+  bool get isExtra => isContinuation || isDisputeRelearn;
+
+  /// Nhãn ngắn — cùng từ vựng với BE và web.
+  String? get linkLabel => isExtra ? 'Buổi học phụ' : null;
 
   DateTime get startDt =>
       DateTime.tryParse(scheduledStart)?.toLocal() ?? DateTime(2000);
@@ -48,6 +69,8 @@ class ClassSessionSlotDto {
 
   /// Buổi thật sự thuộc lớp. `no_show` VẪN tính
   bool get isCounted => !isLocked && state != ClassSessionState.cancelled;
+
+  bool get countsTowardPackage => isCounted && !isExtra;
 
   bool get isFinished =>
       state == ClassSessionState.completed ||
@@ -70,6 +93,64 @@ class ClassSessionSlotDto {
       DateTime.now().isAfter(startDt.subtract(const Duration(minutes: 15)));
 }
 
+/// Một buổi thuộc gói kèm các buổi phụ / học lại sinh ra từ nó.
+class ClassSessionChain {
+  const ClassSessionChain({required this.parent, required this.children});
+
+  final ClassSessionSlotDto parent;
+
+  /// Buổi phụ / buổi học lại bám theo `parent`, đã sắp theo thời gian.
+  final List<ClassSessionSlotDto> children;
+}
+
+/// Gom buổi phụ / buổi học lại về đúng buổi GỐC thuộc gói, để danh sách buổi
+/// không còn là một dãy phẳng lẫn lộn buổi mua và buổi bù.
+List<ClassSessionChain> groupClassSessionChains(
+  List<ClassSessionSlotDto> sessions,
+) {
+  final sorted = [...sessions]..sort((a, b) => a.startDt.compareTo(b.startDt));
+
+  final byId = {for (final s in sorted) s.classSessionId: s};
+  final roots = <int, List<ClassSessionSlotDto>>{};
+  for (final s in sorted) {
+    if (!s.isExtra) roots[s.classSessionId] = <ClassSessionSlotDto>[];
+  }
+
+  /// Lần ngược chuỗi tới buổi thuộc gói; null nếu không tới được.
+  int? findRoot(ClassSessionSlotDto session) {
+    // `seen` chặn lặp vô hạn nếu dữ liệu bị trỏ vòng (A → B → A).
+    final seen = <int>{session.classSessionId};
+    ClassSessionSlotDto? current = session;
+
+    while (current?.originalClassSessionId != null) {
+      final parentId = current!.originalClassSessionId!;
+      if (!seen.add(parentId)) return null;
+      if (roots.containsKey(parentId)) return parentId;
+      current = byId[parentId];
+    }
+    return null;
+  }
+
+  // Buổi sinh thêm không tìm được gốc (buổi gốc ngoài trang này) vẫn phải hiện
+  final orphans = <ClassSessionSlotDto>[];
+  for (final s in sorted) {
+    if (!s.isExtra) continue;
+    final rootId = findRoot(s);
+    if (rootId != null) {
+      roots[rootId]!.add(s);
+    } else {
+      orphans.add(s);
+    }
+  }
+
+  return [
+    for (final e in roots.entries)
+      ClassSessionChain(parent: byId[e.key]!, children: e.value),
+    for (final o in orphans)
+      ClassSessionChain(parent: o, children: const <ClassSessionSlotDto>[]),
+  ]..sort((a, b) => a.parent.startDt.compareTo(b.parent.startDt));
+}
+
 /// Buổi học sắp tới ở trang chủ — nguồn: GET /student/class-sessions/upcoming.
 class UpcomingSessionDto {
   const UpcomingSessionDto({
@@ -82,6 +163,11 @@ class UpcomingSessionDto {
     this.tutorName,
     this.meetingLink,
     this.checkOutTime,
+    this.isContinuation = false,
+    this.isDisputeRelearn = false,
+    this.originalClassSessionId,
+    this.skipConfirmedByBothSides = false,
+    this.hasPendingReschedule = false,
   });
 
   factory UpcomingSessionDto.fromJson(Map<String, dynamic> j) =>
@@ -95,6 +181,12 @@ class UpcomingSessionDto {
         tutorName: j['tutorName'] as String?,
         meetingLink: j['meetingLink'] as String?,
         checkOutTime: j['checkOutTime'] as String?,
+        isContinuation: j['isContinuation'] as bool? ?? false,
+        isDisputeRelearn: j['isDisputeRelearn'] as bool? ?? false,
+        originalClassSessionId: (j['originalClassSessionId'] as num?)?.toInt(),
+        skipConfirmedByBothSides:
+            j['skipConfirmedByBothSides'] as bool? ?? false,
+        hasPendingReschedule: j['hasPendingReschedule'] as bool? ?? false,
       );
 
   final int classSessionId;
@@ -108,6 +200,27 @@ class UpcomingSessionDto {
 
   /// Có giờ check-out = BE đã đóng phòng vĩnh viễn.
   final String? checkOutTime;
+
+  /// Buổi phụ — sinh ra để học nốt phần buổi gốc bị ngắt giữa chừng.
+  final bool isContinuation;
+
+  /// Buổi học lại — sinh ra sau khi hoà giải tranh chấp.
+  final bool isDisputeRelearn;
+
+  /// Buổi gốc mà buổi phụ / học lại này bám theo.
+  final int? originalClassSessionId;
+
+  /// Buổi phụ đã được hai bên đồng ý bỏ
+  final bool skipConfirmedByBothSides;
+
+  /// Đang có đề xuất đổi lịch chờ phản hồi.
+  final bool hasPendingReschedule;
+
+  /// Buổi sinh thêm ngoài gói (buổi phụ hoặc buổi học lại).
+  bool get isExtra => isContinuation || isDisputeRelearn;
+
+  /// Nhãn ngắn cho buổi sinh thêm — cùng từ vựng với BE và web.
+  String? get linkLabel => isExtra ? 'Buổi học phụ' : null;
 
   DateTime get startDt =>
       DateTime.tryParse(scheduledStart)?.toLocal() ?? DateTime(2000);
@@ -153,8 +266,13 @@ class UpcomingSessionDto {
   }
 
   /// Phòng mở theo TRẠNG THÁI buổi học, không theo khung giờ (khớp BE).
+  ///
+  /// Khớp `canJoinLiveSession` bên web: buổi phụ mà hai bên đã đồng ý bỏ vẫn
+  /// mang status `scheduled` cho tới khi gia sư nộp báo cáo buổi gốc, nhưng
+  /// coi như đã chết — cho vào là học sinh ngồi chờ một phòng không ai tới.
   bool get canJoinNow {
     if (checkOutDt != null || isOverdue) return false;
+    if (skipConfirmedByBothSides) return false;
     return state == ClassSessionState.scheduled ||
         state == ClassSessionState.inProgress;
   }
@@ -308,9 +426,14 @@ class StudentClassDto {
     'completed' || 'closed' => ClassStatusType.completed,
     'cancelled' ||
     'cancelled_noshow' ||
+    'cancelled_by_staff' ||
+    'cancelled_by_dispute' ||
     'refunded' => ClassStatusType.cancelled,
     'payment_timeout' => ClassStatusType.expired,
-    _ => ClassStatusType.unpaid,
+    _ =>
+      status.toLowerCase().startsWith('cancelled')
+          ? ClassStatusType.cancelled
+          : ClassStatusType.unpaid,
   };
 
   /// Chưa trả phí buổi đầu thì CHƯA phải lớp học — chỉ là đơn chờ thanh toán.
@@ -337,13 +460,14 @@ class StudentClassDto {
   /// Mẫu số tiến độ = số buổi ĐÃ TRẢ TIỀN. Mới đặt cọc thì chỉ buổi đầu được
   /// mở nên là "x/1"; trả nốt đợt 2 mới mở hết và thành "x/N".
   int get countedSessions {
-    final unlocked = sessions.where((s) => s.isCounted).length;
+    final unlocked = sessions.where((s) => s.countsTowardPackage).length;
     if (unlocked > 0) return unlocked;
     // Chưa có buổi nào mở khoá: đang chờ cọc → chưa tính buổi nào.
     return sessions.any((s) => s.isLocked) ? 0 : (totalSessions ?? 0);
   }
 
-  int get doneSessions => sessions.where((s) => s.isFinished).length;
+  int get doneSessions =>
+      sessions.where((s) => s.countsTowardPackage && s.isFinished).length;
 
   int get remainingSessions =>
       (countedSessions - doneSessions).clamp(0, countedSessions);
@@ -477,7 +601,10 @@ class StudyProgressSummary {
       }
       total += c.countedSessions;
       done += c.doneSessions;
-      minutes += c.doneSessions * (c.durationMinutes ?? 60);
+      // Giờ đã học đếm CẢ buổi phụ
+      minutes +=
+          c.sessions.where((s) => s.isCounted && s.isFinished).length *
+          (c.durationMinutes ?? 60);
       if (c.awaitingConfirmSession != null) pending++;
 
       final candidate = c.nextSession;

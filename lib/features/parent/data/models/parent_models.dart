@@ -320,8 +320,10 @@ class ParentBookingDto {
   bool get isLearning =>
       _s == 'deposit_paid' || _s == 'paid' || _s == 'ongoing';
   bool get isCompleted => _s == 'completed' || _s == 'closed';
-  bool get isClosed =>
-      _s == 'cancelled' || _s == 'cancelled_noshow' || _s == 'payment_timeout';
+
+  /// startsWith bắt cả cancelled_by_staff / cancelled_by_dispute và mọi biến
+  /// thể cancelled_* BE thêm sau này.
+  bool get isClosed => _s.startsWith('cancelled') || _s == 'payment_timeout';
 
   /// Có việc phụ huynh phải trả tiền ngay.
   bool get needsPayment => needsDeposit || needsRemaining;

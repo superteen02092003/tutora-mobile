@@ -55,27 +55,33 @@ class _HomeContent extends ConsumerStatefulWidget {
 }
 
 class _HomeContentState extends ConsumerState<_HomeContent>
-    with ScrollToTopMixin {
+    with ScrollToTopMixin, WidgetsBindingObserver {
   final _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    unawaited(
-      Future.microtask(() => ref.read(classListProvider.notifier).refresh()),
-    );
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(Future.microtask(_refresh));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       listenScrollToTop(context, 0, _scrollController);
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_refresh());
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _refresh() async {
+    if (!mounted) return;
     ref
       ..invalidate(nextSessionProvider)
       ..invalidate(solveHistoryProvider);
@@ -232,11 +238,37 @@ class _Greeting extends StatelessWidget {
 
 // Buổi học sắp tới — card chính của trang chủ
 
-class _UpcomingCard extends ConsumerWidget {
+class _UpcomingCard extends ConsumerStatefulWidget {
   const _UpcomingCard();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_UpcomingCard> createState() => _UpcomingCardState();
+}
+
+class _UpcomingCardState extends ConsumerState<_UpcomingCard> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Buổi nào là "sắp tới" đổi ngay cả khi người dùng không chạm gì: gia sư
+    // dời lịch, gia sư check-in (scheduled -> in_progress), buổi hiện tại kết
+    // thúc. Card này là nút vào phòng học nên trỏ nhầm buổi là vào sai lớp —
+    // hỏi lại server theo nhịp thay vì chờ người dùng kéo refresh.
+    _ticker = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => ref.invalidate(nextSessionProvider),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(nextSessionProvider);
 
     return Padding(
@@ -410,6 +442,9 @@ class _JoinButton extends StatelessWidget {
 
   /// Phòng luôn mở nên chỉ đổi chữ theo việc đã tới sát giờ hay chưa.
   String get _label {
+    // Nói đúng lý do bị chặn: "Phòng học đã đóng" cho một buổi mà hai bên vừa
+    // thống nhất bỏ khiến học sinh tưởng hệ thống lỗi.
+    if (session.skipConfirmedByBothSides) return 'Buổi phụ đã được bỏ';
     if (!session.canJoinNow) return 'Phòng học đã đóng';
     return session.isWithinJoinWindow ? 'Vào phòng học' : 'Vào phòng sớm';
   }

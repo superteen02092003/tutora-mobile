@@ -44,6 +44,21 @@ class ParentChannelListNotifier extends StateNotifier<ParentChannelListState> {
     }
   }
 
+  /// Xoá cuộc trò chuyện khỏi danh sách của mình. Bỏ khỏi list ngay cho mượt,
+  /// trả lại chỗ cũ nếu BE từ chối — tuyệt đối không báo "đã xoá" khi chưa xoá.
+  Future<void> deleteChannel(int channelId) async {
+    final previous = state.channels;
+    state = state.copyWith(
+      channels: previous.where((c) => c.channelId != channelId).toList(),
+    );
+    try {
+      await _ds.deleteChannel(channelId);
+    } catch (e) {
+      state = state.copyWith(channels: previous);
+      rethrow;
+    }
+  }
+
   void updateLastMessage(int channelId, String preview) {
     final updated = state.channels.map((c) {
       if (c.channelId != channelId) return c;

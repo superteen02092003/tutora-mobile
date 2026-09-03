@@ -40,6 +40,11 @@ class ChatDatasource {
         .toList();
   }
 
+  /// Xoá cuộc trò chuyện khỏi danh sách của MÌNH.
+  Future<void> deleteChannel(int channelId) async {
+    await _dio.delete<Map<String, dynamic>>('/chat/channels/$channelId');
+  }
+
   Future<List<ChatMessageDto>> getMessages(
     int channelId, {
     int page = 1,
