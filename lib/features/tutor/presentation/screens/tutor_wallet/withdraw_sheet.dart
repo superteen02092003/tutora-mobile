@@ -6,7 +6,13 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_finance_datasource.dart';
 import 'package:tutora/features/tutor/data/models/transaction_type_labels.dart';
 
-const double _minWithdrawal = 10000;
+/// Ngưỡng rút tối thiểu do admin cấu hình. Lấy từ API, không hardcode:
+/// mức thật đang là 50.000 nên số cứng 10.000 trước đây cho form qua rồi mới
+/// bị backend chặn — người dùng chỉ thấy lỗi sau khi bấm xác nhận.
+final AutoDisposeFutureProvider<double> _minWithdrawalProvider =
+    FutureProvider.autoDispose<double>((ref) {
+      return ref.read(tutorFinanceDatasourceProvider).getMinWithdrawalAmount();
+    });
 
 /// Mở bottom sheet rút tiền.
 Future<bool?> showWithdrawSheet(
@@ -47,10 +53,10 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
     return double.tryParse(digits) ?? 0;
   }
 
-  String? _validate() {
+  String? _validate(double minWithdrawal) {
     final amount = _amount;
-    if (amount < _minWithdrawal) {
-      return 'Số tiền rút tối thiểu là ${fmtMoney(_minWithdrawal)}.';
+    if (amount < minWithdrawal) {
+      return 'Số tiền rút tối thiểu là ${fmtMoney(minWithdrawal)}.';
     }
     if (amount > widget.available) {
       return 'Vượt quá số dư khả dụng (${fmtMoney(widget.available)}).';
@@ -58,8 +64,8 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
     return null;
   }
 
-  Future<void> _submit() async {
-    final err = _validate();
+  Future<void> _submit(double minWithdrawal) async {
+    final err = _validate(minWithdrawal);
     if (err != null) {
       setState(() => _error = err);
       return;
@@ -95,6 +101,10 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    // Chưa tải xong thì tạm dùng mức mặc định — chặn cuối vẫn là backend.
+    final minWithdrawal =
+        ref.watch(_minWithdrawalProvider).valueOrNull ??
+        TutorFinanceDatasource.defaultMinWithdrawal;
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
@@ -128,7 +138,8 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Số dư khả dụng: ${fmtMoney(widget.available)}',
+              'Số dư khả dụng: ${fmtMoney(widget.available)} · '
+              'tối thiểu ${fmtMoney(minWithdrawal)}',
               style: GoogleFonts.inter(fontSize: 12.5, color: AppColors.ink4),
             ),
             const SizedBox(height: 16),
@@ -231,7 +242,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
             ),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: _submitting ? null : _submit,
+              onTap: _submitting ? null : () => _submit(minWithdrawal),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),

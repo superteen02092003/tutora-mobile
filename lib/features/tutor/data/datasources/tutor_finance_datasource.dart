@@ -153,6 +153,20 @@ class TutorFinanceDatasource {
     return const [];
   }
 
+  /// Ngưỡng rút tối thiểu admin đang áp dụng.
+  static const double defaultMinWithdrawal = 10000;
+
+  Future<double> getMinWithdrawalAmount() async {
+    try {
+      final res = await _dio.get<dynamic>('/withdrawal-limit');
+      final content = _content(res);
+      final min = (content['minWithdrawalAmount'] as num?)?.toDouble();
+      return (min != null && min > 0) ? min : defaultMinWithdrawal;
+    } catch (_) {
+      return defaultMinWithdrawal;
+    }
+  }
+
   Future<TutorWithdrawal> createWithdrawal(double amount) async {
     try {
       final res = await _dio.post<dynamic>(

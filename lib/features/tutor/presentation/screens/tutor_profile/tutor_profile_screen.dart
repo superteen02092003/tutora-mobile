@@ -17,8 +17,8 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_feedbacks/tutor
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_change_password_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_personal_info_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_bank_account_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_transactions_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_withdrawals_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -159,11 +159,11 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
                       ),
                     ),
                     SettingRow(
-                      icon: Icons.south_rounded,
-                      label: 'Lịch sử rút tiền',
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Lịch sử giao dịch',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const TutorWithdrawalsScreen(),
+                          builder: (_) => const TutorTransactionsScreen(),
                         ),
                       ),
                     ),

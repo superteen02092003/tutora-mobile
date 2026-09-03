@@ -238,6 +238,16 @@ class TutorWithdrawal {
 
   /// Mã giao dịch phía ngân hàng, hiện trên biên lai.
   final String? bankTransactionCode;
+
+  /// "Vietcombank · 1028712322", hoặc null khi BE không trả thông tin.
+  String? get bankLine {
+    final parts = [
+      bankName,
+      accountNumber,
+    ].where((e) => e != null && e.trim().isNotEmpty).cast<String>();
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   final DateTime? paidAt;
   final String? proofImageUrl;
 }
