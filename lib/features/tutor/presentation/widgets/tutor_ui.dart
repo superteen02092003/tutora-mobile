@@ -543,6 +543,7 @@ class TutorEmptyState extends StatelessWidget {
   const TutorEmptyState({
     required this.icon,
     required this.message,
+    this.imageAsset,
     this.actionLabel,
     this.onAction,
     super.key,
@@ -550,16 +551,33 @@ class TutorEmptyState extends StatelessWidget {
 
   final IconData icon;
   final String message;
+
+  /// Minh hoạ thay cho [icon] khi màn hình có ảnh riêng. Vẫn giữ [icon] làm
+  /// dự phòng: thiếu file ảnh thì hiện icon chứ không để khoảng trống.
+  final String? imageAsset;
+
   final String? actionLabel;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
+    final asset = imageAsset;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       child: Column(
         children: [
-          Icon(icon, size: 30, color: TutorColors.ink4),
+          if (asset != null)
+            Image.asset(
+              asset,
+              width: 240,
+              height: 240,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) =>
+                  Icon(icon, size: 30, color: TutorColors.ink4),
+            )
+          else
+            Icon(icon, size: 30, color: TutorColors.ink4),
           const SizedBox(height: 12),
           Text(
             message,

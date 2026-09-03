@@ -18,6 +18,18 @@ class ChatDatasource {
   bool _joining = false;
 
   // REST
+  /// Tổng tin nhắn chưa đọc trên mọi kênh — nguồn cho badge tab Chat.
+  Future<int> getUnreadTotal() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/chat/unread-total-count',
+    );
+    final content = res.data?['content'];
+    if (content is Map<String, dynamic>) {
+      return content['unreadCount'] as int? ?? 0;
+    }
+    return 0;
+  }
+
   Future<List<ChatChannelDto>> getChannels() async {
     final res = await _dio.get<Map<String, dynamic>>('/chat/channels');
     final body = res.data ?? {};
@@ -26,6 +38,11 @@ class ChatDatasource {
         .whereType<Map<String, dynamic>>()
         .map(ChatChannelDto.fromJson)
         .toList();
+  }
+
+  /// Xoá cuộc trò chuyện khỏi danh sách của MÌNH.
+  Future<void> deleteChannel(int channelId) async {
+    await _dio.delete<Map<String, dynamic>>('/chat/channels/$channelId');
   }
 
   Future<List<ChatMessageDto>> getMessages(
@@ -39,10 +56,11 @@ class ChatDatasource {
     );
     final body = res.data ?? {};
     final list = (body['content'] as List<dynamic>?) ?? [];
-    return list
+    final messages = list
         .whereType<Map<String, dynamic>>()
         .map(ChatMessageDto.fromJson)
         .toList();
+    return sortChatMessagesChronologically(messages);
   }
 
   Future<ChatMessageDto> sendMessage(int channelId, String content) async {
@@ -81,12 +99,15 @@ class ChatDatasource {
       return _hub!;
     }
 
-    final token = await _storage.getAccessToken() ?? '';
     _hub = HubConnectionBuilder()
         .withUrl(
           '$appBaseUrl/hubs/chat',
           options: HttpConnectionOptions(
-            accessTokenFactory: () async => token,
+            // Đọc lại token mỗi lần kết nối, KHÔNG chụp vào biến: access
+            // token sống 60 phút, mà `withAutomaticReconnect` có thể nối lại
+            // sau đó — chụp sẵn thì lần nối lại nào cũng cầm token hết hạn.
+            accessTokenFactory: () async =>
+                await _storage.getAccessToken() ?? '',
             transport: HttpTransportType.WebSockets,
             skipNegotiation: true,
           ),
@@ -160,6 +181,26 @@ class ChatDatasource {
     await _hub?.stop();
     _hub = null;
   }
+}
+
+List<ChatMessageDto> sortChatMessagesChronologically(
+  Iterable<ChatMessageDto> messages,
+) {
+  final sorted = messages.toList()
+    ..sort((a, b) {
+      final byTime = _messageTime(a.createdAt).compareTo(
+        _messageTime(b.createdAt),
+      );
+      return byTime != 0 ? byTime : a.messageId.compareTo(b.messageId);
+    });
+  return sorted;
+}
+
+DateTime _messageTime(String value) {
+  if (value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  final safe = value.contains('Z') || value.contains('+') ? value : '${value}Z';
+  return DateTime.tryParse(safe) ??
+      DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 }
 
 final chatDatasourceProvider = Provider<ChatDatasource>((ref) {

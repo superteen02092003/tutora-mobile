@@ -131,7 +131,7 @@ class ParentConfirmBanner extends StatelessWidget {
                       'Cần xác nhận $count buổi học',
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 16.5,
                         color: AppColors.ink,
                       ),
                     ),
@@ -177,48 +177,81 @@ class ParentQuickStats extends StatelessWidget {
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          for (var i = 0; i < items.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.paper,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      items[i].$1,
-                      style: GoogleFonts.bricolageGrotesque(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 24,
-                        color: AppColors.ink,
-                      ),
+      // IntrinsicHeight: 3 thẻ cao bằng nhau để ảnh nền phủ kín, không lệch.
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.paper,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Stack(
+                      children: [
+                        // Ảnh tạm: neo đáy vì phần giữa gần trắng, không thấy gì.
+                        Positioned.fill(
+                          child: Opacity(
+                            opacity: 0.45,
+                            child: Image.asset(
+                              'assets/images/common/backgroud_tutor.png',
+                              fit: BoxFit.cover,
+                              alignment: Alignment.bottomCenter,
+                              cacheWidth: 360,
+                              errorBuilder: (_, _, _) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ),
+                        ),
+                        // Lớp trắng phía trên ảnh giữ số/nhãn luôn đọc rõ.
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color: AppColors.paper.withValues(alpha: 0.55),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                items[i].$1,
+                                style: GoogleFonts.bricolageGrotesque(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 27,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                items[i].$2,
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  // ink3 thay ink4: nền ảnh làm chữ nhạt bị chìm.
+                                  color: AppColors.ink3,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      items[i].$2,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: AppColors.ink4,
-                        height: 1.25,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -261,7 +294,7 @@ class ParentQuickAccessGrid extends StatelessWidget {
                     Text(
                       item.$2,
                       style: GoogleFonts.inter(
-                        fontSize: 13,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: AppColors.ink2,
                       ),
@@ -301,7 +334,7 @@ class ParentNoLessonCta extends StatelessWidget {
               'Con chưa có lịch học nào',
               style: GoogleFonts.bricolageGrotesque(
                 fontWeight: FontWeight.w700,
-                fontSize: 16,
+                fontSize: 18,
                 color: AppColors.ink,
               ),
             ),
@@ -310,7 +343,7 @@ class ParentNoLessonCta extends StatelessWidget {
               'Bắt đầu hành trình học tập cùng gia sư phù hợp ngay hôm nay.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 13.5,
+                fontSize: 15,
                 color: AppColors.ink3,
                 height: 1.5,
               ),
@@ -331,7 +364,7 @@ class ParentNoLessonCta extends StatelessWidget {
                 child: Text(
                   'Tìm gia sư cho con',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

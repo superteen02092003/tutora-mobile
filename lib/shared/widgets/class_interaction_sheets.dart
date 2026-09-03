@@ -8,6 +8,8 @@ import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
 Future<bool?> showFeedbackSheet(BuildContext context, int classSessionId) {
   return showModalBottomSheet<bool>(
     context: context,
+    // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _FeedbackSheet(classSessionId: classSessionId),
@@ -18,6 +20,8 @@ Future<bool?> showFeedbackSheet(BuildContext context, int classSessionId) {
 Future<bool?> showDisputeSheet(BuildContext context, int classSessionId) {
   return showModalBottomSheet<bool>(
     context: context,
+    // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => _DisputeSheet(classSessionId: classSessionId),

@@ -62,7 +62,8 @@ final gradeLevelsProvider = FutureProvider<List<GradeLevelDto>>((ref) async {
 
 final parentStudentsProvider =
     StateNotifierProvider<ParentStudentsNotifier, ParentStudentsState>((ref) {
-      return ParentStudentsNotifier(ref.watch(parentDatasourceProvider));
+      // read, không watch: watch làm notifier dựng lại và mất state đã load.
+      return ParentStudentsNotifier(ref.read(parentDatasourceProvider));
     });
 
 class ParentDashboardState {
@@ -143,8 +144,71 @@ class ParentDashboardNotifier extends StateNotifier<ParentDashboardState> {
 
 final parentDashboardProvider =
     StateNotifierProvider<ParentDashboardNotifier, ParentDashboardState>((ref) {
-      return ParentDashboardNotifier(ref.watch(parentDatasourceProvider));
+      return ParentDashboardNotifier(ref.read(parentDatasourceProvider));
     });
+
+/// Buổi kế tiếp
+final FutureProviderFamily<ParentLessonDto?, String> parentNextLessonProvider =
+    FutureProvider.family<ParentLessonDto?, String>((
+      ref,
+      studentId,
+    ) async {
+      return ref
+          .watch(parentDatasourceProvider)
+          .getNextLesson(
+            studentId: studentId.isEmpty ? null : studentId,
+          );
+    });
+
+/// Số liệu Home theo con đang chọn (chuỗi rỗng = mọi con).
+final FutureProviderFamily<ParentHomeStatsDto, String> parentHomeStatsProvider =
+    FutureProvider.family<ParentHomeStatsDto, String>((
+      ref,
+      studentId,
+    ) async {
+      return ref
+          .watch(parentDatasourceProvider)
+          .getHomeStats(
+            studentId: studentId.isEmpty ? null : studentId,
+          );
+    });
+
+/// Lớp học còn hiệu lực của con đang chọn
+final FutureProviderFamily<List<StudentClassDto>, String>
+parentChildClassesProvider =
+    FutureProvider.family<List<StudentClassDto>, String>((
+      ref,
+      studentId,
+    ) async {
+      final res = await ref
+          .watch(parentDatasourceProvider)
+          .getChildClasses(studentId: studentId, excludeClosed: true);
+      return res.items;
+    });
+
+/// Buổi học của con đang chọn
+final FutureProviderFamily<List<ParentLessonDto>, String>
+parentChildLessonsProvider = FutureProvider.family<List<ParentLessonDto>, String>((
+  ref,
+  studentId,
+) async {
+  final now = DateTime.now();
+  final weekStart = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).subtract(Duration(days: now.weekday - 1));
+  String fmt(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  return ref
+      .watch(parentDatasourceProvider)
+      .getChildLessons(
+        studentId: studentId,
+        startDate: fmt(weekStart),
+        endDate: fmt(weekStart.add(const Duration(days: 6))),
+      );
+});
 
 class ParentStudentBookingsState {
   const ParentStudentBookingsState({
@@ -173,11 +237,15 @@ class ParentStudentBookingsNotifier
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     try {
-      final list = await _ds.getBookings(
-        studentId: studentId,
-        status: 'active',
+      // BE bỏ qua studentId ở /parent/bookings nên phải lọc ở client. Trước đây
+      // lọc status 'active' — giá trị BE không có nên danh sách luôn rỗng.
+      final page = await _ds.getBookings(pageSize: 50);
+      state = state.copyWith(
+        bookings: page.items
+            .where((b) => b.studentId == studentId && !b.isClosed)
+            .toList(),
+        isLoading: false,
       );
-      state = state.copyWith(bookings: list, isLoading: false);
     } catch (_) {
       state = state.copyWith(isLoading: false);
     }
@@ -196,27 +264,49 @@ parentStudentBookingsProvider =
       String
     >((ref, studentId) {
       return ParentStudentBookingsNotifier(
-        ref.watch(parentDatasourceProvider),
+        ref.read(parentDatasourceProvider),
         studentId,
       );
     });
 
 // All bookings (for bookings list page)
 
+/// Chi tiết một đơn đặt lịch.
+final AutoDisposeFutureProviderFamily<ParentBookingDto, int>
+parentBookingDetailProvider = FutureProvider.autoDispose
+    .family<ParentBookingDto, int>((ref, bookingId) {
+      return ref.watch(parentDatasourceProvider).getBookingDetail(bookingId);
+    });
+
 class ParentAllBookingsState {
   const ParentAllBookingsState({
     this.bookings = const [],
     this.isLoading = false,
+    this.page = 1,
+    this.totalPages = 1,
+    this.error,
   });
   final List<ParentBookingDto> bookings;
   final bool isLoading;
+  final int page;
+  final int totalPages;
+  final String? error;
+
+  bool get hasMore => page < totalPages;
 
   ParentAllBookingsState copyWith({
     List<ParentBookingDto>? bookings,
     bool? isLoading,
+    int? page,
+    int? totalPages,
+    String? error,
+    bool clearError = false,
   }) => ParentAllBookingsState(
     bookings: bookings ?? this.bookings,
     isLoading: isLoading ?? this.isLoading,
+    page: page ?? this.page,
+    totalPages: totalPages ?? this.totalPages,
+    error: clearError ? null : (error ?? this.error),
   );
 }
 
@@ -227,15 +317,28 @@ class ParentAllBookingsNotifier extends StateNotifier<ParentAllBookingsState> {
   final ParentDatasource _ds;
   final String? status;
 
-  Future<void> load() async {
-    state = state.copyWith(isLoading: true);
+  Future<void> load({bool reset = true}) async {
+    if (state.isLoading) return;
+    final nextPage = reset ? 1 : state.page + 1;
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final list = await _ds.getBookings(status: status);
-      state = state.copyWith(bookings: list, isLoading: false);
-    } catch (_) {
-      state = state.copyWith(isLoading: false);
+      final res = await _ds.getBookings(page: nextPage, status: status);
+      state = state.copyWith(
+        bookings: reset ? res.items : [...state.bookings, ...res.items],
+        page: res.currentPage,
+        totalPages: res.totalPages,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      );
     }
   }
+
+  Future<void> loadMore() =>
+      state.hasMore ? load(reset: false) : Future.value();
 }
 
 final StateNotifierProviderFamily<
@@ -250,7 +353,7 @@ parentAllBookingsProvider =
       String?
     >((ref, status) {
       return ParentAllBookingsNotifier(
-        ref.watch(parentDatasourceProvider),
+        ref.read(parentDatasourceProvider),
         status,
       );
     });

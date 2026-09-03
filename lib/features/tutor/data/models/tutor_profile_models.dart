@@ -45,7 +45,6 @@ class TutorSelfProfileDto {
     required this.headline,
     required this.bio,
     required this.teachingMode,
-    required this.isAcceptingBookings,
   });
 
   factory TutorSelfProfileDto.fromJson(Map<String, dynamic> json) {
@@ -54,16 +53,12 @@ class TutorSelfProfileDto {
       headline: c['headline'] as String? ?? '',
       bio: c['bio'] as String? ?? '',
       teachingMode: c['teachingMode'] as String? ?? '',
-      isAcceptingBookings: c['isAcceptingBookings'] as bool? ?? true,
     );
   }
 
   final String headline;
   final String bio;
   final String teachingMode;
-
-  /// Còn nhận yêu cầu đặt lịch mới hay đang tạm dừng.
-  final bool isAcceptingBookings;
 }
 
 class UpdateTutorUserRequest {
@@ -352,9 +347,11 @@ class PricingSectionDto extends VerificationSectionDto {
 }
 
 // PUT /api/tutor-verification/{id}/tutor-profile/introduction
+/// PUT /api/tutors/{id}/profile/introduction — UpdateTutorIntroductionRequest.
 class UpdateIntroductionRequest {
   const UpdateIntroductionRequest({
     required this.bio,
+    required this.degree,
     required this.education,
     required this.experience,
     this.gpa,
@@ -363,6 +360,7 @@ class UpdateIntroductionRequest {
 
   Map<String, dynamic> toJson() => {
     'bio': bio,
+    'degree': degree,
     'education': education,
     'experience': experience,
     if (gpa != null) 'gpa': gpa,
@@ -370,27 +368,68 @@ class UpdateIntroductionRequest {
   };
 
   final String bio;
+
+  /// Học vị — tách khỏi [education] từ khi BE thêm trường riêng.
+  final String degree;
+
+  /// Chỉ tên trường, không kèm học vị.
   final String education;
   final String experience;
   final double? gpa;
   final double? gpaScale;
 }
 
-// PUT /api/tutor-verification/{id}/tutor-profile/pricing
-class UpdatePricingRequest {
-  const UpdatePricingRequest({
-    required this.hourlyRate,
-    required this.allowPriceNegotiation,
-    this.trialLessonPrice,
+/// Giá theo từng cặp môn × khối lớp — TutorSubjectGradePriceRequest.
+class TutorSubjectGradePrice {
+  const TutorSubjectGradePrice({
+    required this.subjectId,
+    required this.gradeLevelId,
+    required this.pricePerHour,
+    this.durationMinutesPerSession = 60,
+    this.sessionsPerWeek = 1,
+    this.currency,
+    this.isActive = true,
   });
 
+  factory TutorSubjectGradePrice.fromJson(Map<String, dynamic> j) =>
+      TutorSubjectGradePrice(
+        subjectId: j['subjectId'] as int? ?? 0,
+        gradeLevelId: j['gradeLevelId'] as int? ?? 0,
+        pricePerHour: (j['pricePerHour'] as num?)?.toDouble() ?? 0,
+        durationMinutesPerSession: j['durationMinutesPerSession'] as int? ?? 60,
+        sessionsPerWeek: j['sessionsPerWeek'] as int? ?? 1,
+        currency: j['currency'] as String?,
+        isActive: j['isActive'] as bool? ?? true,
+      );
+
   Map<String, dynamic> toJson() => {
-    'hourlyRate': hourlyRate,
-    'allowPriceNegotiation': allowPriceNegotiation,
-    'trialLessonPrice': trialLessonPrice,
+    'subjectId': subjectId,
+    'gradeLevelId': gradeLevelId,
+    'pricePerHour': pricePerHour,
+    'durationMinutesPerSession': durationMinutesPerSession,
+    'sessionsPerWeek': sessionsPerWeek,
+    if (currency != null) 'currency': currency,
+    'isActive': isActive,
   };
 
-  final int hourlyRate;
-  final bool allowPriceNegotiation;
-  final int? trialLessonPrice;
+  final int subjectId;
+  final int gradeLevelId;
+  final double pricePerHour;
+  final int durationMinutesPerSession;
+  final int sessionsPerWeek;
+  final String? currency;
+  final bool isActive;
+}
+
+/// PUT /api/tutors/{id}/profile/pricing — UpdateTutorPricingRequest.
+///
+/// BE đã bỏ mô hình `hourlyRate` phẳng: giá luôn theo cặp môn × khối lớp.
+class UpdatePricingRequest {
+  const UpdatePricingRequest({required this.subjectGradePrices});
+
+  Map<String, dynamic> toJson() => {
+    'subjectGradePrices': subjectGradePrices.map((e) => e.toJson()).toList(),
+  };
+
+  final List<TutorSubjectGradePrice> subjectGradePrices;
 }

@@ -11,14 +11,54 @@ import 'package:tutora/features/tutor/presentation/widgets/tutor_transaction_lis
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
-const _transactionTypes = <(String, String?)>[
-  ('Tất cả', null),
-  ('Thu nhập buổi học', 'EscrowRelease'),
-  ('Tiền giữ escrow', 'EscrowCredit'),
-  ('Hoàn escrow', 'EscrowReversal'),
-  ('Rút tiền', 'Withdrawal'),
-  ('Hoàn tiền', 'Refund'),
-  ('Điều chỉnh số dư', 'AdminCredit'),
+/// Một mục trong bộ lọc: nhãn hiển thị + giá trị `type` gửi lên API
+/// (null = không lọc).
+typedef _TypeOption = (String, String?);
+
+/// Bộ lọc phủ ĐỦ `TransactionType` của backend, gom nhóm như bên web.
+///
+/// Thiếu một loại thì giao dịch loại đó không lọc ra được — người dùng tưởng
+/// hệ thống mất giao dịch. Nhóm escrow tách riêng vì chúng KHÔNG đổi số dư
+/// khả dụng, đứng lẫn với giao dịch ví thì gây hiểu nhầm là đã nhận tiền.
+const _transactionGroups = <(String, List<_TypeOption>)>[
+  ('', [('Tất cả giao dịch', null)]),
+  (
+    'GIAO DỊCH VÍ',
+    [
+      ('Thu nhập buổi học', 'EscrowRelease'),
+      ('Rút tiền', 'Withdrawal'),
+      ('Hoàn tiền', 'Refund'),
+      ('Nạp tiền', 'Deposit'),
+      ('Điều chỉnh số dư', 'AdminCredit'),
+    ],
+  ),
+  (
+    'THANH TOÁN',
+    [
+      ('Thanh toán', 'Payment'),
+      ('Thanh toán buổi đầu', 'DepositPayment'),
+      ('Thanh toán còn lại', 'RemainingPayment'),
+    ],
+  ),
+  (
+    'NGÂN HÀNG',
+    [
+      ('Chuyển tiền ngân hàng', 'BankTransfer'),
+      ('Xác minh ngân hàng', 'BankVerification'),
+    ],
+  ),
+  (
+    'ESCROW · chưa đổi số dư ví',
+    [
+      ('Tiền giữ escrow', 'EscrowCredit'),
+      ('Hoàn escrow', 'EscrowReversal'),
+    ],
+  ),
+];
+
+/// Phẳng hoá để tra nhãn theo `type` khi hiện thanh lọc đang bật.
+final _transactionTypes = <_TypeOption>[
+  for (final group in _transactionGroups) ...group.$2,
 ];
 
 class TutorTransactionsScreen extends ConsumerStatefulWidget {
@@ -330,17 +370,30 @@ class _TransactionFilterSheetState extends State<_TransactionFilterSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              'LOẠI GIAO DỊCH',
-              style: TutorType.caption(),
-            ),
-            const SizedBox(height: 6),
-            for (final item in _transactionTypes)
-              _FilterOption(
-                label: item.$1,
-                selected: _type == item.$2,
-                onTap: () => setState(() => _type = item.$2),
+            // Danh sách loại dài (12 mục) nên phải cuộn được, nếu không sheet
+            // cao quá màn hình và nút "Áp dụng" bị đẩy khuất.
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final group in _transactionGroups) ...[
+                      if (group.$1.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(group.$1, style: TutorType.caption()),
+                        const SizedBox(height: 2),
+                      ],
+                      for (final item in group.$2)
+                        _FilterOption(
+                          label: item.$1,
+                          selected: _type == item.$2,
+                          onTap: () => setState(() => _type = item.$2),
+                        ),
+                    ],
+                  ],
+                ),
               ),
+            ),
             const Divider(height: 24, color: TutorColors.line),
             Text(
               'THỜI GIAN',

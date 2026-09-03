@@ -7,6 +7,7 @@ import 'package:tutora/features/tutor/data/models/transaction_type_labels.dart';
 import 'package:tutora/features/tutor/data/models/tutor_finance_models.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_transaction_list.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
+import 'package:tutora/shared/providers/auth_headers_provider.dart';
 import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
 class TutorTransactionDetailScreen extends ConsumerWidget {
@@ -16,6 +17,10 @@ class TutorTransactionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authHeaders =
+        ref.watch(authImageHeadersProvider).valueOrNull ??
+        const <String, String>{};
+
     return Scaffold(
       backgroundColor: TutorColors.bg,
       body: SafeArea(
@@ -57,8 +62,10 @@ class TutorTransactionDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(
                             TutorSurface.radius,
                           ),
+                          // Ảnh private cần JWT — xem authImageHeadersProvider.
                           child: Image.network(
                             detail.proofImageUrl!,
+                            headers: authHeaders,
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) => Container(
                               height: 120,

@@ -945,6 +945,8 @@ class _BottomActionsState extends ConsumerState<_BottomActions> {
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+        useRootNavigator: true,
         backgroundColor: AppColors.paper,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),

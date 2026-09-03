@@ -88,6 +88,8 @@ class _BookingRequestCardState extends ConsumerState<BookingRequestCard> {
   Future<void> _decline() async {
     final reason = await showModalBottomSheet<String>(
       context: context,
+      // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _DeclineSheet(),

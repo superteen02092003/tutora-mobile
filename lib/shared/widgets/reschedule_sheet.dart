@@ -4,18 +4,16 @@ import 'package:intl/intl.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/features/student/data/models/lesson_models.dart';
-import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
+import 'package:tutora/shared/widgets/class_widgets.dart';
 
 /// Kết quả người dùng chọn ở sheet đổi lịch.
 typedef RescheduleChoice = ({DateTime start, String? reason});
 
+/// Khoảng cách tối thiểu giữa giờ đề xuất và hiện tại
+const kRescheduleCutoff = Duration(hours: 2);
+
 /// Sheet đề xuất dời một buổi học sang giờ khác.
-///
-/// Chỉ thu thập lựa chọn rồi trả về cho màn gọi; việc gọi API do màn đó lo, để
-/// sheet không phụ thuộc vào provider nào.
-/// [currentStart]/[currentEnd] là khung giờ hiện tại của buổi học — nhận trực
-/// tiếp thay vì cả DTO để gọi được từ cả chi tiết buổi lẫn card trong lớp học.
+
 Future<RescheduleChoice?> showRescheduleSheet(
   BuildContext context, {
   required DateTime currentStart,
@@ -23,6 +21,8 @@ Future<RescheduleChoice?> showRescheduleSheet(
 }) {
   return showModalBottomSheet<RescheduleChoice>(
     context: context,
+    // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+    useRootNavigator: true,
     backgroundColor: AppColors.paper,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
@@ -73,9 +73,7 @@ class _RescheduleSheetState extends State<_RescheduleSheet> {
 
   /// Giờ mới phải ở tương lai và cách hiện tại tối thiểu bằng cutoff của BE —
   /// đề xuất sát giờ sẽ bị từ chối ở server.
-  bool get _valid => _picked.isAfter(
-    DateTime.now().add(StudentLessonDetailDto.rescheduleCutoff),
-  );
+  bool get _valid => _picked.isAfter(DateTime.now().add(kRescheduleCutoff));
 
   @override
   Widget build(BuildContext context) {

@@ -32,7 +32,7 @@ class TutorTransactionList extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 1,
-                indent: horizontalPadding + 52,
+                indent: horizontalPadding + 48,
                 endIndent: horizontalPadding,
                 color: TutorColors.line,
               ),
@@ -58,7 +58,7 @@ class TutorTransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final credit = transaction.isCredit;
-    final tone = credit ? TutorColors.success : TutorColors.danger;
+    final tone = credit ? TutorColors.success : TutorColors.primary;
 
     return Material(
       color: TutorColors.surface,
@@ -67,23 +67,20 @@ class TutorTransactionRow extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding,
-            vertical: 14,
+            vertical: 13,
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.11),
-                  shape: BoxShape.circle,
-                ),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
                 child: Icon(
                   credit
-                      ? Icons.south_west_rounded
-                      : Icons.arrow_outward_rounded,
-                  size: 18,
-                  color: tone,
+                      ? Icons.arrow_downward_rounded
+                      : Icons.arrow_upward_rounded,
+                  size: 19,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: 12),
@@ -97,32 +94,20 @@ class TutorTransactionRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (transaction.description.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        transaction.description,
-                        style: TutorType.caption(color: TutorColors.ink3),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    const SizedBox(height: 2),
+                    Text(
+                      tutorTransactionTimeLabel(transaction.createdAt),
+                      style: TutorType.caption(color: TutorColors.ink3),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    fmtSignedMoney(transaction.amount),
-                    style: TutorType.rowTitle(color: tone),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    tutorTransactionDateLabel(transaction.createdAt),
-                    style: TutorType.caption(),
-                  ),
-                ],
+              Text(
+                fmtSignedMoney(transaction.amount),
+                style: TutorType.rowTitle(color: tone),
               ),
             ],
           ),
@@ -132,24 +117,11 @@ class TutorTransactionRow extends StatelessWidget {
   }
 }
 
-String tutorTransactionDateLabel(DateTime? value) {
-  if (value == null) return 'Không rõ ngày';
-  final date = value.toLocal();
-  final now = DateTime.now();
-  final days = DateTime(
-    now.year,
-    now.month,
-    now.day,
-  ).difference(DateTime(date.year, date.month, date.day)).inDays;
-  if (days == 0) return 'Hôm nay';
-  if (days == 1) return 'Hôm qua';
-  return '${date.day}/${date.month}/${date.year}';
-}
-
 String tutorTransactionTimeLabel(DateTime? value) {
   if (value == null) return 'Không rõ thời gian';
   final date = value.toLocal();
   final hour = date.hour.toString().padLeft(2, '0');
   final minute = date.minute.toString().padLeft(2, '0');
-  return '$hour:$minute · ${date.day}/${date.month}/${date.year}';
+  // Ngày trước, giờ sau
+  return '${date.day}/${date.month}/${date.year} · $hour:$minute';
 }

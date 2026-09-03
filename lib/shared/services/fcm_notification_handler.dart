@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -8,6 +10,9 @@ import 'package:tutora/core/network/interceptors/auth_interceptor.dart'
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
+import 'package:tutora/features/parent/presentation/providers/parent_chat_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
+import 'package:tutora/shared/providers/notification_provider.dart';
 
 const _androidChannel = AndroidNotificationChannel(
   'high_importance_channel',
@@ -18,10 +23,13 @@ const _androidChannel = AndroidNotificationChannel(
 );
 
 class FcmNotificationHandler {
-  FcmNotificationHandler(this._storage, this._navigatorKey);
+  FcmNotificationHandler(this._storage, this._navigatorKey, this._onPush);
 
   final SecureStorageService _storage;
   final GlobalKey<NavigatorState> _navigatorKey;
+
+  /// Gọi mỗi khi có push tới lúc app đang mở.
+  final void Function(String type, String? referenceId) _onPush;
 
   final _localNotifications = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
@@ -69,6 +77,8 @@ class FcmNotificationHandler {
 
     final type = message.data['type'] as String?;
     final referenceId = message.data['referenceId'] as String?;
+
+    if (type != null) _onPush(type, referenceId);
     final payload = (type != null && referenceId != null)
         ? '$type|$referenceId'
         : null;
@@ -169,5 +179,16 @@ final fcmNotificationHandlerProvider = Provider<FcmNotificationHandler>((ref) {
   return FcmNotificationHandler(
     ref.read(secureStorageProvider),
     ref.read(navigatorKeyProvider),
+    (type, referenceId) => refreshOnPush(ref, type),
   );
 });
+
+/// Nạp lại dữ liệu liên quan tới loại push vừa nhận.
+void refreshOnPush(Ref ref, String type) {
+  ref.invalidate(unreadCountProvider);
+
+  if (type == 'message') {
+    unawaited(ref.read(channelListProvider.notifier).load());
+    unawaited(ref.read(parentChannelListProvider.notifier).load());
+  }
+}

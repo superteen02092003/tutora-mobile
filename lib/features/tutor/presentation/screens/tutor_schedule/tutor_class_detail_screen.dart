@@ -33,18 +33,14 @@ class TutorClassDetailScreen extends ConsumerWidget {
     final async = ref.watch(classSessionsProvider(item.bookingId));
     final sessions = async.value ?? const <TutorLessonDto>[];
 
-    // Gom theo tháng, giữ thứ tự thời gian.
-    final groups = <String, List<TutorLessonDto>>{};
-    for (final s in sessions) {
-      final dt = s.startDt;
+    // Buổi phụ / học lại gom về đúng buổi gốc, rồi mới chia theo tháng.
+    final chains = groupSessionChains(sessions);
+    final groups = <String, List<SessionChain>>{};
+    for (final c in chains) {
+      final dt = c.parent.startDt;
       if (dt == null) continue;
-      groups.putIfAbsent('${dt.year}-${dt.month}', () => []).add(s);
+      groups.putIfAbsent('${dt.year}-${dt.month}', () => []).add(c);
     }
-
-    // Đếm từ danh sách thật vì totalSessions của /tutor/classes đang lệch.
-    final counted = sessions.length;
-    // pending_confirmation tính là hoàn thành dù tiền chưa giải ngân.
-    final done = sessions.where((l) => l.isFinished).length;
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
@@ -58,8 +54,8 @@ class TutorClassDetailScreen extends ConsumerWidget {
               padding: TutorSurface.screenPadding,
               child: _ClassSummary(
                 item: item,
-                total: sessions.isEmpty ? item.totalSessions : counted,
-                completed: sessions.isEmpty ? item.completedSessions : done,
+                total: item.totalWithReserved,
+                completed: item.completedSessions,
               ),
             ),
             const SizedBox(height: TutorSurface.sectionGap),
@@ -82,18 +78,31 @@ class TutorClassDetailScreen extends ConsumerWidget {
                   ),
                 ),
               )
-            else
+            else ...[
               for (final entry in groups.entries) ...[
-                TutorSectionHeader(
-                  title: _monthLabel(entry.key),
+                Padding(
                   padding: const EdgeInsets.fromLTRB(
                     TutorSurface.gutter,
                     0,
                     TutorSurface.gutter,
                     10,
                   ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _monthLabel(entry.key),
+                          style: TutorType.sectionTitle(),
+                        ),
+                      ),
+                      if (entry.value.any(
+                        (c) => c.parent.isExtra || c.children.isNotEmpty,
+                      ))
+                        const _ExtraSessionLegend(),
+                    ],
+                  ),
                 ),
-                for (final s in entry.value)
+                for (final chain in entry.value) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       TutorSurface.gutter,
@@ -101,10 +110,23 @@ class TutorClassDetailScreen extends ConsumerWidget {
                       TutorSurface.gutter,
                       TutorSurface.rowGap,
                     ),
-                    child: _SessionRow(lesson: s),
+                    child: _SessionRow(lesson: chain.parent),
                   ),
+                  // Buổi phụ / học lại thụt vào để thấy rõ nó bám buổi trên
+                  for (final child in chain.children)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        TutorSurface.gutter + 24,
+                        0,
+                        TutorSurface.gutter,
+                        TutorSurface.rowGap,
+                      ),
+                      child: _SessionRow(lesson: child, nested: true),
+                    ),
+                ],
                 const SizedBox(height: 8),
               ],
+            ],
           ],
         ),
       ),
@@ -220,11 +242,44 @@ class _ClassSummary extends StatelessWidget {
   }
 }
 
+/// Chú thích màu ribbon của buổi học phụ.
+class _ExtraSessionLegend extends StatelessWidget {
+  const _ExtraSessionLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 3,
+          height: 12,
+          decoration: BoxDecoration(
+            color: TutorColors.heroTeal,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Buổi học phụ',
+          style: TutorType.caption(color: TutorColors.ink2),
+        ),
+      ],
+    );
+  }
+}
+
 /// Một buổi trong lớp — ngày bên trái, trạng thái bên phải.
 class _SessionRow extends StatelessWidget {
-  const _SessionRow({required this.lesson});
+  const _SessionRow({required this.lesson, this.nested = false});
 
   final TutorLessonDto lesson;
+
+  /// Buổi con trong chuỗ
+  final bool nested;
+
+  /// Màu ribbon cho buổi sinh thêm.
+  static const Color _extraTone = TutorColors.heroTeal;
 
   @override
   Widget build(BuildContext context) {
@@ -241,10 +296,33 @@ class _SessionRow extends StatelessWidget {
         'Vắng mặt',
         'Buổi không diễn ra do có bên vắng',
       ),
+      // Buổi huỷ vẫn nằm trong danh sách để đủ số buổi của gói
+      _ when lesson.isCancelled => (
+        TutorColors.ink4,
+        'Đã huỷ',
+        'Buổi này đã bị huỷ, không diễn ra',
+      ),
+      _ when lesson.isReserved => (
+        TutorColors.ink3,
+        'Giữ chỗ',
+        'Chưa mở, chờ phụ huynh thanh toán đợt 2',
+      ),
+      // Buổi phụ hai bên đã thống nhất bỏ: còn status scheduled nhưng không
+      // vào lớp nữa, nên phải tách khỏi nhánh "Sắp tới" bên dưới.
+      _ when lesson.isContinuation && lesson.skipConfirmedByBothSides => (
+        TutorColors.ink3,
+        'Đã bỏ',
+        'Hai bên đồng ý bỏ buổi phụ này',
+      ),
+      _ when lesson.isInterrupted => (
+        TutorColors.warning,
+        'Học dở dang',
+        'Buổi bị ngắt giữa chừng, chờ buổi phụ hoặc gửi báo cáo',
+      ),
       _ when lesson.isAwaitingReport => (
         TutorColors.warning,
         'Chờ báo cáo',
-        'Bạn chưa gửi báo cáo — tiền chưa chạy tiếp',
+        'Bạn chưa gửi báo cáo cho buổi này',
       ),
       _ when lesson.isPendingConfirmation => (
         TutorColors.warning,
@@ -266,7 +344,8 @@ class _SessionRow extends StatelessWidget {
 
     return TutorCard(
       padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-      shadow: TutorColors.cardShadow,
+      color: nested ? TutorColors.surfaceSunken : null,
+      shadow: nested ? null : TutorColors.cardShadow,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => TutorBookingDetailScreen(lesson: lesson),
@@ -274,6 +353,17 @@ class _SessionRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (lesson.linkLabel != null) ...[
+            Container(
+              width: 3,
+              height: 46,
+              decoration: BoxDecoration(
+                color: _extraTone,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 9),
+          ],
           // Ô ngày: mốc neo mắt khi lướt danh sách nhiều buổi.
           Container(
             width: 46,

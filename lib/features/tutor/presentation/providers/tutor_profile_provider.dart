@@ -121,29 +121,28 @@ class TutorProfileNotifier extends StateNotifier<TutorProfileState> {
     }
   }
 
-  Future<bool> updateIntroduction(UpdateIntroductionRequest request) async {
-    state = state.copyWith(isSaving: true);
-    try {
-      await _ds.updateIntroduction(request);
-      final progress = await _ds.getVerificationProgress();
-      state = state.copyWith(isSaving: false, progress: progress);
-      return true;
-    } catch (_) {
-      state = state.copyWith(isSaving: false);
-      return false;
-    }
-  }
+  /// `pendingApproval` = hồ sơ đã duyệt trước đó nên sửa đổi phải chờ Admin
+  /// xác nhận lại; `ok` = false là lỗi mạng/validate.
+  Future<({bool ok, bool pendingApproval})> updateIntroduction(
+    UpdateIntroductionRequest request,
+  ) => _saveProfilePart(() => _ds.updateIntroduction(request));
 
-  Future<bool> updatePricing(UpdatePricingRequest request) async {
+  Future<({bool ok, bool pendingApproval})> updatePricing(
+    UpdatePricingRequest request,
+  ) => _saveProfilePart(() => _ds.updatePricing(request));
+
+  Future<({bool ok, bool pendingApproval})> _saveProfilePart(
+    Future<bool> Function() save,
+  ) async {
     state = state.copyWith(isSaving: true);
     try {
-      await _ds.updatePricing(request);
+      final pending = await save();
       final progress = await _ds.getVerificationProgress();
       state = state.copyWith(isSaving: false, progress: progress);
-      return true;
+      return (ok: true, pendingApproval: pending);
     } catch (_) {
       state = state.copyWith(isSaving: false);
-      return false;
+      return (ok: false, pendingApproval: false);
     }
   }
 
@@ -216,8 +215,14 @@ final tutorProfileProvider =
       ),
     );
 
-/// Hồ sơ nghề nghiệp gia sư — nguồn của cờ "đang nhận booking".
+/// Hồ sơ nghề nghiệp gia sư (headline, bio, hình thức dạy).
 final AutoDisposeFutureProvider<TutorSelfProfileDto> tutorSelfProfileProvider =
     FutureProvider.autoDispose<TutorSelfProfileDto>((ref) {
       return ref.read(tutorProfileDatasourceProvider).getSelfProfile();
+    });
+
+/// Cờ "đang nhận yêu cầu đặt lịch" — endpoint riêng, không nằm trong hồ sơ.
+final AutoDisposeFutureProvider<bool> tutorAcceptingBookingsProvider =
+    FutureProvider.autoDispose<bool>((ref) {
+      return ref.read(tutorProfileDatasourceProvider).getAcceptingBookings();
     });

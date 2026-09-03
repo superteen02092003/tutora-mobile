@@ -27,12 +27,13 @@ class SessionLobbyHub {
   }
 
   Future<void> connect(int classSessionId) async {
-    final token = await _storage.getAccessToken() ?? '';
     final hub = HubConnectionBuilder()
         .withUrl(
           '$appBaseUrl/hubs/session-lobby',
           options: HttpConnectionOptions(
-            accessTokenFactory: () async => token,
+            // Đọc lại token mỗi lần kết nối — xem chú thích ở chat hub.
+            accessTokenFactory: () async =>
+                await _storage.getAccessToken() ?? '',
             transport: HttpTransportType.WebSockets,
             skipNegotiation: true,
           ),

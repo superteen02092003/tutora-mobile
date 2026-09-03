@@ -26,6 +26,33 @@ void main() {
     expect(BookingDraftStore.read('t1'), isNull);
   });
 
+  test('luồng phụ huynh (6 bước): giữ draft ở bước Xác nhận = 4', () {
+    // Ngưỡng của học sinh là 3, dùng chung sẽ xoá oan draft bước xác nhận.
+    BookingDraftStore.save(
+      't1',
+      step: 4,
+      form: BookingForm(subjectId: 5),
+      lastResumable: 4,
+    );
+    expect(BookingDraftStore.read('t1')?.step, 4);
+  });
+
+  test('luồng phụ huynh: sang bước thanh toán = 5 thì bỏ draft', () {
+    BookingDraftStore.save(
+      't1',
+      step: 4,
+      form: BookingForm(subjectId: 5),
+      lastResumable: 4,
+    );
+    BookingDraftStore.save(
+      't1',
+      step: 5,
+      form: BookingForm(subjectId: 5),
+      lastResumable: 4,
+    );
+    expect(BookingDraftStore.read('t1'), isNull);
+  });
+
   test('draft tách theo từng gia sư', () {
     BookingDraftStore.save('t1', step: 2, form: BookingForm(subjectId: 5));
     expect(BookingDraftStore.read('t2'), isNull);

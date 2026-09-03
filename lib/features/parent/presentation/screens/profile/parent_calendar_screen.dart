@@ -8,6 +8,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 
 class ParentCalendarPage extends ConsumerStatefulWidget {
   const ParentCalendarPage({super.key});
@@ -84,177 +85,187 @@ class _ParentCalendarPageState extends ConsumerState<ParentCalendarPage> {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: AppColors.ink,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Lịch học tổng hợp'),
-        centerTitle: true,
-      ),
-      body: dash.isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.ink))
-          : ListView(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).padding.bottom + AppSpacing.xxl,
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.paper,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.line),
-                    ),
-                    child: Column(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const ParentPageHeader(title: 'Lịch học tổng hợp'),
+            Expanded(
+              child: dash.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.ink),
+                    )
+                  : ListView(
+                      padding: EdgeInsets.only(
+                        bottom:
+                            MediaQuery.of(context).padding.bottom +
+                            AppSpacing.xxl,
+                      ),
                       children: [
-                        // Month header
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: _prevMonth,
-                              icon: const Icon(
-                                Icons.chevron_left_rounded,
-                                color: AppColors.ink,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.paper,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: AppColors.line),
                             ),
-                            Expanded(
-                              child: Text(
-                                '${monthNames[_focusedMonth.month - 1]} ${_focusedMonth.year}',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.bricolageGrotesque(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _nextMonth,
-                              icon: const Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppColors.ink,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Day-of-week headers
-                        Row(
-                          children: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-                              .map(
-                                (d) => Expanded(
-                                  child: Text(
-                                    d,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.ink4,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                        const SizedBox(height: 6),
-                        // Calendar grid
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 7,
-                                mainAxisSpacing: 4,
-                              ),
-                          itemCount: startOffset + daysInMonth,
-                          itemBuilder: (context, idx) {
-                            if (idx < startOffset) return const SizedBox();
-                            final day = idx - startOffset + 1;
-                            final date = DateTime(
-                              _focusedMonth.year,
-                              _focusedMonth.month,
-                              day,
-                            );
-                            final isToday =
-                                date.year == selectedDay.year &&
-                                date.month == selectedDay.month &&
-                                date.day == selectedDay.day;
-                            final lessons = _lessonsForDay(allLessons, date);
-                            final hasLesson = lessons.isNotEmpty;
-
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            child: Column(
                               children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isToday
-                                        ? AppColors.ink
-                                        : Colors.transparent,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    '$day',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: isToday
-                                          ? AppColors.cream
-                                          : AppColors.ink,
+                                // Month header
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: _prevMonth,
+                                      icon: const Icon(
+                                        Icons.chevron_left_rounded,
+                                        color: AppColors.ink,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 32,
+                                        minHeight: 32,
+                                      ),
                                     ),
-                                  ),
+                                    Expanded(
+                                      child: Text(
+                                        '${monthNames[_focusedMonth.month - 1]} ${_focusedMonth.year}',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.bricolageGrotesque(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.ink,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: _nextMonth,
+                                      icon: const Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: AppColors.ink,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 32,
+                                        minHeight: 32,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                if (hasLesson)
-                                  Container(
-                                    width: 4,
-                                    height: 4,
-                                    margin: const EdgeInsets.only(top: 2),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppColors.oxblood,
-                                    ),
-                                  ),
+                                const SizedBox(height: 8),
+                                // Day-of-week headers
+                                Row(
+                                  children:
+                                      ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+                                          .map(
+                                            (d) => Expanded(
+                                              child: Text(
+                                                d,
+                                                textAlign: TextAlign.center,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.ink4,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                ),
+                                const SizedBox(height: 6),
+                                // Calendar grid
+                                GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 7,
+                                        mainAxisSpacing: 4,
+                                      ),
+                                  itemCount: startOffset + daysInMonth,
+                                  itemBuilder: (context, idx) {
+                                    if (idx < startOffset) {
+                                      return const SizedBox();
+                                    }
+                                    final day = idx - startOffset + 1;
+                                    final date = DateTime(
+                                      _focusedMonth.year,
+                                      _focusedMonth.month,
+                                      day,
+                                    );
+                                    final isToday =
+                                        date.year == selectedDay.year &&
+                                        date.month == selectedDay.month &&
+                                        date.day == selectedDay.day;
+                                    final lessons = _lessonsForDay(
+                                      allLessons,
+                                      date,
+                                    );
+                                    final hasLesson = lessons.isNotEmpty;
+
+                                    return Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: isToday
+                                                ? AppColors.ink
+                                                : Colors.transparent,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '$day',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isToday
+                                                  ? AppColors.cream
+                                                  : AppColors.ink,
+                                            ),
+                                          ),
+                                        ),
+                                        if (hasLesson)
+                                          Container(
+                                            width: 4,
+                                            height: 4,
+                                            margin: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: AppColors.oxblood,
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
                               ],
-                            );
-                          },
+                            ),
+                          ),
                         ),
+
+                        const _SectionHeader('Tất cả buổi học trong tuần'),
+                        if (allLessons.isEmpty)
+                          const _EmptyState(
+                            icon: Icons.event_busy_outlined,
+                            message: 'Không có buổi học nào trong tuần này',
+                          )
+                        else
+                          ...allLessons.map(
+                            (l) => _CalendarLessonRow(lesson: l),
+                          ),
                       ],
                     ),
-                  ),
-                ),
-
-                const _SectionHeader('Tất cả buổi học trong tuần'),
-                if (allLessons.isEmpty)
-                  const _EmptyState(
-                    icon: Icons.event_busy_outlined,
-                    message: 'Không có buổi học nào trong tuần này',
-                  )
-                else
-                  ...allLessons.map((l) => _CalendarLessonRow(lesson: l)),
-              ],
             ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -8,6 +8,8 @@ class TutorFinanceSummary {
     required this.totalBalance,
     required this.totalEarned,
     required this.pendingSettlement,
+    required this.hasActiveDispute,
+    required this.disputedAmount,
     this.lastWithdrawalAt,
   });
 
@@ -18,6 +20,8 @@ class TutorFinanceSummary {
         totalBalance: (j['totalBalance'] as num?)?.toDouble() ?? 0,
         totalEarned: (j['totalEarned'] as num?)?.toDouble() ?? 0,
         pendingSettlement: (j['pendingSettlement'] as num?)?.toDouble() ?? 0,
+        hasActiveDispute: j['hasActiveDispute'] as bool? ?? false,
+        disputedAmount: (j['disputedAmount'] as num?)?.toDouble() ?? 0,
         lastWithdrawalAt: _dt(j['lastWithdrawalAt']),
       );
 
@@ -33,6 +37,12 @@ class TutorFinanceSummary {
 
   /// Tiền của các buổi đã hoàn tất nhưng chưa giải ngân.
   final double pendingSettlement;
+
+  /// Đang có tranh chấp chưa đóng — phần tiền liên quan bị giữ lại.
+  final bool hasActiveDispute;
+
+  /// Số tiền đang bị giữ vì tranh chấp, nằm trong [frozenBalance].
+  final double disputedAmount;
   final DateTime? lastWithdrawalAt;
 }
 
@@ -182,9 +192,11 @@ class TutorWithdrawal {
     this.accountHolderName,
     this.requestedAt,
     this.processedAt,
+    this.claimedAt,
     this.completionNote,
     this.rejectionReason,
     this.transactionId,
+    this.bankTransactionCode,
     this.paidAt,
     this.proofImageUrl,
   });
@@ -198,9 +210,11 @@ class TutorWithdrawal {
     accountHolderName: j['accountHolderName'] as String?,
     requestedAt: _dt(j['requestedAt']),
     processedAt: _dt(j['processedAt']),
+    claimedAt: _dt(j['claimedAt']),
     completionNote: j['completionNote'] as String?,
     rejectionReason: j['rejectionReason'] as String?,
     transactionId: j['transactionId'] as String?,
+    bankTransactionCode: j['bankTransactionCode'] as String?,
     paidAt: _dt(j['paidAt']),
     proofImageUrl: j['proofImageUrl'] as String?,
   );
@@ -215,9 +229,25 @@ class TutorWithdrawal {
   final String? accountHolderName;
   final DateTime? requestedAt;
   final DateTime? processedAt;
+
+  /// Giờ nhân viên nhận xử lý yêu cầu.
+  final DateTime? claimedAt;
   final String? completionNote;
   final String? rejectionReason;
   final String? transactionId;
+
+  /// Mã giao dịch phía ngân hàng, hiện trên biên lai.
+  final String? bankTransactionCode;
+
+  /// "Vietcombank · 1028712322", hoặc null khi BE không trả thông tin.
+  String? get bankLine {
+    final parts = [
+      bankName,
+      accountNumber,
+    ].where((e) => e != null && e.trim().isNotEmpty).cast<String>();
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   final DateTime? paidAt;
   final String? proofImageUrl;
 }

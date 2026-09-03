@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
+import 'package:tutora/shared/widgets/user_avatar.dart';
 
 class ParentChildAvatarStrip extends StatefulWidget {
   const ParentChildAvatarStrip({
@@ -16,6 +17,9 @@ class ParentChildAvatarStrip extends StatefulWidget {
     this.selectedSubject,
     this.selectedTutor,
     this.onDark = false,
+    this.showNotif = true,
+    this.showSelectedInfo = true,
+    this.showAddChild = true,
     super.key,
   });
 
@@ -28,6 +32,13 @@ class ParentChildAvatarStrip extends StatefulWidget {
   final String? selectedSubject;
   final String? selectedTutor;
   final bool onDark;
+  final bool showNotif;
+
+  /// Khối tên con + môn đang học dưới dải chip — Home cần, các tab khác không.
+  final bool showSelectedInfo;
+
+  /// Nút "Thêm con" chỉ thuộc Home; màn khác chỉ để chọn con đang xem.
+  final bool showAddChild;
 
   @override
   State<ParentChildAvatarStrip> createState() => _ParentChildAvatarStripState();
@@ -39,37 +50,53 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
 
   final _scrollController = ScrollController();
 
+  /// Màu chữ/icon theo nền: Home có panel tối, các tab khác nền kem.
+  Color get _fg => widget.onDark ? Colors.white : AppColors.ink;
+  Color get _fgMuted =>
+      widget.onDark ? Colors.white.withValues(alpha: 0.6) : AppColors.ink3;
+
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _centerOn(int index) {
+  /// Chỉ cuộn khi chip nằm ngoài vùng thấy — không kéo về giữa, vì danh sách con
+  /// phải đứng căn trái.
+  void _revealIfNeeded(int index) {
     if (!_scrollController.hasClients) return;
-    final viewport = _scrollController.position.viewportDimension;
-    final target =
-        _horizontalPadding + index * _chipWidth + _chipWidth / 2 - viewport / 2;
+    final chipStart = _horizontalPadding + index * _chipWidth;
+    final chipEnd = chipStart + _chipWidth;
+    final viewStart = _scrollController.offset;
+    final viewEnd = viewStart + _scrollController.position.viewportDimension;
+
+    final target = chipStart < viewStart
+        ? chipStart - _horizontalPadding
+        : chipEnd > viewEnd
+        ? chipEnd - _scrollController.position.viewportDimension
+        : null;
+    if (target == null) return;
+
     unawaited(
       _scrollController.animateTo(
         target.clamp(0, _scrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
       ),
     );
   }
 
   void _onSelect(int index, String studentId) {
     widget.onSelect(studentId);
-    _centerOn(index);
+    _revealIfNeeded(index);
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
-      return const SizedBox(
+      return SizedBox(
         height: 140,
-        child: Center(child: CircularProgressIndicator(color: Colors.white)),
+        child: Center(child: CircularProgressIndicator(color: _fg)),
       );
     }
 
@@ -98,58 +125,71 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                     0,
                   ),
                   children: [
-                    _AddChildChip(onTap: widget.onAddChild),
+                    if (widget.showAddChild)
+                      _AddChildChip(
+                        onTap: widget.onAddChild,
+                        onDark: widget.onDark,
+                      ),
                     for (var i = 0; i < widget.students.length; i++)
                       _ChildAvatarChip(
                         student: widget.students[i],
                         selected:
                             widget.students[i].studentId == widget.selectedId,
-                        onTap: () => _onSelect(i, widget.students[i].studentId),
+                        // +1 khi có nút Thêm con đứng trước, để tính vị trí cuộn.
+                        onTap: () => _onSelect(
+                          widget.showAddChild ? i + 1 : i,
+                          widget.students[i].studentId,
+                        ),
+                        onDark: widget.onDark,
                       ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 10, 20, 0),
-                child: GestureDetector(
-                  onTap: widget.onNotif,
-                  child: SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.notifications_rounded,
-                          size: 30,
-                          color: Colors.white,
-                        ),
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFFFFD166),
-                              border: Border.all(
-                                color: const Color(0xFF2F5FBF),
-                                width: 1.5,
+              if (widget.showNotif)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 10, 20, 0),
+                  child: GestureDetector(
+                    onTap: widget.onNotif,
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.notifications_rounded,
+                            size: 30,
+                            color: _fg,
+                          ),
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFFFFD166),
+                                // Viền cùng màu nền để chấm đỏ trông như nổi lên.
+                                border: Border.all(
+                                  color: widget.onDark
+                                      ? const Color(0xFF2F5FBF)
+                                      : AppColors.cream,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
         // Selected child info
-        if (selectedStudent != null) ...[
+        if (widget.showSelectedInfo && selectedStudent != null) ...[
           const SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -159,9 +199,9 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                 Text(
                   selectedStudent.fullName.toUpperCase(),
                   style: GoogleFonts.bricolageGrotesque(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: _fg,
                     letterSpacing: 0.4,
                   ),
                   maxLines: 1,
@@ -171,10 +211,10 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                 if (widget.selectedSubject != null)
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.menu_book_outlined,
                         size: 15,
-                        color: Colors.white,
+                        color: _fg,
                       ),
                       const SizedBox(width: 5),
                       Text(
@@ -183,10 +223,7 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                           if (widget.selectedTutor != null)
                             widget.selectedTutor,
                         ].join(' · '),
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          color: Colors.white,
-                        ),
+                        style: GoogleFonts.inter(fontSize: 16.5, color: _fg),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -196,9 +233,9 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
                   Text(
                     'Chưa có lớp học',
                     style: GoogleFonts.inter(
-                      fontSize: 15,
+                      fontSize: 16.5,
                       fontStyle: FontStyle.italic,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: _fgMuted,
                     ),
                   ),
               ],
@@ -210,9 +247,6 @@ class _ParentChildAvatarStripState extends State<ParentChildAvatarStrip> {
   }
 }
 
-String _cartoonAvatarUrl(String studentId) =>
-    'https://api.dicebear.com/9.x/adventurer/png?seed=$studentId';
-
 const _avatarBg = Color(0xFFD8E8F5);
 
 class _ChildAvatarChip extends StatelessWidget {
@@ -220,20 +254,16 @@ class _ChildAvatarChip extends StatelessWidget {
     required this.student,
     required this.selected,
     required this.onTap,
+    required this.onDark,
   });
 
   final ParentStudentDto student;
   final bool selected;
   final VoidCallback onTap;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
-    final initials = student.fullName
-        .trim()
-        .split(' ')
-        .map((w) => w.isNotEmpty ? w[0] : '')
-        .take(2)
-        .join();
     final shortName =
         student.fullName.trim().split(' ').lastOrNull ?? student.fullName;
 
@@ -252,14 +282,10 @@ class _ChildAvatarChip extends StatelessWidget {
               ? BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
                   color: _avatarBg,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  border: Border.all(
+                    color: onDark ? Colors.white : const Color(0xFF2B5BBF),
+                    width: 2.5,
+                  ),
                 )
               : const BoxDecoration(
                   borderRadius: BorderRadius.all(Radius.circular(18)),
@@ -267,31 +293,21 @@ class _ChildAvatarChip extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  color: _avatarBg,
-                  alignment: Alignment.center,
-                  child: Image.network(
-                    (student.avatarUrl != null && student.avatarUrl!.isNotEmpty)
-                        ? student.avatarUrl!
-                        : _cartoonAvatarUrl(student.studentId),
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _Initials(initials),
-                  ),
-                ),
+              // Tròn vì ảnh avatar con thường không có nền trong suốt.
+              UserAvatar(
+                name: student.fullName,
+                imageUrl: student.avatarUrl,
+                size: 52,
               ),
               const SizedBox(height: 6),
               Text(
                 shortName.toUpperCase(),
                 style: GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: 13.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: selected ? const Color(0xFF2B5BBF) : Colors.white,
+                  color: selected
+                      ? const Color(0xFF2B5BBF)
+                      : (onDark ? Colors.white : AppColors.ink2),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -305,26 +321,10 @@ class _ChildAvatarChip extends StatelessWidget {
   }
 }
 
-class _Initials extends StatelessWidget {
-  const _Initials(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: AppColors.ink2,
-      ),
-    );
-  }
-}
-
 class _AddChildChip extends StatelessWidget {
-  const _AddChildChip({required this.onTap});
+  const _AddChildChip({required this.onTap, required this.onDark});
   final VoidCallback onTap;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
@@ -343,24 +343,28 @@ class _AddChildChip extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: onDark
+                        ? Colors.white.withValues(alpha: 0.6)
+                        : AppColors.line,
                     width: 1.6,
                   ),
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.add_rounded,
                   size: 24,
-                  color: Colors.white,
+                  color: onDark ? Colors.white : AppColors.ink3,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 'Thêm con',
                 style: GoogleFonts.inter(
-                  fontSize: 11,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: onDark
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : AppColors.ink3,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

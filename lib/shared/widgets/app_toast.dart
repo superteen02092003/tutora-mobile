@@ -44,7 +44,7 @@ class AppToast {
     );
 
     _current = entry;
-    Overlay.of(context).insert(entry);
+    Overlay.of(context, rootOverlay: true).insert(entry);
   }
 }
 

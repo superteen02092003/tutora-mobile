@@ -84,6 +84,8 @@ class _StudentChatPageState extends ConsumerState<StudentChatPage> {
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+        useRootNavigator: true,
         backgroundColor: Colors.transparent,
         builder: (_) => ChatMoreMenu(convoName: widget.channel.otherUserName),
       ),

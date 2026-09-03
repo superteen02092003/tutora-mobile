@@ -14,16 +14,19 @@ class BookingDraftStore {
 
   static final Map<String, BookingDraft> _drafts = {};
 
-  /// Bước 4 (Thanh toán) đã tạo booking trên BE nên không khôi phục.
+  /// Bước cuối còn khôi phục được của luồng học sinh (5 bước): bước sau nó là Thanh toán
   static const lastResumableStep = 3;
 
   static void save(
     String tutorId, {
     required int step,
     required BookingForm form,
+    // Luồng phụ huynh có thêm bước "Hình thức" nên bước xác nhận lùi xuống 4 —
+    // dùng chung hằng số của học sinh sẽ xoá oan draft ở bước xác nhận.
+    int lastResumable = lastResumableStep,
   }) {
     // Đã sang bước thanh toán thì bỏ draft — booking đã nằm ở BE.
-    if (step > lastResumableStep) {
+    if (step > lastResumable) {
       _drafts.remove(tutorId);
       return;
     }

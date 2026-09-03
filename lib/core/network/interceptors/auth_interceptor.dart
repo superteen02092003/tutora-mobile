@@ -39,8 +39,9 @@ class AuthInterceptor extends Interceptor {
 
     final storage = _ref.read(secureStorageProvider);
     final refreshToken = await storage.getRefreshToken();
+    final staleAccess = await storage.getAccessToken();
 
-    if (refreshToken == null) {
+    if (refreshToken == null || staleAccess == null) {
       await _handleAuthFailure(storage, handler, err);
       return;
     }
@@ -71,9 +72,17 @@ class AuthInterceptor extends Interceptor {
         ),
       );
 
+      // `baseUrl` của request gốc ĐÃ chứa `/api`, nên path ở đây không lặp
+      // lại tiền tố. Route cũng là `tokens` (số nhiều) — bản cũ gọi
+      // `/api/token/refresh` trên baseUrl đó thành `/api/api/token/refresh`,
+      // ăn 404, nên refresh CHƯA BAO GIỜ chạy: mọi lần access token hết hạn
+      // đều rơi thẳng xuống nhánh xoá token và đá về màn đăng nhập.
       final response = await refreshDio.post<Map<String, dynamic>>(
-        '/api/token/refresh',
-        data: {'refreshToken': refreshToken},
+        '/tokens/refresh',
+        data: {
+          'accessToken': staleAccess,
+          'refreshToken': refreshToken,
+        },
       );
 
       final content = response.data?['content'] as Map<String, dynamic>?;
@@ -113,6 +122,10 @@ class AuthInterceptor extends Interceptor {
           ...options.headers,
           'Authorization': 'Bearer $token',
         },
+        // Giữ nguyên kiểu dữ liệu của request gốc: retry một lệnh upload
+        // (multipart) hay tải file mà rơi về mặc định JSON là hỏng payload.
+        contentType: options.contentType,
+        responseType: options.responseType,
       ),
     );
   }

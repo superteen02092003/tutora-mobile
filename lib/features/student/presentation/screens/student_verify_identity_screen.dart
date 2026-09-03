@@ -35,6 +35,8 @@ class _StudentVerifyIdentityPageState
   Future<void> _pick({required bool front}) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _SourceSheet(),
     );

@@ -61,6 +61,8 @@ class _TutorDisputeDetailScreenState
   Future<void> _openResponseSheet(TutorDisputeDetailDto dispute) async {
     final text = await showModalBottomSheet<String>(
       context: context,
+      // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _ResponseSheet(initial: dispute.tutorResponse ?? ''),

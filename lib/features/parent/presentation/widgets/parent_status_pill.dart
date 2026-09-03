@@ -22,17 +22,36 @@ class ParentStatusPill extends StatelessWidget {
               const Color(0xFFE0E7DF),
               AppColors.green,
             ),
-            'checkedin' => (
+            'in_progress' => (
               'Đang học',
               const Color(0xFFFBE4D8),
               AppColors.oxblood,
+            ),
+            'pending_confirmation' => (
+              'Chờ xác nhận',
+              const Color(0xFFF0E3CA),
+              const Color(0xFF5C3A1A),
             ),
             'scheduled' => (
               'Đã lên lịch',
               const Color(0xFFF1ECE0),
               AppColors.ink3,
             ),
-            'cancelled' || 'noshow' => (
+            'reserved' => (
+              'Chờ gia sư nhận',
+              const Color(0xFFF0E3CA),
+              const Color(0xFF5C3A1A),
+            ),
+            'disputed' => (
+              'Tranh chấp',
+              const Color(0xFFFBE4D8),
+              AppColors.oxblood,
+            ),
+            'no_show' => ('Vắng mặt', const Color(0xFFF1ECE0), AppColors.ink4),
+            'cancelled' ||
+            'cancelled_noshow' ||
+            'cancelled_by_staff' ||
+            'cancelled_by_dispute' => (
               'Đã huỷ',
               const Color(0xFFF1ECE0),
               AppColors.ink4,

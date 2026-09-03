@@ -5,6 +5,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/parent/data/datasources/parent_profile_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class ParentChangePasswordScreen extends ConsumerStatefulWidget {
@@ -74,84 +75,83 @@ class _ParentChangePasswordScreenState
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: AppColors.ink,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Bảo mật & Mật khẩu'),
-        centerTitle: true,
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(20, 24, 20, bottomPad + 40),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
           children: [
-            _PasswordField(
-              label: 'Mật khẩu hiện tại',
-              controller: _oldCtrl,
-              show: _showOld,
-              onToggle: () => setState(() => _showOld = !_showOld),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Không được để trống' : null,
-            ),
-            const SizedBox(height: 16),
-            _PasswordField(
-              label: 'Mật khẩu mới',
-              controller: _newCtrl,
-              show: _showNew,
-              onToggle: () => setState(() => _showNew = !_showNew),
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Không được để trống';
-                if (v.length < 6) return 'Tối thiểu 6 ký tự';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            _PasswordField(
-              label: 'Xác nhận mật khẩu mới',
-              controller: _confirmCtrl,
-              show: _showConfirm,
-              onToggle: () => setState(() => _showConfirm = !_showConfirm),
-              validator: (v) =>
-                  v != _newCtrl.text ? 'Mật khẩu không khớp' : null,
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _saving ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.ink,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+            const ParentPageHeader(title: 'Bảo mật & Mật khẩu'),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(20, 24, 20, bottomPad + 40),
+                  children: [
+                    _PasswordField(
+                      label: 'Mật khẩu hiện tại',
+                      controller: _oldCtrl,
+                      show: _showOld,
+                      onToggle: () => setState(() => _showOld = !_showOld),
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Không được để trống'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    _PasswordField(
+                      label: 'Mật khẩu mới',
+                      controller: _newCtrl,
+                      show: _showNew,
+                      onToggle: () => setState(() => _showNew = !_showNew),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Không được để trống';
+                        }
+                        if (v.length < 6) return 'Tối thiểu 6 ký tự';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _PasswordField(
+                      label: 'Xác nhận mật khẩu mới',
+                      controller: _confirmCtrl,
+                      show: _showConfirm,
+                      onToggle: () =>
+                          setState(() => _showConfirm = !_showConfirm),
+                      validator: (v) =>
+                          v != _newCtrl.text ? 'Mật khẩu không khớp' : null,
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: _saving ? null : _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.ink,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      )
-                    : Text(
-                        'Xác nhận',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Xác nhận',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

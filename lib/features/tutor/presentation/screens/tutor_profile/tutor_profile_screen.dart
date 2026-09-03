@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/core/utils/format_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_profile_datasource.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
@@ -15,17 +14,11 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provi
 import 'package:tutora/features/tutor/presentation/screens/tutor_bookings/tutor_booking_requests_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_disputes/tutor_disputes_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_feedbacks/tutor_feedbacks_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_certificates_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_change_password_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_intro_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_personal_info_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_pricing_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_verification_progress_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_availability_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_bank_account_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_transactions_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_withdrawals_screen.dart';
-import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -36,17 +29,8 @@ class TutorProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<TutorProfileScreen> createState() => _TutorProfileScreenState();
 }
 
-class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
-    with TutorScrollToTopMixin {
+class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
   final _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      listenScrollToTop(context, 4, _scrollController);
-    });
-  }
 
   @override
   void dispose() {
@@ -115,52 +99,6 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
                         ),
                       ),
                     ),
-                    SettingRow(
-                      icon: Icons.menu_book_outlined,
-                      label: 'Giới thiệu & kinh nghiệm',
-                      sub: 'Thông tin về trình độ, kinh nghiệm giảng dạy, v.v.',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorEditIntroScreen(),
-                        ),
-                      ),
-                    ),
-                    SettingRow(
-                      icon: Icons.attach_money_rounded,
-                      label: 'Giá dạy',
-                      sub: (state.progress?.pricing.hourlyRate ?? 0) > 0
-                          ? '${fmtVnd(state.progress!.pricing.hourlyRate)} đ/giờ'
-                          : 'Chưa cập nhật',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorEditPricingScreen(),
-                        ),
-                      ),
-                    ),
-                    SettingRow(
-                      icon: Icons.workspace_premium_outlined,
-                      label: 'Chứng chỉ & bằng cấp',
-                      sub:
-                          '${state.progress?.certificates.totalCount ?? 0} chứng chỉ',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorCertificatesScreen(),
-                        ),
-                      ),
-                    ),
-                    SettingRow(
-                      icon: Icons.verified_outlined,
-                      label: 'Tiến trình xác minh',
-                      sub: (state.progress?.isComplete ?? false)
-                          ? 'Đã hoàn thành hồ sơ'
-                          : 'Chưa hoàn thiện',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              const TutorVerificationProgressScreen(),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -206,24 +144,6 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
                 ),
                 const SizedBox(height: 14),
 
-                // Lịch dạy
-                const SectionLabel('Lịch dạy'),
-                SectionCard(
-                  children: [
-                    SettingRow(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Khung giờ rảnh',
-                      sub: 'Cài đặt ngày & giờ có thể dạy',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorAvailabilityScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
                 // Tài chính
                 const SectionLabel('Tài chính'),
                 SectionCard(
@@ -239,11 +159,11 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen>
                       ),
                     ),
                     SettingRow(
-                      icon: Icons.south_rounded,
-                      label: 'Lịch sử rút tiền',
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Lịch sử giao dịch',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const TutorWithdrawalsScreen(),
+                          builder: (_) => const TutorTransactionsScreen(),
                         ),
                       ),
                     ),
@@ -702,7 +622,7 @@ class _AcceptingBookingsRowState extends ConsumerState<_AcceptingBookingsRow> {
           .read(tutorProfileDatasourceProvider)
           .setAcceptingBookings(accepting: value);
       if (!mounted) return;
-      ref.invalidate(tutorSelfProfileProvider);
+      ref.invalidate(tutorAcceptingBookingsProvider);
       AppToast.show(
         context,
         message: value
@@ -725,8 +645,8 @@ class _AcceptingBookingsRowState extends ConsumerState<_AcceptingBookingsRow> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(tutorSelfProfileProvider);
-    final accepting = profile.valueOrNull?.isAcceptingBookings ?? true;
+    final profile = ref.watch(tutorAcceptingBookingsProvider);
+    final accepting = profile.valueOrNull ?? true;
     final ready = profile.hasValue && !_saving;
 
     return SettingRow(

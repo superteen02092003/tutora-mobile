@@ -86,15 +86,15 @@ final lessonListProvider =
 
 // Calendar (flat list by date range)
 
-final FutureProviderFamily<
+final AutoDisposeFutureProviderFamily<
   StudentLessonPagedResult,
   ({String startDate, String endDate})
 >
-lessonCalendarProvider =
-    FutureProvider.family<
-      StudentLessonPagedResult,
-      ({String startDate, String endDate})
-    >((ref, args) async {
+lessonCalendarProvider = FutureProvider.autoDispose
+    .family<StudentLessonPagedResult, ({String startDate, String endDate})>((
+      ref,
+      args,
+    ) async {
       final ds = ref.read(lessonDatasourceProvider);
       return ds.getStudentCalendarLessons(
         startDate: args.startDate,
@@ -104,8 +104,12 @@ lessonCalendarProvider =
 
 // Detail
 
-final FutureProviderFamily<StudentLessonDetailDto, int> lessonDetailProvider =
-    FutureProvider.family<StudentLessonDetailDto, int>((ref, lessonId) async {
+final AutoDisposeFutureProviderFamily<StudentLessonDetailDto, int>
+lessonDetailProvider = FutureProvider.autoDispose
+    .family<StudentLessonDetailDto, int>((
+      ref,
+      lessonId,
+    ) async {
       final ds = ref.read(lessonDatasourceProvider);
       return ds.getStudentLessonDetail(lessonId);
     });
@@ -113,8 +117,12 @@ final FutureProviderFamily<StudentLessonDetailDto, int> lessonDetailProvider =
 // Recording
 
 /// Trạng thái video xem lại của buổi học. Trả null khi buổi chưa có bản ghi.
-final FutureProviderFamily<LessonRecordingDto?, int> lessonRecordingProvider =
-    FutureProvider.family<LessonRecordingDto?, int>((ref, lessonId) async {
+final AutoDisposeFutureProviderFamily<LessonRecordingDto?, int>
+lessonRecordingProvider = FutureProvider.autoDispose
+    .family<LessonRecordingDto?, int>((
+      ref,
+      lessonId,
+    ) async {
       final ds = ref.read(lessonDatasourceProvider);
       return ds.getRecording(lessonId);
     });
