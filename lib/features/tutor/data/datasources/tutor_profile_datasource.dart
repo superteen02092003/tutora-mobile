@@ -38,13 +38,27 @@ class TutorProfileDatasource {
   /// GET /api/tutors/me/profile — hồ sơ gia sư tự sửa được.
   ///
   /// Khác `/users/profile` (thông tin tài khoản chung): endpoint này mang các
-  /// trường nghề nghiệp, trong đó có cờ đang nhận booking hay không.
+  /// trường nghề nghiệp (headline, bio, teachingMode…). Cờ "đang nhận booking"
+  /// KHÔNG nằm ở đây — xem [getAcceptingBookings].
   Future<TutorSelfProfileDto> getSelfProfile() async {
     final res = await _dio.get<Map<String, dynamic>>('/tutors/me/profile');
     final content = res.data?['content'];
     return TutorSelfProfileDto.fromJson(
       content is Map<String, dynamic> ? content : (res.data ?? const {}),
     );
+  }
+
+  /// GET /api/tutors/{id}/profile/accepting-bookings
+  Future<bool> getAcceptingBookings() async {
+    final userId = await _getUserId();
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/tutors/$userId/profile/accepting-bookings',
+    );
+    final content = res.data?['content'];
+    if (content is Map<String, dynamic>) {
+      return content['accepting'] as bool? ?? true;
+    }
+    return true;
   }
 
   /// PUT /api/tutors/{id}/profile/accepting-bookings — tạm dừng / mở lại nhận
@@ -96,22 +110,33 @@ class TutorProfileDatasource {
     return TutorVerificationProgressDto.fromJson(res.data!);
   }
 
-  // PUT /api/tutors/{id}/profile/introduction
-  Future<void> updateIntroduction(UpdateIntroductionRequest request) async {
+  /// Hồ sơ đã từng được duyệt thì sửa đổi phải chờ Admin xác nhận lại
+  static bool _pendingApproval(Response<Map<String, dynamic>> res) {
+    final content = res.data?['content'];
+    return content is Map<String, dynamic> &&
+        (content['pendingApproval'] as bool? ?? false);
+  }
+
+  /// PUT /api/tutors/{id}/profile/introduction.
+  /// Trả true khi thay đổi đang chờ Admin duyệt.
+  Future<bool> updateIntroduction(UpdateIntroductionRequest request) async {
     final userId = await _getUserId();
-    await _dio.put<void>(
+    final res = await _dio.put<Map<String, dynamic>>(
       '/tutors/$userId/profile/introduction',
       data: request.toJson(),
     );
+    return _pendingApproval(res);
   }
 
-  // PUT /api/tutors/{id}/profile/pricing
-  Future<void> updatePricing(UpdatePricingRequest request) async {
+  /// PUT /api/tutors/{id}/profile/pricing.
+  /// Trả true khi thay đổi đang chờ Admin duyệt.
+  Future<bool> updatePricing(UpdatePricingRequest request) async {
     final userId = await _getUserId();
-    await _dio.put<void>(
+    final res = await _dio.put<Map<String, dynamic>>(
       '/tutors/$userId/profile/pricing',
       data: request.toJson(),
     );
+    return _pendingApproval(res);
   }
 
   // POST /api/tutors/{id}/submit-for-review

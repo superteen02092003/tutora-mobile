@@ -7,6 +7,8 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_finance_datasource.dart';
 import 'package:tutora/features/tutor/data/models/tutor_finance_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_finance_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/bank_otp_sheet.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/bank_picker_sheet.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
@@ -80,8 +82,17 @@ class _TutorBankAccountScreenState
     return ok;
   }
 
+  /// BE bắt xác thực OTP trước khi lưu/xoá; phê duyệt sống 15 phút.
+  Future<bool> _passOtp() async {
+    final phone = ref.read(tutorProfileProvider).user?.phone ?? '';
+    final ok = await showBankOtpSheet(context, phone: phone);
+    return ok ?? false;
+  }
+
   Future<void> _save() async {
     if (!_validate()) return;
+    if (!await _passOtp()) return;
+    if (!mounted) return;
     setState(() => _saving = true);
     try {
       await ref
@@ -138,6 +149,8 @@ class _TutorBankAccountScreenState
       ),
     );
     if (confirmed != true) return;
+    if (!await _passOtp()) return;
+    if (!mounted) return;
     setState(() => _deleting = true);
     try {
       await ref.read(tutorFinanceDatasourceProvider).deleteBankInfo();

@@ -45,21 +45,44 @@ class ChannelListNotifier extends StateNotifier<ChannelListState> {
     }
   }
 
-  // Update preview when a new message arrives for a channel
-  void updateLastMessage(int channelId, String preview) {
+  /// Xoá cuộc trò chuyện khỏi danh sách của mình.
+  Future<void> deleteChannel(int channelId) async {
+    final previous = state.channels;
+    state = state.copyWith(
+      channels: previous.where((c) => c.channelId != channelId).toList(),
+    );
+    try {
+      await _ds.deleteChannel(channelId);
+    } catch (e) {
+      state = state.copyWith(channels: previous);
+      rethrow;
+    }
+  }
+
+  /// Cập nhật dòng xem trước khi có tin mới.
+  void updateLastMessage(
+    int channelId,
+    String preview, {
+    bool incrementUnread = false,
+  }) {
     final updated = state.channels.map((c) {
       if (c.channelId != channelId) return c;
-      return ChatChannelDto(
-        channelId: c.channelId,
-        bookingId: c.bookingId,
-        otherUserId: c.otherUserId,
-        otherUserName: c.otherUserName,
-        otherUserAvatarUrl: c.otherUserAvatarUrl,
-        status: c.status,
+      return c.copyWith(
         lastMessageAt: DateTime.now().toUtc().toIso8601String(),
         lastMessagePreview: preview,
+        unreadCount: incrementUnread ? c.unreadCount + 1 : c.unreadCount,
       );
     }).toList()..sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+    state = state.copyWith(channels: updated);
+  }
+
+  /// Đánh dấu đã đọc tại chỗ sau khi mở kênh
+  void markChannelRead(int channelId) {
+    final updated = state.channels
+        .map(
+          (c) => c.channelId == channelId ? c.copyWith(unreadCount: 0) : c,
+        )
+        .toList();
     state = state.copyWith(channels: updated);
   }
 }
@@ -68,6 +91,12 @@ final channelListProvider =
     StateNotifierProvider<ChannelListNotifier, ChannelListState>((ref) {
       return ChannelListNotifier(ref.watch(chatDatasourceProvider));
     });
+
+/// Tổng tin nhắn chưa đọc
+final Provider<int> chatUnreadTotalProvider = Provider<int>((ref) {
+  final channels = ref.watch(channelListProvider).channels;
+  return channels.fold<int>(0, (sum, c) => sum + c.unreadCount);
+});
 
 // Chat room
 
@@ -106,14 +135,21 @@ class ChatRoomState {
 }
 
 class ChatRoomNotifier extends StateNotifier<ChatRoomState> {
-  ChatRoomNotifier(this._ds, this._channelId, this._onNewMessage)
-    : super(const ChatRoomState()) {
+  ChatRoomNotifier(
+    this._ds,
+    this._channelId,
+    this._onNewMessage,
+    this._onRead,
+  ) : super(const ChatRoomState()) {
     unawaited(_init());
   }
 
   final ChatDatasource _ds;
   final int _channelId;
   final void Function(int channelId, String preview) _onNewMessage;
+
+  /// Gọi sau khi đánh dấu đã đọc để badge tụt ngay, không đợi tải lại.
+  final void Function(int channelId) _onRead;
   Timer? _typingTimer;
 
   Future<void> _init() async {
@@ -122,6 +158,7 @@ class ChatRoomNotifier extends StateNotifier<ChatRoomState> {
       final userId = await _ds.getCurrentUserId();
       final messages = await _ds.getMessages(_channelId);
       await _ds.markRead(_channelId);
+      _onRead(_channelId);
       await _ds.joinChannel(_channelId);
 
       _ds
@@ -129,7 +166,10 @@ class ChatRoomNotifier extends StateNotifier<ChatRoomState> {
           final msg = ChatMessageDto.fromJson(data);
           if (!mounted) return;
           state = state.copyWith(messages: [...state.messages, msg]);
+          // Đang mở đúng phòng này nên tin coi như đã đọc — chỉ đổi dòng xem
+          // trước, không cộng số chưa đọc.
           _onNewMessage(_channelId, msg.content);
+          unawaited(_ds.markRead(_channelId));
         })
         ..onTyping((_) {
           if (mounted) state = state.copyWith(isTyping: true);
@@ -198,6 +238,7 @@ chatRoomProvider =
           ds,
           channelId,
           channelListNotifier.updateLastMessage,
+          channelListNotifier.markChannelRead,
         );
       },
     );

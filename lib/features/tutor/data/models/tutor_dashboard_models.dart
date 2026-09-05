@@ -85,19 +85,32 @@ class TutorWeekSessionDto {
     required this.scheduledEnd,
     required this.status,
     required this.checkOutTime,
+    this.calendarDate,
+    this.isContinuation = false,
+    this.isDisputeRelearn = false,
+    this.skipConfirmedByBothSides = false,
+    this.hasPendingReschedule = false,
   });
 
-  factory TutorWeekSessionDto.fromJson(Map<String, dynamic> j) =>
-      TutorWeekSessionDto(
-        classSessionId: j['classSessionId'] as int? ?? 0,
-        bookingId: j['bookingId'] as int?,
-        studentName: j['studentName'] as String? ?? 'Học sinh',
-        subjectName: j['subjectName'] as String? ?? '',
-        scheduledStart: j['scheduledStart'] as String? ?? '',
-        scheduledEnd: j['scheduledEnd'] as String? ?? '',
-        status: j['status'] as String? ?? 'scheduled',
-        checkOutTime: j['checkOutTime'] as String?,
-      );
+  /// [calendarDate] là khoá ngày do BE gom sẵn — xem [TutorWeekSessionDto.calendarDate].
+  factory TutorWeekSessionDto.fromJson(
+    Map<String, dynamic> j, {
+    DateTime? calendarDate,
+  }) => TutorWeekSessionDto(
+    calendarDate: calendarDate,
+    classSessionId: j['classSessionId'] as int? ?? 0,
+    bookingId: j['bookingId'] as int?,
+    studentName: j['studentName'] as String? ?? 'Học sinh',
+    subjectName: j['subjectName'] as String? ?? '',
+    scheduledStart: j['scheduledStart'] as String? ?? '',
+    scheduledEnd: j['scheduledEnd'] as String? ?? '',
+    status: j['status'] as String? ?? 'scheduled',
+    checkOutTime: j['checkOutTime'] as String?,
+    isContinuation: j['isContinuation'] as bool? ?? false,
+    isDisputeRelearn: j['isDisputeRelearn'] as bool? ?? false,
+    skipConfirmedByBothSides: j['skipConfirmedByBothSides'] as bool? ?? false,
+    hasPendingReschedule: j['hasPendingReschedule'] as bool? ?? false,
+  );
 
   final int classSessionId;
   final int? bookingId;
@@ -108,8 +121,30 @@ class TutorWeekSessionDto {
   final String status;
   final String? checkOutTime;
 
+  /// Ngày mà BE xếp buổi này vào, theo giờ VN.
+  final DateTime? calendarDate;
+
+  /// Buổi phụ học nốt phần bị ngắt của buổi gốc.
+  final bool isContinuation;
+
+  /// Buổi học lại do hoà giải tranh chấp.
+  final bool isDisputeRelearn;
+
+  /// Buổi phụ đã được hai phía đồng ý bỏ, không vào lớp được nữa.
+  final bool skipConfirmedByBothSides;
+
+  /// Có đề xuất đổi lịch đang chờ phản hồi.
+  final bool hasPendingReschedule;
+
   /// BE trả UTC tuyệt đối → phải .toLocal() mới ra giờ người dùng thấy.
   DateTime? get startLocal => DateTime.tryParse(scheduledStart)?.toLocal();
+
+  /// Ngày dùng để xếp buổi lên lịch: ưu tiên khoá ngày của BE, chỉ khi thiếu
+  /// mới lùi về giờ hẹn.
+  DateTime? get dayKey {
+    final d = calendarDate ?? startLocal;
+    return d == null ? null : DateTime(d.year, d.month, d.day);
+  }
 
   String get timeStart {
     final dt = startLocal;
@@ -121,15 +156,35 @@ class TutorWeekSessionDto {
   bool get isCompleted =>
       status == 'completed' || status == 'pending_confirmation';
 
+  /// Buổi gốc bị báo ngắt giữa chừng — chưa xong.
+  bool get isInterrupted => status == 'interrupted';
+
   bool get isCancelled =>
       status == 'cancelled' ||
       status == 'no_show' ||
       status == 'cancelled_noshow';
 
-  /// Đã rời phòng mà vẫn in_progress = đang chờ gia sư gửi báo cáo.
-  bool get needsReport => status == 'in_progress' && checkOutTime != null;
+  /// Buổi đã tạo nhưng CHƯA mở
+  bool get isReserved => status == 'reserved';
 
-  bool get isLive => status == 'in_progress' && checkOutTime == null;
+  /// Buổi đáng hiện trên lịch làm việc.
+  bool get isActionable => !isCancelled && !isReserved;
+
+  /// Đang chờ gia sư gửi báo cáo
+  bool get needsReport =>
+      (status == 'in_progress' && checkOutTime != null) || isInterrupted;
+
+  bool get isLive =>
+      status == 'in_progress' &&
+      checkOutTime == null &&
+      !skipConfirmedByBothSides;
+
+  /// Nhãn cho buổi sinh thêm ngoài gói.
+  /// đã có chip riêng, nhồi thêm chữ vào hàng ngang là tràn dòng.
+  String? get linkLabel => isExtra ? 'Buổi học phụ' : null;
+
+  /// Buổi sinh thêm ngoài gói: buổi phụ hoặc buổi học lại.
+  bool get isExtra => isContinuation || isDisputeRelearn;
 }
 
 /// Buổi đã dạy xong nhưng chưa gửi báo cáo — tiền đứng lại tới khi tutor gửi.

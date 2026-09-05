@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/parent/data/datasources/wallet_datasource.dart';
@@ -56,11 +55,13 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
     unawaited(
       showModalBottomSheet<void>(
         context: context,
+        // Phủ lên cả bottom bar của shell, không mở trong nested navigator.
+        useRootNavigator: true,
         backgroundColor: AppColors.paper,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        builder: (_) => SafeArea(
+        builder: (sheetCtx) => SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: Column(
@@ -130,14 +131,20 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                       ),
                     ),
                     onPressed: () async {
-                      Navigator.pop(context);
+                      Navigator.pop(sheetCtx);
                       final ok = await ref
                           .read(parentProfileProvider.notifier)
                           .deactivateAccount();
                       if (!mounted) return;
                       if (ok) {
+                        // Sheet đã pop ở trên; chờ hết animation rồi mới logout.
                         unawaited(
-                          ref.read(authControllerProvider.notifier).logout(),
+                          Future<void>.delayed(
+                            const Duration(milliseconds: 250),
+                            () => ref
+                                .read(authControllerProvider.notifier)
+                                .logout(),
+                          ),
                         );
                       } else {
                         AppToast.show(
@@ -160,95 +167,9 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(sheetCtx),
                     child: Text(
                       'Huỷ bỏ',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.ink3,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _confirmLogout() {
-    unawaited(
-      showModalBottomSheet<void>(
-        context: context,
-        backgroundColor: AppColors.paper,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (_) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.line,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Đăng xuất?',
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Bạn sẽ cần đăng nhập lại để sử dụng ứng dụng.',
-                  style: AppTextStyles.bodySmall(),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.oxblood,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(0, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      unawaited(
-                        ref.read(authControllerProvider.notifier).logout(),
-                      );
-                    },
-                    child: Text(
-                      'Đăng xuất',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Huỷ',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.ink3,
@@ -315,10 +236,10 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                             _SettingRow(
                               imagePath:
                                   'assets/images/parent/calendar-profile.png',
-                              label: 'Lịch học tổng hợp',
-                              sub: 'Toàn bộ lịch học của các con',
+                              label: 'Lịch sử đặt lịch',
+                              sub: 'Đơn đã đặt và trạng thái thanh toán',
                               onTap: () =>
-                                  context.push(AppRoutes.parentCalendar),
+                                  context.push(AppRoutes.parentBookings),
                             ),
                           ],
                         ),
@@ -360,7 +281,9 @@ class _ParentProfilePageState extends ConsumerState<ParentProfilePage>
                                 ),
                               ),
                             ),
-                            onPressed: _confirmLogout,
+                            onPressed: () => ref
+                                .read(authControllerProvider.notifier)
+                                .logout(),
                             icon: const Icon(Icons.logout_rounded, size: 18),
                             label: Text(
                               'Đăng xuất',

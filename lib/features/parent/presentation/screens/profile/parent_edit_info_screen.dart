@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/parent/data/datasources/parent_profile_datasource.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class ParentEditInfoScreen extends ConsumerStatefulWidget {
@@ -112,105 +113,97 @@ class _ParentEditInfoScreenState extends ConsumerState<ParentEditInfoScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: AppColors.ink,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Thông tin cá nhân'),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                children: [
-                  _AvatarPicker(
-                    avatarUrl: avatarUrl,
-                    uploading: _uploadingAvatar,
-                    onTap: _pickAvatar,
-                  ),
-                  const SizedBox(height: 24),
-                  _FormField(
-                    label: 'Họ và tên',
-                    controller: _fullNameCtrl,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Không được để trống'
-                        : null,
-                  ),
-                  const SizedBox(height: 20),
-                  _ReadOnlyField(
-                    label: 'Số điện thoại',
-                    value: phone,
-                    hint: 'Chưa cập nhật',
-                  ),
-                  const SizedBox(height: 20),
-                  _DateField(
-                    label: 'Ngày sinh',
-                    controller: _birthdateCtrl,
-                  ),
-                  const SizedBox(height: 20),
-                  _FormField(
-                    label: 'Địa chỉ',
-                    controller: _addressCtrl,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Không được để trống'
-                        : null,
-                  ),
-                  const SizedBox(height: 20),
-                  _GenderField(controller: _genderCtrl),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomPad),
-            decoration: const BoxDecoration(
-              color: AppColors.cream,
-              border: Border(
-                top: BorderSide(color: AppColors.line, width: 0.8),
-              ),
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: FilledButton(
-                onPressed: (_saving || _uploadingAvatar) ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.ink,
-                  disabledBackgroundColor: AppColors.ink3,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const ParentPageHeader(title: 'Thông tin cá nhân'),
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                  children: [
+                    _AvatarPicker(
+                      avatarUrl: avatarUrl,
+                      uploading: _uploadingAvatar,
+                      onTap: _pickAvatar,
+                    ),
+                    const SizedBox(height: 24),
+                    _FormField(
+                      label: 'Họ và tên',
+                      controller: _fullNameCtrl,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Không được để trống'
+                          : null,
+                    ),
+                    const SizedBox(height: 20),
+                    _ReadOnlyField(
+                      label: 'Số điện thoại',
+                      value: phone,
+                      hint: 'Chưa cập nhật',
+                    ),
+                    const SizedBox(height: 20),
+                    _DateField(
+                      label: 'Ngày sinh',
+                      controller: _birthdateCtrl,
+                    ),
+                    const SizedBox(height: 20),
+                    _FormField(
+                      label: 'Địa chỉ',
+                      controller: _addressCtrl,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Không được để trống'
+                          : null,
+                    ),
+                    const SizedBox(height: 20),
+                    _GenderField(controller: _genderCtrl),
+                  ],
                 ),
-                child: _saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        'Lưu thay đổi',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
               ),
             ),
-          ),
-        ],
+            Container(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomPad),
+              decoration: const BoxDecoration(
+                color: AppColors.cream,
+                border: Border(
+                  top: BorderSide(color: AppColors.line, width: 0.8),
+                ),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: FilledButton(
+                  onPressed: (_saving || _uploadingAvatar) ? null : _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.ink,
+                    disabledBackgroundColor: AppColors.ink3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Lưu thay đổi',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

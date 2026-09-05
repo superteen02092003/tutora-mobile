@@ -8,13 +8,13 @@ import 'package:tutora/features/parent/data/models/parent_models.dart';
 class ParentNextLessonCard extends StatelessWidget {
   const ParentNextLessonCard({
     required this.lesson,
-    required this.onReportAbsence,
+    required this.onReschedule,
     required this.onViewInfo,
     super.key,
   });
 
   final ParentLessonDto lesson;
-  final VoidCallback onReportAbsence;
+  final VoidCallback onReschedule;
   final VoidCallback onViewInfo;
 
   String _h(int v) => v.toString().padLeft(2, '0');
@@ -87,7 +87,7 @@ class ParentNextLessonCard extends StatelessWidget {
                         Text(
                           'BUỔI HỌC SẮP TỚI',
                           style: GoogleFonts.inter(
-                            fontSize: 10.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.14,
                             color: AppColors.gold,
@@ -106,7 +106,7 @@ class ParentNextLessonCard extends StatelessWidget {
                           child: Text(
                             _relativeLabel(start),
                             style: GoogleFonts.inter(
-                              fontSize: 10,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                             ),
@@ -134,7 +134,7 @@ class ParentNextLessonCard extends StatelessWidget {
                               Text(
                                 _months[start.month],
                                 style: GoogleFonts.inter(
-                                  fontSize: 9,
+                                  fontSize: 12,
                                   color: AppColors.gold,
                                   letterSpacing: 0.06,
                                 ),
@@ -143,7 +143,7 @@ class ParentNextLessonCard extends StatelessWidget {
                                 _h(start.day),
                                 style: GoogleFonts.bricolageGrotesque(
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 21,
+                                  fontSize: 23,
                                   color: Colors.white,
                                   height: 1,
                                 ),
@@ -162,7 +162,7 @@ class ParentNextLessonCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.bricolageGrotesque(
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   color: Colors.white,
                                 ),
                               ),
@@ -172,8 +172,8 @@ class ParentNextLessonCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.72),
+                                  fontSize: 14,
+                                  color: Colors.white,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -188,10 +188,8 @@ class ParentNextLessonCard extends StatelessWidget {
                                   Text(
                                     '${_h(start.hour)}:${_h(start.minute)}–${_h(end.hour)}:${_h(end.minute)}',
                                     style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      fontSize: 14,
+                                      color: Colors.white,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -206,10 +204,8 @@ class ParentNextLessonCard extends StatelessWidget {
                                   Text(
                                     isOnline ? 'Trực tuyến' : 'Tại lớp',
                                     style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      fontSize: 14,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ],
@@ -224,10 +220,10 @@ class ParentNextLessonCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _ActionButton(
-                            label: 'Báo vắng',
+                            label: 'Đổi lịch',
                             textColor: AppColors.oxblood,
                             borderColor: AppColors.gold.withValues(alpha: 0.6),
-                            onTap: onReportAbsence,
+                            onTap: onReschedule,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -292,7 +288,7 @@ class _ActionButton extends StatelessWidget {
           child: Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
               color: textColor,
             ),

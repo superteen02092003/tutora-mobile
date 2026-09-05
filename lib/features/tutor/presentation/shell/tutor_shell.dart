@@ -2,41 +2,33 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-/// Hạ tầng dùng chung cho shell gia sư.
-///
-/// Shell thật nằm ở `shell/v2/tutor_shell_v2.dart`. File này chỉ giữ kênh
-/// "chạm lại tab đang mở → cuộn nội dung lên đầu": shell phát tín hiệu qua
-/// [TutorShellScrollNotifier], màn con nhận qua [TutorScrollToTopMixin].
-class TutorShellScrollNotifier extends InheritedNotifier<ValueNotifier<int>> {
-  const TutorShellScrollNotifier({
-    required ValueNotifier<int> notifier,
-    required super.child,
-    super.key,
-  }) : super(notifier: notifier);
+void scrollVisibleTutorContentToTop(BuildContext? root) {
+  if (root == null) return;
+  final positions = <ScrollPosition>{};
 
-  static ValueNotifier<int>? of(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<TutorShellScrollNotifier>()
-      ?.notifier;
-}
-
-mixin TutorScrollToTopMixin<T extends StatefulWidget> on State<T> {
-  void listenScrollToTop(
-    BuildContext context,
-    int branchIndex,
-    ScrollController controller,
-  ) {
-    final notifier = TutorShellScrollNotifier.of(context);
-    if (notifier == null) return;
-    notifier.addListener(() {
-      if (notifier.value == branchIndex && controller.hasClients) {
-        unawaited(
-          controller.animateTo(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          ),
-        );
+  void visit(Element element) {
+    final widget = element.widget;
+    if (widget is Offstage && widget.offstage) return;
+    if (widget is TickerMode && !widget.enabled) return;
+    if (element is StatefulElement && element.state is ScrollableState) {
+      final position = (element.state as ScrollableState).position;
+      if (position.axis == Axis.vertical &&
+          position.hasContentDimensions &&
+          position.pixels > position.minScrollExtent) {
+        positions.add(position);
       }
-    });
+    }
+    element.visitChildren(visit);
+  }
+
+  root.visitChildElements(visit);
+  for (final position in positions) {
+    unawaited(
+      position.animateTo(
+        position.minScrollExtent,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      ),
+    );
   }
 }

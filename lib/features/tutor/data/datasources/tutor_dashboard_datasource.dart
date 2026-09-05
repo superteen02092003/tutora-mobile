@@ -32,14 +32,13 @@ class TutorDashboardDatasource {
         ? data['content'] as List<dynamic>? ?? const []
         : (data as List<dynamic>? ?? const []);
 
-    return days
-        .whereType<Map<String, dynamic>>()
-        .expand(
-          (day) => (day['classSessions'] as List<dynamic>? ?? const [])
-              .whereType<Map<String, dynamic>>(),
-        )
-        .map(TutorWeekSessionDto.fromJson)
-        .toList();
+    // Giữ khoá ngày của BE thay vì tự gom lại theo scheduledStart
+    return days.whereType<Map<String, dynamic>>().expand((day) {
+      final date = DateTime.tryParse(day['date'] as String? ?? '');
+      return (day['classSessions'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map((j) => TutorWeekSessionDto.fromJson(j, calendarDate: date));
+    }).toList();
   }
 
   static String _ymd(DateTime d) =>

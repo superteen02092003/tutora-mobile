@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
 import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
+import 'package:tutora/features/parent/presentation/widgets/parent_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class ParentAddChildScreen extends ConsumerStatefulWidget {
@@ -150,123 +151,123 @@ class _ParentAddChildScreenState extends ConsumerState<ParentAddChildScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          color: AppColors.ink,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Thêm con'),
-        centerTitle: true,
-      ),
-      body: gradesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.ink),
-        ),
-        error: (_, _) => Center(
-          child: Text(
-            'Không tải được dữ liệu',
-            style: GoogleFonts.inter(color: AppColors.ink3),
-          ),
-        ),
-        data: (grades) {
-          // chọn mặc định lớp 9 nếu chưa chọn
-          if (_selectedGrade == null && grades.isNotEmpty) {
-            final def =
-                grades.where((g) => g.levelOrder == 9).firstOrNull ??
-                grades.first;
-            unawaited(
-              Future.microtask(() => setState(() => _selectedGrade = def)),
-            );
-          }
-
-          return Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-              children: [
-                const SizedBox(height: 8),
-                const _Label('Họ và tên con'),
-                const SizedBox(height: 6),
-                _Field(
-                  controller: _nameCtrl,
-                  hint: 'Nguyễn Văn A',
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Vui lòng nhập tên'
-                      : null,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const ParentPageHeader(title: 'Thêm con'),
+            Expanded(
+              child: gradesAsync.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.ink),
                 ),
-                const SizedBox(height: 16),
-                const _Label('Ngày sinh'),
-                const SizedBox(height: 6),
-                _TapField(
-                  text: birthdateText,
-                  placeholder: _birthdate == null,
-                  icon: Icons.calendar_today_outlined,
-                  onTap: _pickDate,
-                ),
-                const SizedBox(height: 16),
-                const _Label('Trường học'),
-                const SizedBox(height: 6),
-                _Field(
-                  controller: _schoolCtrl,
-                  hint: 'THCS Nguyễn Du',
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Vui lòng nhập trường'
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                const _Label('Lớp'),
-                const SizedBox(height: 6),
-                _TapField(
-                  text: _selectedGrade?.gradeName ?? 'Chọn lớp',
-                  placeholder: _selectedGrade == null,
-                  icon: Icons.expand_more_rounded,
-                  onTap: () => _pickGrade(grades),
-                ),
-                const SizedBox(height: 16),
-                const _Label('Mục tiêu học tập (tuỳ chọn)'),
-                const SizedBox(height: 6),
-                _Field(
-                  controller: _goalCtrl,
-                  hint: 'Đậu vào lớp 10...',
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  height: 52,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.ink,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: _loading ? null : _submit,
-                    child: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            'Thêm con',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                error: (_, _) => Center(
+                  child: Text(
+                    'Không tải được dữ liệu',
+                    style: GoogleFonts.inter(color: AppColors.ink3),
                   ),
                 ),
-              ],
+                data: (grades) {
+                  // chọn mặc định lớp 9 nếu chưa chọn
+                  if (_selectedGrade == null && grades.isNotEmpty) {
+                    final def =
+                        grades.where((g) => g.levelOrder == 9).firstOrNull ??
+                        grades.first;
+                    unawaited(
+                      Future.microtask(
+                        () => setState(() => _selectedGrade = def),
+                      ),
+                    );
+                  }
+
+                  return Form(
+                    key: _formKey,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                      children: [
+                        const SizedBox(height: 8),
+                        const _Label('Họ và tên con'),
+                        const SizedBox(height: 6),
+                        _Field(
+                          controller: _nameCtrl,
+                          hint: 'Nguyễn Văn A',
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Vui lòng nhập tên'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        const _Label('Ngày sinh'),
+                        const SizedBox(height: 6),
+                        _TapField(
+                          text: birthdateText,
+                          placeholder: _birthdate == null,
+                          icon: Icons.calendar_today_outlined,
+                          onTap: _pickDate,
+                        ),
+                        const SizedBox(height: 16),
+                        const _Label('Trường học'),
+                        const SizedBox(height: 6),
+                        _Field(
+                          controller: _schoolCtrl,
+                          hint: 'THCS Nguyễn Du',
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Vui lòng nhập trường'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        const _Label('Lớp'),
+                        const SizedBox(height: 6),
+                        _TapField(
+                          text: _selectedGrade?.gradeName ?? 'Chọn lớp',
+                          placeholder: _selectedGrade == null,
+                          icon: Icons.expand_more_rounded,
+                          onTap: () => _pickGrade(grades),
+                        ),
+                        const SizedBox(height: 16),
+                        const _Label('Mục tiêu học tập (tuỳ chọn)'),
+                        const SizedBox(height: 6),
+                        _Field(
+                          controller: _goalCtrl,
+                          hint: 'Đậu vào lớp 10...',
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          height: 52,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.ink,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: _loading ? null : _submit,
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Thêm con',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

@@ -22,6 +22,7 @@ String transactionTypeLabel(String type) => switch (type) {
   'RemainingPayment' => 'Thanh toán còn lại',
   'BankVerification' => 'Xác minh ngân hàng',
   'AdminCredit' => 'Điều chỉnh số dư',
+  'BankTransfer' => 'Chuyển tiền ngân hàng',
   _ => 'Giao dịch',
 };
 

@@ -10,10 +10,12 @@ class MessageBubble extends StatelessWidget {
     required this.otherUserName,
     required this.currentUserId,
     super.key,
+    this.otherUserAvatarUrl,
   });
 
   final ChatMessageDto msg;
   final String otherUserName;
+  final String? otherUserAvatarUrl;
   final String currentUserId;
 
   bool get _isMe => msg.senderId == currentUserId;
@@ -31,7 +33,11 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!_isMe) ...[
-            UserAvatar(name: otherUserName, size: 26),
+            UserAvatar(
+              name: otherUserName,
+              imageUrl: otherUserAvatarUrl,
+              size: 30,
+            ),
             const SizedBox(width: 8),
           ],
           ConstrainedBox(

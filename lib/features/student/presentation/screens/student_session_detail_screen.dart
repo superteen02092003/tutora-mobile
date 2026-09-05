@@ -13,13 +13,13 @@ import 'package:tutora/features/student/presentation/providers/class_provider.da
 import 'package:tutora/features/student/presentation/providers/lesson_provider.dart';
 import 'package:tutora/features/student/presentation/screens/session_recording_player_screen.dart';
 import 'package:tutora/features/student/presentation/screens/student_class_detail_screen.dart';
-import 'package:tutora/features/student/presentation/widgets/class_widgets.dart';
-import 'package:tutora/features/student/presentation/widgets/reschedule_sheet.dart';
 import 'package:tutora/shared/datasources/class_interaction_datasource.dart';
 import 'package:tutora/shared/live_session/session_lobby_screen.dart';
 import 'package:tutora/shared/widgets/app_page_header.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 import 'package:tutora/shared/widgets/class_interaction_sheets.dart';
+import 'package:tutora/shared/widgets/class_widgets.dart';
+import 'package:tutora/shared/widgets/reschedule_sheet.dart';
 import 'package:tutora/shared/widgets/user_avatar.dart';
 import 'package:tutora/shared/widgets/verify_pip.dart';
 
@@ -76,8 +76,9 @@ class StudentSessionDetailPage extends ConsumerWidget {
                             label: 'Thử lại',
                             color: AppColors.ink,
                             fg: AppColors.cream,
-                            onTap: () =>
-                                ref.invalidate(lessonDetailProvider(lessonId)),
+                            onTap: () => ref
+                              ..invalidate(nextSessionProvider)
+                              ..invalidate(lessonDetailProvider(lessonId)),
                           ),
                         ),
                       ],
@@ -118,8 +119,9 @@ class _DetailBody extends ConsumerWidget {
         ),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(lessonDetailProvider(lesson.lessonId)),
+            onRefresh: () async => ref
+              ..invalidate(nextSessionProvider)
+              ..invalidate(lessonDetailProvider(lesson.lessonId)),
             color: AppColors.oxblood,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -309,6 +311,18 @@ class _HeroCardState extends State<_HeroCard> {
         );
       case LessonStatusType.cancelled:
         return ('Đã hủy', 'Buổi học này đã bị hủy hoặc gia sư vắng mặt.');
+      case LessonStatusType.disputed:
+        return (
+          'Đang khiếu nại',
+          'Khiếu nại của buổi học này đang được xử lý. Theo dõi tiến độ trong '
+              'mục Khiếu nại ở trang cá nhân.',
+        );
+      case LessonStatusType.interrupted:
+        return (
+          'Học dở dang',
+          'Buổi học bị ngắt giữa chừng. Phần còn lại sẽ được học bù ở một '
+              'buổi phụ.',
+        );
       case LessonStatusType.reserved:
         return (
           'Chờ mở khoá',
@@ -535,7 +549,11 @@ class _RescheduleCardState extends ConsumerState<_RescheduleCard> {
             accepted: accepted,
           );
       if (!mounted) return;
-      ref.invalidate(lessonDetailProvider(widget.proposal.classSessionId));
+      // Đổi lịch/xác nhận làm "buổi sắp tới" đổi theo — không làm mới thì
+      // nút Vào học nhanh ở Home còn trỏ buổi cũ.
+      ref
+        ..invalidate(nextSessionProvider)
+        ..invalidate(lessonDetailProvider(widget.proposal.classSessionId));
       unawaited(ref.read(classListProvider.notifier).refresh());
       AppToast.show(
         context,
@@ -1128,17 +1146,18 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
         child: SecondaryButton(
           label: 'Xem lớp học',
           icon: Icons.grid_view_rounded,
-          onTap: () {
-            final id = lesson.bookingId;
-            if (id == null) return;
-            unawaited(
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => StudentClassDetailPage(bookingId: id),
-                ),
-              ),
-            );
-          },
+          onTap: _openClass,
+        ),
+      ),
+      // Đang khiếu nại: chờ admin xử lý. Không vào phòng (BE khoá) và không
+      // khiếu nại lại (mỗi buổi chỉ một tranh chấp).
+      LessonStatusType.disputed => Container(
+        padding: padding,
+        color: AppColors.cream,
+        child: SecondaryButton(
+          label: 'Xem lớp học',
+          icon: Icons.grid_view_rounded,
+          onTap: _openClass,
         ),
       ),
       _ => Container(
@@ -1155,47 +1174,51 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
               enabled: _canJoin,
               onTap: _joinRoom,
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                // Chỉ mời đổi lịch khi BE thực sự cho phép (buổi chưa diễn ra,
-                // còn ≥2 giờ, không có đề xuất đang chờ) — tránh bấm vào rồi ăn 400.
-                if (lesson.canProposeReschedule) ...[
-                  Expanded(
-                    child: SecondaryButton(
-                      label: 'Đổi lịch',
-                      icon: Icons.edit_calendar_outlined,
-                      onTap: () => unawaited(_openReschedule()),
+            if (lesson.canProposeReschedule || lesson.canDispute) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  // Chỉ mời đổi lịch khi BE thực sự cho phép (buổi chưa diễn
+                  // ra, còn ≥2 giờ, không có đề xuất đang chờ).
+                  if (lesson.canProposeReschedule) ...[
+                    Expanded(
+                      child: SecondaryButton(
+                        label: 'Đổi lịch',
+                        icon: Icons.edit_calendar_outlined,
+                        onTap: () => unawaited(_openReschedule()),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
+                    if (lesson.canDispute) const SizedBox(width: 10),
+                  ],
+                  // Buổi chưa tới giờ thì chưa có gì để khiếu nại
+                  if (lesson.canDispute)
+                    Expanded(
+                      child: SecondaryButton(
+                        label: 'Khiếu nại',
+                        icon: Icons.flag_outlined,
+                        fg: AppColors.oxblood,
+                        onTap: () => unawaited(_openDispute()),
+                      ),
+                    ),
                 ],
-                Expanded(
-                  child: SecondaryButton(
-                    label: 'Khiếu nại',
-                    icon: Icons.flag_outlined,
-                    fg: AppColors.oxblood,
-                    onTap: () => unawaited(_openDispute()),
-                  ),
-                ),
-              ],
-            ),
-            if (!lesson.canProposeReschedule &&
-                lesson.statusType == LessonStatusType.scheduled) ...[
-              const SizedBox(height: 8),
-              Text(
-                lesson.rescheduleBlockReason!,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: AppColors.ink3,
-                ),
               ),
             ],
           ],
         ),
       ),
     };
+  }
+
+  void _openClass() {
+    final id = lesson.bookingId;
+    if (id == null) return;
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => StudentClassDetailPage(bookingId: id),
+        ),
+      ),
+    );
   }
 
   Widget _secondaryRow() {
@@ -1214,14 +1237,15 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
           ),
           const SizedBox(width: 10),
         ],
-        Expanded(
-          child: SecondaryButton(
-            label: 'Khiếu nại',
-            icon: Icons.flag_outlined,
-            fg: AppColors.oxblood,
-            onTap: () => unawaited(_openDispute()),
+        if (lesson.canDispute)
+          Expanded(
+            child: SecondaryButton(
+              label: 'Khiếu nại',
+              icon: Icons.flag_outlined,
+              fg: AppColors.oxblood,
+              onTap: () => unawaited(_openDispute()),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -1232,6 +1256,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
   /// Phòng luôn mở nên chỉ đổi chữ theo việc đã tới sát giờ hay chưa.
   String get _joinLabel {
     if (lesson.requiresRemainingPayment) return 'Chờ phụ huynh thanh toán';
+    if (lesson.skipConfirmedByBothSides) return 'Buổi phụ đã được bỏ';
     if (!lesson.canJoinNow) return 'Phòng học đã đóng';
     return lesson.isWithinJoinWindow ? 'Vào phòng học' : 'Vào phòng sớm';
   }
@@ -1257,7 +1282,11 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
           .read(classSessionDatasourceProvider)
           .confirmClassSession(lesson.lessonId);
       if (!mounted) return;
-      ref.invalidate(lessonDetailProvider(lesson.lessonId));
+      // Đổi lịch/xác nhận làm "buổi sắp tới" đổi theo — không làm mới thì
+      // nút Vào học nhanh ở Home còn trỏ buổi cũ.
+      ref
+        ..invalidate(nextSessionProvider)
+        ..invalidate(lessonDetailProvider(lesson.lessonId));
       unawaited(ref.read(classListProvider.notifier).refresh());
       AppToast.show(
         context,
@@ -1291,7 +1320,11 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
   Future<void> _openDispute() async {
     final ok = await showDisputeSheet(context, lesson.lessonId);
     if ((ok ?? false) && mounted) {
-      ref.invalidate(lessonDetailProvider(lesson.lessonId));
+      // Đổi lịch/xác nhận làm "buổi sắp tới" đổi theo — không làm mới thì
+      // nút Vào học nhanh ở Home còn trỏ buổi cũ.
+      ref
+        ..invalidate(nextSessionProvider)
+        ..invalidate(lessonDetailProvider(lesson.lessonId));
       AppToast.show(
         context,
         message: 'Đã gửi khiếu nại. Chúng tôi sẽ xem xét sớm.',
@@ -1316,7 +1349,11 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
             reason: picked.reason,
           );
       if (!mounted) return;
-      ref.invalidate(lessonDetailProvider(lesson.lessonId));
+      // Đổi lịch/xác nhận làm "buổi sắp tới" đổi theo — không làm mới thì
+      // nút Vào học nhanh ở Home còn trỏ buổi cũ.
+      ref
+        ..invalidate(nextSessionProvider)
+        ..invalidate(lessonDetailProvider(lesson.lessonId));
       AppToast.show(
         context,
         message: 'Đã gửi đề xuất đổi lịch cho gia sư.',

@@ -9,6 +9,7 @@ import 'package:tutora/features/tutor/data/models/transaction_type_labels.dart';
 import 'package:tutora/features/tutor/data/models/tutor_finance_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_finance_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
+import 'package:tutora/shared/providers/auth_headers_provider.dart';
 
 class TutorWithdrawalsScreen extends ConsumerWidget {
   const TutorWithdrawalsScreen({super.key});
@@ -49,10 +50,19 @@ class TutorWithdrawalsScreen extends ConsumerWidget {
                     color: AppColors.oxblood,
                     onRefresh: () async =>
                         ref.invalidate(tutorWithdrawalsProvider),
+                    // Danh sách liền mạch, tách dòng bằng VIỀN thay vì thẻ
+                    // rời nhau: các dòng chỉ khác nhau vài con số nên xé
+                    // thành từng khối trông rối và tốn chiều dọc.
                     child: ListView.separated(
-                      padding: EdgeInsets.fromLTRB(14, 14, 14, bottomPad + 24),
+                      padding: EdgeInsets.fromLTRB(0, 6, 0, bottomPad + 24),
                       itemCount: page.items.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const Divider(
+                        height: 1,
+                        thickness: 0.8,
+                        color: AppColors.line,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
                       itemBuilder: (_, i) => _WithdrawalCard(
                         item: page.items[i],
                         onTap: () => _openDetail(context, page.items[i]),
@@ -112,13 +122,10 @@ class _WithdrawalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.paper,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.line),
-        ),
+        padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+        color: AppColors.paper,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -137,26 +144,32 @@ class _WithdrawalCard extends StatelessWidget {
                 _StatusBadge(status: item.status),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(
-                  Icons.account_balance_outlined,
-                  size: 13,
-                  color: AppColors.ink4,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${item.bankName ?? ''} · ${item.accountNumber ?? ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.ink4,
+                // `GET /tutor/withdrawals` trả bankName/accountNumber RỖNG
+                // (chỉ endpoint chi tiết mới có), nên nối chuỗi vô điều kiện
+                // sẽ đẻ ra dòng " · " trơ trọi. Chỉ vẽ khi thật sự có dữ liệu.
+                if (item.bankLine != null) ...[
+                  const Icon(
+                    Icons.account_balance_outlined,
+                    size: 13,
+                    color: AppColors.ink4,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      item.bankLine!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AppColors.ink4,
+                      ),
                     ),
                   ),
-                ),
+                ] else
+                  const Spacer(),
                 Text(
                   _date(item.requestedAt),
                   style: GoogleFonts.ibmPlexMono(
@@ -180,6 +193,9 @@ class _WithdrawalDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(_withdrawalDetailProvider(withdrawalId));
+    final authHeaders =
+        ref.watch(authImageHeadersProvider).valueOrNull ??
+        const <String, String>{};
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -227,15 +243,18 @@ class _WithdrawalDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
                     _Section(
                       children: [
-                        _Row(label: 'Ngân hàng', value: w.bankName ?? '—'),
+                        // `?? '—'` không đủ: BE trả CHUỖI RỖNG chứ không phải
+                        // null khi thiếu thông tin, lọt qua thì ô giá trị
+                        // trống trơn.
+                        _Row(label: 'Ngân hàng', value: _orDash(w.bankName)),
                         _Row(
                           label: 'Số tài khoản',
-                          value: w.accountNumber ?? '—',
+                          value: _orDash(w.accountNumber),
                           mono: true,
                         ),
                         _Row(
                           label: 'Chủ tài khoản',
-                          value: w.accountHolderName ?? '—',
+                          value: _orDash(w.accountHolderName),
                         ),
                       ],
                     ),
@@ -289,8 +308,12 @@ class _WithdrawalDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
+                        // Ảnh nằm sau `/api/files/private`, endpoint này có
+                        // [Authorize] nên phải gửi kèm JWT — Image.network
+                        // trần không đính header, luôn ăn 401.
                         child: Image.network(
                           w.proofImageUrl!,
+                          headers: authHeaders,
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => Container(
                             height: 120,
@@ -324,6 +347,8 @@ class _WithdrawalDetailScreen extends ConsumerWidget {
     ),
   );
 }
+
+String _orDash(String? v) => (v == null || v.trim().isEmpty) ? '—' : v;
 
 /// Chi tiết một yêu cầu rút tiền theo id.
 final AutoDisposeFutureProviderFamily<TutorWithdrawal, int>

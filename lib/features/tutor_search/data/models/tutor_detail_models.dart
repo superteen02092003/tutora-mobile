@@ -115,6 +115,8 @@ class TutorPackageDto {
   const TutorPackageDto({
     required this.packageId,
     required this.packageType,
+    this.subjectId,
+    this.subjectName,
     this.name,
     this.isActive = true,
     this.fixedSlots = const [],
@@ -123,6 +125,8 @@ class TutorPackageDto {
   factory TutorPackageDto.fromJson(Map<String, dynamic> j) => TutorPackageDto(
     packageId: (j['packageId'] as num?)?.toInt() ?? 0,
     packageType: (j['packageType'] as num?)?.toInt() ?? 0,
+    subjectId: (j['subjectId'] as num?)?.toInt(),
+    subjectName: j['subjectName'] as String?,
     name: j['name'] as String?,
     isActive: j['isActive'] as bool? ?? true,
     fixedSlots:
@@ -137,6 +141,11 @@ class TutorPackageDto {
 
   final int packageId;
   final int packageType;
+
+  /// Môn của gói — gia sư dạy nhiều môn nên phải lọc theo môn đã chọn, không thì
+  /// chọn Toán vẫn thấy gói Hoá.
+  final int? subjectId;
+  final String? subjectName;
   final String? name;
   final bool isActive;
   final List<TutorPackageFixedSlotDto> fixedSlots;

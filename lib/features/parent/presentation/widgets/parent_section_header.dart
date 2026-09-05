@@ -28,7 +28,7 @@ class ParentSectionHeader extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.12,
                 color: AppColors.ink4,
@@ -42,7 +42,7 @@ class ParentSectionHeader extends StatelessWidget {
                 action!,
                 style: GoogleFonts.ibmPlexSerif(
                   fontStyle: FontStyle.italic,
-                  fontSize: 14,
+                  fontSize: 16,
                   color: AppColors.oxblood,
                 ),
               ),

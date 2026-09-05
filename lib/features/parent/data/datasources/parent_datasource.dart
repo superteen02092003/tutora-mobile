@@ -2,8 +2,18 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
 import 'package:tutora/features/parent/data/models/parent_models.dart';
+import 'package:tutora/shared/models/class_models.dart';
 
 export 'package:tutora/features/parent/data/models/parent_models.dart';
+export 'package:tutora/shared/models/class_models.dart';
+
+class ParentActionException implements Exception {
+  const ParentActionException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
 
 class ParentDatasource {
   const ParentDatasource(this._dio);
@@ -34,6 +44,7 @@ class ParentDatasource {
         .toList();
   }
 
+  /// Lịch chung của mọi con
   Future<List<ParentLessonDto>> getCalendarLessons({
     required String startDate,
     required String endDate,
@@ -41,6 +52,98 @@ class ParentDatasource {
     final res = await _dio.get<dynamic>(
       '/parent/class-sessions/calendar',
       queryParameters: {'startDate': startDate, 'endDate': endDate},
+    );
+    final data = res.data as Map<String, dynamic>;
+    final days = data['content'] as List<dynamic>? ?? [];
+    return days
+        .expand(
+          (d) =>
+              ((d as Map<String, dynamic>)['classSessions'] as List<dynamic>? ??
+                      [])
+                  .map(
+                    (e) => ParentLessonDto.fromJson(e as Map<String, dynamic>),
+                  ),
+        )
+        .toList();
+  }
+
+  /// Buổi kế tiếp
+  Future<ParentLessonDto?> getNextLesson({String? studentId}) async {
+    final res = await _dio.get<dynamic>(
+      '/parent/class-sessions/next',
+      queryParameters: {'studentId': ?studentId},
+    );
+    final content = (res.data as Map<String, dynamic>)['content'];
+    if (content is! Map<String, dynamic>) return null;
+    return ParentLessonDto.fromJson(content);
+  }
+
+  /// Đề xuất dời buổi học sang giờ khác. Buổi chỉ đổi khi gia sư đồng ý.
+  Future<void> proposeReschedule({
+    required int lessonId,
+    required DateTime proposedStart,
+    String? reason,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        '/parent/class-sessions/$lessonId/reschedule-proposal',
+        data: {
+          'proposedScheduledStart': proposedStart.toUtc().toIso8601String(),
+          'reason': ?reason,
+        },
+      );
+    } on DioException catch (e) {
+      // BE trả lý do cụ thể (sát giờ, đã có đề xuất chờ...) — hiện nguyên văn.
+      final data = e.response?.data;
+      final msg = data is Map<String, dynamic> ? data['message'] : null;
+      throw ParentActionException(
+        msg is String && msg.isNotEmpty
+            ? msg
+            : 'Không gửi được đề xuất đổi lịch',
+      );
+    }
+  }
+
+  Future<ParentHomeStatsDto> getHomeStats({String? studentId}) async {
+    final res = await _dio.get<dynamic>(
+      '/parent/home-stats',
+      queryParameters: {'studentId': ?studentId},
+    );
+    final data = res.data as Map<String, dynamic>;
+    return ParentHomeStatsDto.fromJson(
+      data['content'] as Map<String, dynamic>? ?? const {},
+    );
+  }
+
+  /// Lớp học (booking) của một con.
+  Future<StudentClassPagedResult> getChildClasses({
+    required String studentId,
+    int page = 1,
+    int pageSize = 20,
+    String? status,
+    bool excludeClosed = false,
+  }) async {
+    final res = await _dio.get<dynamic>(
+      '/parent/students/$studentId/bookings',
+      queryParameters: {
+        'page': page,
+        'pageSize': pageSize,
+        'status': ?status,
+        if (excludeClosed) 'excludeClosed': true,
+      },
+    );
+    return StudentClassPagedResult.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  /// Buổi học của một con, list phẳng có `studentId`.
+  Future<List<ParentLessonDto>> getChildLessons({
+    required String studentId,
+    String? startDate,
+    String? endDate,
+  }) async {
+    final res = await _dio.get<dynamic>(
+      '/parent/students/$studentId/class-sessions',
+      queryParameters: {'startDate': ?startDate, 'endDate': ?endDate},
     );
     final data = res.data as Map<String, dynamic>;
     final content = data['content'] as List<dynamic>? ?? [];
@@ -105,30 +208,60 @@ class ParentDatasource {
     return AddStudentResult.fromJson(content);
   }
 
-  Future<List<ParentBookingDto>> getBookings({
+  /// Đơn đặt lịch của mọi con. `status` nhận nhiều giá trị cách nhau bằng dấu
+  /// phẩy.
+  Future<ParentBookingPage> getBookings({
     int page = 1,
     int pageSize = 20,
     String? status,
-    String? studentId,
   }) async {
     final res = await _dio.get<dynamic>(
       '/parent/bookings',
       queryParameters: {
         'page': page,
         'pageSize': pageSize,
-        if (status != null && status.isNotEmpty) 'status': status,
-        if (studentId != null && studentId.isNotEmpty) 'studentId': studentId,
+        'status': ?(status?.isEmpty ?? true) ? null : status,
       },
     );
     final data = res.data as Map<String, dynamic>;
-    final items =
-        (data['content'] as Map<String, dynamic>?)?['items']
-            as List<dynamic>? ??
-        data['content'] as List<dynamic>? ??
-        [];
-    return items
-        .map((e) => ParentBookingDto.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return ParentBookingPage.fromJson(data);
+  }
+
+  /// Chi tiết một đơn — có đủ classSessions, mốc thanh toán, lý do huỷ.
+  Future<ParentBookingDto> getBookingDetail(int bookingId) async {
+    final res = await _dio.get<dynamic>('/bookings/$bookingId');
+    final data = res.data as Map<String, dynamic>;
+    return ParentBookingDto.fromJson(data['content'] as Map<String, dynamic>);
+  }
+
+  /// Thông tin chuyển khoản cho đợt đang chờ trả.
+  Future<ParentPaymentInfo> getPaymentInfo(int bookingId) async {
+    try {
+      final res = await _dio.get<dynamic>('/bookings/$bookingId/payment');
+      final data = res.data as Map<String, dynamic>;
+      return ParentPaymentInfo.fromJson(
+        data['content'] as Map<String, dynamic>,
+      );
+    } on DioException catch (e) {
+      throw ParentActionException(
+        _message(e, 'Không lấy được thông tin thanh toán'),
+      );
+    }
+  }
+
+  /// Đối soát sau khi phụ huynh bảo đã chuyển khoản.
+  Future<ParentPaymentStatus> getPaymentStatus(int bookingId) async {
+    final res = await _dio.get<dynamic>('/bookings/$bookingId/payment/status');
+    final data = res.data as Map<String, dynamic>;
+    return ParentPaymentStatus.fromJson(
+      data['content'] as Map<String, dynamic>,
+    );
+  }
+
+  static String _message(DioException e, String fallback) {
+    final data = e.response?.data;
+    final msg = data is Map<String, dynamic> ? data['message'] : null;
+    return msg is String && msg.isNotEmpty ? msg : fallback;
   }
 }
 

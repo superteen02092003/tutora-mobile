@@ -39,8 +39,8 @@ class UserAvatar extends StatelessWidget {
   }
 
   bool get _isSvg {
-    final url = imageUrl;
-    if (url == null) return false;
+    final url = imageUrl?.trim();
+    if (url == null || url.isEmpty) return false;
     final lower = url.toLowerCase();
     return lower.contains('.svg') ||
         lower.contains('/svg') ||
@@ -49,7 +49,7 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = imageUrl;
+    final url = imageUrl?.trim();
     final hasImage = url != null && url.isNotEmpty;
 
     return Container(

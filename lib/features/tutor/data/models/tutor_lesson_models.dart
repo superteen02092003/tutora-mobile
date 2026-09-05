@@ -12,9 +12,18 @@ class TutorLessonDto {
     required this.status,
     this.checkOutTime,
     this.teachingMode,
+    this.calendarDate,
+    this.isContinuation = false,
+    this.isDisputeRelearn = false,
+    this.originalClassSessionId,
+    this.skipConfirmedByBothSides = false,
   });
 
-  factory TutorLessonDto.fromJson(Map<String, dynamic> j) {
+  /// [calendarDate] là khoá ngày do BE gom sẵn — xem [TutorLessonDto.calendarDate].
+  factory TutorLessonDto.fromJson(
+    Map<String, dynamic> j, {
+    DateTime? calendarDate,
+  }) {
     // Nhận cả dạng lồng (list) lẫn dạng phẳng (calendar).
     final student = j['student'] as Map<String, dynamic>?;
     final subject = j['subject'] as Map<String, dynamic>?;
@@ -30,6 +39,11 @@ class TutorLessonDto {
       status: j['status'] as String? ?? '',
       checkOutTime: j['checkOutTime'] as String?,
       teachingMode: j['teachingMode'] as String?,
+      calendarDate: calendarDate,
+      isContinuation: j['isContinuation'] as bool? ?? false,
+      isDisputeRelearn: j['isDisputeRelearn'] as bool? ?? false,
+      originalClassSessionId: j['originalClassSessionId'] as int?,
+      skipConfirmedByBothSides: j['skipConfirmedByBothSides'] as bool? ?? false,
     );
   }
 
@@ -46,6 +60,21 @@ class TutorLessonDto {
   /// Giờ gia sư rời phòng
   final String? checkOutTime;
   final String? teachingMode;
+
+  /// Ngày mà BE xếp buổi này vào, theo giờ VN.
+  final DateTime? calendarDate;
+
+  /// Buổi phụ, sinh ra khi buổi gốc bị báo ngắt giữa chừng, để học nốt.
+  final bool isContinuation;
+
+  /// Buổi học lại, sinh ra khi hoà giải tranh chấp chọn phương án "học lại".
+  final bool isDisputeRelearn;
+
+  /// Buổi gốc mà buổi phụ / buổi học lại này trỏ về.
+  final int? originalClassSessionId;
+
+  /// Buổi phụ đã được cả hai phía đồng ý bỏ
+  final bool skipConfirmedByBothSides;
 
   // BE trả UTC tuyệt đối → .toLocal() mới ra giờ người dùng thấy.
   DateTime? get startDt => DateTime.tryParse(scheduledStart)?.toLocal();
@@ -68,19 +97,32 @@ class TutorLessonDto {
   /// Đang có tranh chấp — tiền bị giữ tới khi admin xử lý.
   bool get isDisputed => _s == 'disputed';
 
+  /// Buổi gốc bị báo ngắt giữa chừng
+  bool get isInterrupted => _s == 'interrupted';
+
   /// Một bên không vào lớp.
   bool get isNoShow => _s == 'no_show' || _s == 'cancelled_noshow';
 
   bool get isCancelled => _s == 'cancelled';
 
   /// Đã rời phòng mà vẫn in_progress = dạy xong, chỉ còn chờ gửi báo cáo.
-  bool get isAwaitingReport => isInProgress && checkOutTime != null;
+  /// Buổi bị ngắt mà hai bên đã bỏ buổi phụ cũng đang chờ báo cáo.
+  bool get isAwaitingReport =>
+      (isInProgress && checkOutTime != null) || isInterrupted;
 
-  /// Đang dạy thật (chưa checkout).
-  bool get isLive => isInProgress && checkOutTime == null;
+  /// Đang dạy thật (chưa checkout). Buổi phụ đã bị bỏ thì không vào lớp được.
+  bool get isLive =>
+      isInProgress && checkOutTime == null && !skipConfirmedByBothSides;
 
-  /// Buổi đã xong xuôi, không còn việc phải làm.
+  /// Buổi đã xong xuôi, không còn việc phải làm. `interrupted` KHÔNG tính:
+  /// gia sư vẫn còn phải học nốt hoặc nộp báo cáo.
   bool get isFinished => isCompleted || isPendingConfirmation;
+
+  /// Nhãn cho buổi sinh thêm
+  String? get linkLabel => isExtra ? 'Buổi học phụ' : null;
+
+  /// Buổi SINH THÊM để bù cho buổi gốc
+  bool get isExtra => isContinuation || isDisputeRelearn;
 
   /// Buổi thật sự thuộc lớp — no_show vẫn tính, chỉ loại huỷ và giữ chỗ.
   bool get countsAsSession =>
@@ -99,7 +141,7 @@ class TutorLessonDto {
   }
 
   bool isSameDay(DateTime d) {
-    final dt = startDt;
+    final dt = calendarDate ?? startDt;
     if (dt == null) return false;
     return dt.year == d.year && dt.month == d.month && dt.day == d.day;
   }
@@ -116,6 +158,9 @@ class TutorClassDto {
     required this.schedule,
     required this.nextSessionStart,
     required this.status,
+    this.reservedSessions = 0,
+    this.nextReservedStart,
+    this.bookingStatus,
   });
 
   factory TutorClassDto.fromJson(Map<String, dynamic> j) => TutorClassDto(
@@ -127,6 +172,9 @@ class TutorClassDto {
     schedule: j['schedule'] as String? ?? '',
     nextSessionStart: j['nextSessionStart'] as String?,
     status: j['status'] as String? ?? 'unknown',
+    reservedSessions: j['reservedSessions'] as int? ?? 0,
+    nextReservedStart: j['nextReservedStart'] as String?,
+    bookingStatus: j['bookingStatus'] as String?,
   );
 
   final int bookingId;
@@ -140,11 +188,34 @@ class TutorClassDto {
   final String? nextSessionStart;
   final String status;
 
+  /// Buổi đã tạo sẵn nhưng CHƯA mở vì phụ huynh chưa trả nốt tiền.
+  final int reservedSessions;
+
+  /// Giờ dự kiến của buổi giữ chỗ sớm nhất; chưa phải lịch chắc chắn.
+  final String? nextReservedStart;
+
+  /// Trạng thái booking (xem BookingStatus của BE).
+  final String? bookingStatus;
+
   DateTime? get nextStartLocal =>
       DateTime.tryParse(nextSessionStart ?? '')?.toLocal();
 
+  DateTime? get nextReservedLocal =>
+      DateTime.tryParse(nextReservedStart ?? '')?.toLocal();
+
+  /// Hết buổi mở nhưng còn buổi giữ chỗ — đang kẹt chờ thanh toán đợt 2.
+  bool get isWaitingRemainingPayment =>
+      nextSessionStart == null && reservedSessions > 0;
+
+  /// Mẫu số của tiến độ = tổng số buổi của gói.
+  int get totalWithReserved => reservedSessions == 0
+      ? totalSessions
+      : (totalSessions > reservedSessions
+            ? totalSessions
+            : totalSessions + reservedSessions);
+
   double get progress =>
-      totalSessions == 0 ? 0 : completedSessions / totalSessions;
+      totalWithReserved == 0 ? 0 : completedSessions / totalWithReserved;
 
   /// DeriveClassStatus của BE không bao giờ trả 'cancelled'.
   bool get isFinished => status == 'completed';
@@ -175,13 +246,12 @@ class TutorAvailabilityDto {
   });
 
   factory TutorAvailabilityDto.fromJson(Map<String, dynamic> j) {
-    // Backend: 0=Sun,1=Mon…6=Sat → Flutter: 1=Mon…7=Sun
-    final raw = j['dayofweek'] as int? ?? j['dayOfWeek'] as int? ?? 0;
-    final flutterDay = raw == 0 ? 7 : raw; // 0→7(Sun), 1–6 stay as 1–6
+    // TutorAvailabilityResponse dùng cùng quy ước với UI: 1=Mon…7=Sun.
+    // (Khác ScheduleItemResponse của booking, vốn theo DayOfWeek .NET 0=Sun.)
     return TutorAvailabilityDto(
       availabilityId:
           j['availabilityid'] as int? ?? j['availabilityId'] as int? ?? 0,
-      dayOfWeek: flutterDay,
+      dayOfWeek: j['dayofweek'] as int? ?? j['dayOfWeek'] as int? ?? 1,
       startTime: j['starttime'] as String? ?? j['startTime'] as String? ?? '',
       endTime: j['endtime'] as String? ?? j['endTime'] as String? ?? '',
     );
@@ -203,9 +273,9 @@ class CreateAvailabilityRequest {
     required this.endTime,
   });
 
-  // Flutter 1=Mon…7=Sun → Backend 0=Sun,1=Mon…6=Sat
+  // Backend validate Range(1,7) với 7=Chủ nhật — gửi thẳng, không quy về 0.
   Map<String, dynamic> toJson() => {
-    'dayofweek': dayOfWeek == 7 ? 0 : dayOfWeek,
+    'dayofweek': dayOfWeek,
     'starttime': startTime,
     'endtime': endTime,
   };
@@ -216,12 +286,80 @@ class CreateAvailabilityRequest {
   final String endTime; // "HH:mm"
 }
 
+/// Một buổi thuộc gói cùng các buổi sinh thêm bám vào nó.
+class SessionChain {
+  const SessionChain({required this.parent, required this.children});
+
+  final TutorLessonDto parent;
+
+  /// Buổi phụ / buổi học lại, đã sắp theo thời gian.
+  final List<TutorLessonDto> children;
+}
+
+/// Gom buổi phụ / buổi học lại về đúng buổi GỐC thuộc gói.
+List<SessionChain> groupSessionChains(List<TutorLessonDto> sessions) {
+  final sorted = [...sessions]
+    ..sort((a, b) {
+      final x = a.startDt;
+      final y = b.startDt;
+      if (x == null || y == null) return 0;
+      return x.compareTo(y);
+    });
+
+  final byId = {for (final s in sorted) s.lessonId: s};
+  final roots = <int, List<TutorLessonDto>>{};
+  for (final s in sorted) {
+    if (!s.isExtra) roots[s.lessonId] = <TutorLessonDto>[];
+  }
+
+  /// Lần ngược chuỗi tới buổi thuộc gói; null nếu không tới được.
+  int? findRoot(TutorLessonDto session) {
+    // `seen` chặn lặp vô hạn nếu dữ liệu bị trỏ vòng (A → B → A).
+    final seen = <int>{session.lessonId};
+    TutorLessonDto? current = session;
+
+    while (current?.originalClassSessionId != null) {
+      final parentId = current!.originalClassSessionId!;
+      if (!seen.add(parentId)) return null;
+      if (roots.containsKey(parentId)) return parentId;
+      current = byId[parentId];
+    }
+    return null;
+  }
+
+  // Buổi sinh thêm không tìm được gốc (buổi gốc ngoài trang này) vẫn phải hiện
+  final orphans = <TutorLessonDto>[];
+  for (final s in sorted) {
+    if (!s.isExtra) continue;
+    final rootId = findRoot(s);
+    if (rootId != null) {
+      roots[rootId]!.add(s);
+    } else {
+      orphans.add(s);
+    }
+  }
+
+  return [
+    for (final e in roots.entries)
+      SessionChain(parent: byId[e.key]!, children: e.value),
+    for (final o in orphans)
+      SessionChain(parent: o, children: const <TutorLessonDto>[]),
+  ]..sort((a, b) {
+    final x = a.parent.startDt;
+    final y = b.parent.startDt;
+    if (x == null || y == null) return 0;
+    return x.compareTo(y);
+  });
+}
+
 /// Nhãn + tông màu cho 9 trạng thái buổi học; nhiều màn dùng chung.
 (String, ChipTone) lessonChip(String status) => switch (status.toLowerCase()) {
   'scheduled' || 'confirmed' => ('Sắp diễn ra', ChipTone.gold),
   'reserved' => ('Giữ chỗ', ChipTone.line),
   'in_progress' || 'inprogress' => ('Đang dạy', ChipTone.moss),
   'pending_confirmation' => ('Chờ xác nhận', ChipTone.gold),
+  // Buổi gốc bị báo ngắt giữa chừng — chờ buổi phụ học nốt hoặc 2 bên bỏ.
+  'interrupted' => ('Học dở dang', ChipTone.gold),
   'completed' => ('Hoàn thành', ChipTone.ink),
   'disputed' => ('Đang tranh chấp', ChipTone.ox),
   'no_show' || 'cancelled_noshow' => ('Vắng mặt', ChipTone.ox),
