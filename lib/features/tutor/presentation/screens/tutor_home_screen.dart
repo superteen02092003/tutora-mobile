@@ -59,7 +59,13 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
     // Buổi hôm nay của học sinh ngoài nền tảng, chưa ghi âm xong.
     final offPlatformToday =
         (ref.watch(recorderTodayLessonsProvider).valueOrNull ?? const [])
-            .where((s) => const {'scheduled', 'recording', 'uploading'}.contains(s.recorderStatus))
+            .where(
+              (s) => const {
+                'scheduled',
+                'recording',
+                'uploading',
+              }.contains(s.recorderStatus),
+            )
             .toList();
 
     return Scaffold(
@@ -548,7 +554,8 @@ class _ClassesSection extends ConsumerWidget {
     final all = async.valueOrNull?.items ?? const <TutorClassDto>[];
     final sorted = _teachable(all);
     final students =
-        ref.watch(recorderStudentsProvider).valueOrNull ?? const <RecorderStudentDto>[];
+        ref.watch(recorderStudentsProvider).valueOrNull ??
+        const <RecorderStudentDto>[];
     final active = sorted.length + students.length;
     final shown = sorted.take(_maxInline).toList();
 
@@ -631,7 +638,8 @@ class _ClassRow extends StatelessWidget {
       final hm =
           '${next.hour.toString().padLeft(2, '0')}:'
           '${next.minute.toString().padLeft(2, '0')}';
-      when = 'Buổi tới ${_dows[next.weekday - 1]} ${next.day}/${next.month} $hm';
+      when =
+          'Buổi tới ${_dows[next.weekday - 1]} ${next.day}/${next.month} $hm';
     } else if (item.isWaitingRemainingPayment) {
       when = 'Chờ phụ huynh thanh toán';
     } else {
@@ -815,7 +823,8 @@ class _StudentList extends StatelessWidget {
           children: [
             for (final s in students) ...[
               InkWell(
-                onTap: () => TutorStudentDetailScreen.open(context, s.studentId),
+                onTap: () =>
+                    TutorStudentDetailScreen.open(context, s.studentId),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
                   child: Row(
@@ -841,14 +850,19 @@ class _StudentList extends StatelessWidget {
                             Text(
                               [
                                 if (s.subtitle.isNotEmpty) s.subtitle,
-                                if (!s.hasConsent) 'Chưa có đồng ý ghi âm' else 'Ngoài Tutora',
+                                if (!s.hasConsent)
+                                  'Chưa có đồng ý ghi âm'
+                                else
+                                  'Ngoài Tutora',
                               ].join(' · '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 13,
                                 height: 1.35,
-                                color: s.hasConsent ? TutorColors.ink3 : TutorColors.warning,
+                                color: s.hasConsent
+                                    ? TutorColors.ink3
+                                    : TutorColors.warning,
                               ),
                             ),
                           ],
@@ -860,14 +874,28 @@ class _StudentList extends StatelessWidget {
                         children: [
                           Text(
                             '${s.lessonCount}',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: TutorColors.ink),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: TutorColors.ink,
+                            ),
                           ),
                           const SizedBox(height: 2),
-                          const Text('buổi', style: TextStyle(fontSize: 12, color: TutorColors.ink4)),
+                          const Text(
+                            'buổi',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: TutorColors.ink4,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right_rounded, size: 18, color: TutorColors.ink4),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: TutorColors.ink4,
+                      ),
                     ],
                   ),
                 ),
@@ -881,11 +909,19 @@ class _StudentList extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_rounded, size: 18, color: TutorColors.primary),
+                    Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: TutorColors.primary,
+                    ),
                     SizedBox(width: 6),
                     Text(
                       'Thêm học sinh ngoài Tutora',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: TutorColors.primary),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: TutorColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -905,7 +941,8 @@ class _PendingReviewsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(recorderPendingReviewsProvider).valueOrNull ?? const [];
+    final items =
+        ref.watch(recorderPendingReviewsProvider).valueOrNull ?? const [];
     if (items.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 28),
@@ -921,7 +958,12 @@ class _PendingReviewsSection extends ConsumerWidget {
               child: Column(
                 children: [
                   for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0) const Divider(height: 1, color: TutorColors.line, indent: 16),
+                    if (i > 0)
+                      const Divider(
+                        height: 1,
+                        color: TutorColors.line,
+                        indent: 16,
+                      ),
                     _ReviewRow(lesson: items[i]),
                   ],
                 ],
@@ -955,7 +997,8 @@ class _ReviewRow extends StatelessWidget {
           recordingId: lesson.lessonId,
           studentName: lesson.studentName,
           subtitle: [
-            if (lesson.subject != null && lesson.subject!.isNotEmpty) lesson.subject!,
+            if (lesson.subject != null && lesson.subject!.isNotEmpty)
+              lesson.subject!,
             if (lesson.grade != null) 'Lớp ${lesson.grade}',
           ].join(' · '),
         ),
@@ -972,18 +1015,32 @@ class _ReviewRow extends StatelessWidget {
                     '${lesson.studentName}$date',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: TutorColors.ink),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: TutorColors.ink,
+                    ),
                   ),
                   const SizedBox(height: 3),
-                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: color)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: color,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, size: 18, color: TutorColors.ink4),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: TutorColors.ink4,
+            ),
           ],
         ),
       ),
     );
   }
 }
-

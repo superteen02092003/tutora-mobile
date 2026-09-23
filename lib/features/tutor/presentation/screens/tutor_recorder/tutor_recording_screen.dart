@@ -51,7 +51,9 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
       final state = ref.read(lessonRecordingProvider);
       if (state.isRecording) return;
       unawaited(
-        ref.read(lessonRecordingProvider.notifier).start(
+        ref
+            .read(lessonRecordingProvider.notifier)
+            .start(
               lessonId: widget.target.lessonId,
               studentName: widget.target.studentName,
               target: widget.target,
@@ -190,7 +192,11 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                             color: white.withValues(alpha: 0.22),
                           ),
                         ),
-                        child: Icon(Icons.remove_rounded, size: 18, color: white),
+                        child: Icon(
+                          Icons.remove_rounded,
+                          size: 18,
+                          color: white,
+                        ),
                       ),
                     ),
                   ),
@@ -300,7 +306,9 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                 onPressed: state.isFinishing ? null : _confirmDiscard,
                 child: Text(
                   'Huỷ bản ghi',
-                  style: TutorType.caption(color: white.withValues(alpha: 0.45)),
+                  style: TutorType.caption(
+                    color: white.withValues(alpha: 0.45),
+                  ),
                 ),
               ),
             ],
@@ -405,7 +413,9 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(10));
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    );
     return Row(
       children: [
         Expanded(
@@ -437,8 +447,9 @@ class _Controls extends StatelessWidget {
               minimumSize: const Size.fromHeight(52),
               backgroundColor: TutorColors.accent,
               foregroundColor: TutorColors.heroInk,
-              disabledBackgroundColor:
-                  TutorColors.accent.withValues(alpha: 0.4),
+              disabledBackgroundColor: TutorColors.accent.withValues(
+                alpha: 0.4,
+              ),
               shape: shape,
             ),
             icon: busy

@@ -37,18 +37,31 @@ class TutorClassDetailScreen extends ConsumerWidget {
 
     // Buổi đã ghi âm của lớp này (recorder.lessons gắn classSessionId).
     final sessionIds = {for (final s in sessions) s.lessonId};
-    final recorded = (ref.watch(recorderAllLessonsProvider).valueOrNull ?? const [])
-        .where((l) => l.classSessionId != null && sessionIds.contains(l.classSessionId))
-        .where((l) => l.status != 'scheduled')
-        .toList()
-      ..sort((a, b) => (b.startedAt ?? DateTime(0)).compareTo(a.startedAt ?? DateTime(0)));
+    final recorded =
+        (ref.watch(recorderAllLessonsProvider).valueOrNull ?? const [])
+            .where(
+              (l) =>
+                  l.classSessionId != null &&
+                  sessionIds.contains(l.classSessionId),
+            )
+            .where((l) => l.status != 'scheduled')
+            .toList()
+          ..sort(
+            (a, b) => (b.startedAt ?? DateTime(0)).compareTo(
+              a.startedAt ?? DateTime(0),
+            ),
+          );
 
     // Sắp tới: buổi chưa diễn ra, gần nhất trước.
     final now = DateTime.now();
-    final upcoming = sessions
-        .where((s) => s.isScheduled && (s.endDt ?? s.startDt ?? now).isAfter(now))
-        .toList()
-      ..sort((a, b) => (a.startDt ?? now).compareTo(b.startDt ?? now));
+    final upcoming =
+        sessions
+            .where(
+              (s) =>
+                  s.isScheduled && (s.endDt ?? s.startDt ?? now).isAfter(now),
+            )
+            .toList()
+          ..sort((a, b) => (a.startDt ?? now).compareTo(b.startDt ?? now));
 
     // Buổi phụ / học lại gom về đúng buổi gốc, rồi mới chia theo tháng.
     final chains = groupSessionChains(sessions);
@@ -490,7 +503,12 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(TutorSurface.gutter, 4, TutorSurface.gutter, 10),
+    padding: const EdgeInsets.fromLTRB(
+      TutorSurface.gutter,
+      4,
+      TutorSurface.gutter,
+      10,
+    ),
     child: Text(
       text,
       style: const TextStyle(

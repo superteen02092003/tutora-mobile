@@ -174,10 +174,11 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
     if (_syncingPage > 0 || i == _page) return;
     final m = _monthAt(i);
     final isCurrent = m.year == _today.year && m.month == _today.month;
-    final days = _dayKeys.keys
-        .where((d) => d.year == m.year && d.month == m.month)
-        .toList()
-      ..sort();
+    final days =
+        _dayKeys.keys
+            .where((d) => d.year == m.year && d.month == m.month)
+            .toList()
+          ..sort();
     setState(() {
       _page = i;
       _selected = isCurrent ? _today : (days.isNotEmpty ? days.first : m);
@@ -273,7 +274,8 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
     final lessons = async.valueOrNull ?? const <TutorLessonDto>[];
 
     final loadingEmpty = async.isLoading && lessons.isEmpty;
-    final rebuild = !identical(lessons, _cacheLessons) ||
+    final rebuild =
+        !identical(lessons, _cacheLessons) ||
         _cacheToday != _today ||
         _cacheLoading != loadingEmpty ||
         _agendaCache == null;
@@ -811,8 +813,9 @@ class _LessonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final start = lesson.startDt?.toLocal();
     final end = lesson.endDt?.toLocal();
-    final minutes =
-        (start != null && end != null) ? end.difference(start).inMinutes : null;
+    final minutes = (start != null && end != null)
+        ? end.difference(start).inMinutes
+        : null;
     final ink = past ? TutorColors.ink3 : TutorColors.ink;
 
     return Material(
@@ -825,88 +828,92 @@ class _LessonRow extends StatelessWidget {
       child: InkWell(
         onTap: () => _open(context, lesson),
         child: Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 56,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  lesson.timeStart,
-                  style: TutorType.rowTitle(color: ink).copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  minutes != null && minutes > 0 ? '$minutes phút' : '',
-                  style: TutorType.caption().copyWith(fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 3,
-            height: 42,
-            decoration: BoxDecoration(
-              color: (accent || past) ? TutorColors.primary : TutorColors.line,
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  lesson.studentName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TutorType.rowTitle(color: ink),
-                ),
-                const SizedBox(height: 3),
-                if (past)
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.mic_off_outlined,
-                        size: 12,
-                        color: TutorColors.primary,
+          height: 70,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 56,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lesson.timeStart,
+                      style: TutorType.rowTitle(color: ink).copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          'Chưa có báo cáo',
-                          style: TutorType.caption(color: TutorColors.primary),
-                        ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      minutes != null && minutes > 0 ? '$minutes phút' : '',
+                      style: TutorType.caption().copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 3,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: (accent || past)
+                      ? TutorColors.primary
+                      : TutorColors.line,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lesson.studentName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TutorType.rowTitle(color: ink),
+                    ),
+                    const SizedBox(height: 3),
+                    if (past)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.mic_off_outlined,
+                            size: 12,
+                            color: TutorColors.primary,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              'Chưa có báo cáo',
+                              style: TutorType.caption(
+                                color: TutorColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        _sub(lesson),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TutorType.rowSub(),
                       ),
-                    ],
-                  )
-                else
-                  Text(
-                    _sub(lesson),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TutorType.rowSub(),
-                  ),
+                  ],
+                ),
+              ),
+              if (tag != null) ...[
+                const SizedBox(width: 8),
+                _TagChip(tag: tag!),
               ],
-            ),
+            ],
           ),
-          if (tag != null) ...[
-            const SizedBox(width: 8),
-            _TagChip(tag: tag!),
-          ],
-        ],
-      ),
-    ),
+        ),
       ),
     );
   }
@@ -923,7 +930,10 @@ class _LessonRow extends StatelessWidget {
       unawaited(
         TutorRecordingDetailScreen.open(
           context,
-          RecordingDetailArgs(recordingId: l.recorderLessonId!, studentName: l.studentName),
+          RecordingDetailArgs(
+            recordingId: l.recorderLessonId!,
+            studentName: l.studentName,
+          ),
         ),
       );
     } else if (l.recorderStudentId != null) {

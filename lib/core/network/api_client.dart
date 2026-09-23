@@ -8,6 +8,7 @@ import 'package:tutora/core/network/interceptors/auth_interceptor.dart';
 const String _configuredBaseUrl = String.fromEnvironment(
   'BASE_URL',
 );
+
 /// Bản debug mặc định gọi `localhost:5166` — chạy trên điện thoại thật cắm USB
 /// kèm `adb reverse tcp:5166 tcp:5166`. Dùng emulator thì truyền
 /// `--dart-define=BASE_URL=http://10.0.2.2:5166`.

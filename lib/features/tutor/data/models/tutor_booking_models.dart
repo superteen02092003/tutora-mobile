@@ -18,8 +18,7 @@ enum TutorBookingStatus {
   completed,
   cancelled,
   cancelledNoshow,
-  unknown
-  ;
+  unknown;
 
   static TutorBookingStatus parse(String? raw) => switch (raw?.toLowerCase()) {
     'pending_tutor' => TutorBookingStatus.pendingTutor,

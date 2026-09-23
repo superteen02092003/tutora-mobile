@@ -36,40 +36,45 @@ final recorderPendingReviewsProvider = FutureProvider<List<RecorderLessonDto>>((
 
 /// Buổi hôm nay của học sinh ngoài nền tảng (theo thời khoá biểu), dạng giống
 /// buổi booking để trang chủ và sheet ghi âm hiển thị chung.
-final recorderTodayLessonsProvider = FutureProvider<List<TutorTodaySessionDto>>((
-  ref,
-) async {
-  final now = DateTime.now();
-  final dayStart = DateTime(now.year, now.month, now.day);
-  final list = await ref
-      .read(recorderDatasourceProvider)
-      .lessons(from: dayStart, to: dayStart.add(const Duration(days: 1)));
-  return list
-      .where((l) => l.studentId != null && l.scheduledStart != null)
-      .where((l) => l.status != 'discarded')
-      .map(
-        (l) => TutorTodaySessionDto(
-          lessonId: 0,
-          studentName: l.studentName,
-          subjectName: [
-            if (l.subject != null && l.subject!.isNotEmpty) l.subject!,
-            if (l.grade != null) 'Lớp ${l.grade}',
-          ].join(' · '),
-          scheduledStart: l.scheduledStart!.toUtc().toIso8601String(),
-          scheduledEnd: (l.scheduledEnd ?? l.scheduledStart!.add(const Duration(minutes: 90)))
-              .toUtc()
-              .toIso8601String(),
-          status: l.status,
-          recorderLessonId: l.lessonId,
-          recorderStatus: l.status,
-        ),
-      )
-      .toList();
-});
+final recorderTodayLessonsProvider = FutureProvider<List<TutorTodaySessionDto>>(
+  (
+    ref,
+  ) async {
+    final now = DateTime.now();
+    final dayStart = DateTime(now.year, now.month, now.day);
+    final list = await ref
+        .read(recorderDatasourceProvider)
+        .lessons(from: dayStart, to: dayStart.add(const Duration(days: 1)));
+    return list
+        .where((l) => l.studentId != null && l.scheduledStart != null)
+        .where((l) => l.status != 'discarded')
+        .map(
+          (l) => TutorTodaySessionDto(
+            lessonId: 0,
+            studentName: l.studentName,
+            subjectName: [
+              if (l.subject != null && l.subject!.isNotEmpty) l.subject!,
+              if (l.grade != null) 'Lớp ${l.grade}',
+            ].join(' · '),
+            scheduledStart: l.scheduledStart!.toUtc().toIso8601String(),
+            scheduledEnd:
+                (l.scheduledEnd ??
+                        l.scheduledStart!.add(const Duration(minutes: 90)))
+                    .toUtc()
+                    .toIso8601String(),
+            status: l.status,
+            recorderLessonId: l.lessonId,
+            recorderStatus: l.status,
+          ),
+        )
+        .toList();
+  },
+);
 
 /// Mọi buổi đã ghi của gia sư (cả booking lẫn ngoài nền tảng) — màn chi tiết
 /// lớp booking lọc theo classSessionId của lớp.
-final AutoDisposeFutureProvider<List<RecorderLessonDto>> recorderAllLessonsProvider =
+final AutoDisposeFutureProvider<List<RecorderLessonDto>>
+recorderAllLessonsProvider =
     FutureProvider.autoDispose<List<RecorderLessonDto>>(
       (ref) => ref.read(recorderDatasourceProvider).lessons(),
     );

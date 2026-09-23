@@ -56,8 +56,7 @@ class LessonRecordingState {
 
   bool get isActive => isRecording && !isFinishing;
 
-  int get totalBytes =>
-      segments.fold<int>(0, (sum, s) => sum + s.bytes);
+  int get totalBytes => segments.fold<int>(0, (sum, s) => sum + s.bytes);
 
   LessonRecordingState copyWith({
     int? lessonId,
@@ -98,6 +97,7 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
   LessonRecordingNotifier(this._api) : super(const LessonRecordingState());
 
   final AppRecordingDatasource _api;
+
   /// Bản debug cắt đoạn 30 giây thay vì 5 phút: test 2–3 phút là đã có vài đoạn,
   /// đủ để đi qua bước ghép ffmpeg trên server. Bản release luôn là 5 phút.
   final LessonRecorder _recorder = LessonRecorder(
@@ -217,7 +217,10 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
     });
   }
 
-  Future<void> _uploadSegment(String recordingId, RecordedSegment segment) async {
+  Future<void> _uploadSegment(
+    String recordingId,
+    RecordedSegment segment,
+  ) async {
     final partNumber = _partOffset + segment.index;
     final slot = await _api.uploadUrl(recordingId, partNumber);
     await _api.uploadPart(slot.url, File(segment.path));
@@ -230,8 +233,10 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
       final data = e.response?.data;
       final msg = data is Map ? (data['message'] ?? data['Message']) : null;
       final code = e.response?.statusCode;
-      debugPrint('[recorder] ${e.requestOptions.method} ${e.requestOptions.path} '
-          '→ ${code ?? e.type.name}: $data');
+      debugPrint(
+        '[recorder] ${e.requestOptions.method} ${e.requestOptions.path} '
+        '→ ${code ?? e.type.name}: $data',
+      );
       if (msg is String && msg.trim().isNotEmpty) return msg;
       if (code == null) return 'không kết nối được máy chủ.';
       return 'lỗi máy chủ ($code).';
@@ -246,9 +251,12 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
     if (e is DioException) {
       final res = e.response;
       final url = e.requestOptions.uri;
-      final step = url.path.contains('/upload-url') ? 'upload-url' : 'PUT ${url.host}';
+      final step = url.path.contains('/upload-url')
+          ? 'upload-url'
+          : 'PUT ${url.host}';
       final body = res?.data?.toString() ?? '';
-      why = '$step · ${res?.statusCode ?? e.type.name} · '
+      why =
+          '$step · ${res?.statusCode ?? e.type.name} · '
           '${body.length > 300 ? body.substring(0, 300) : body}'
           '${res == null ? ' · ${e.message}' : ''}';
     } else {
@@ -302,7 +310,8 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
         state = state.copyWith(
           isFinishing: false,
           uploadFailed: true,
-          error: 'Chưa gửi xong bản ghi. Bản ghi vẫn nằm an toàn trên máy, '
+          error:
+              'Chưa gửi xong bản ghi. Bản ghi vẫn nằm an toàn trên máy, '
               'bạn thử lại khi có mạng ổn định hơn.'
               '${kDebugMode ? '\n[debug] $why' : ''}',
         );
@@ -324,7 +333,8 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
     } on Object catch (e) {
       state = state.copyWith(
         isFinishing: false,
-        error: 'Đã tải bản ghi lên nhưng chưa chốt được buổi học: ${_serverMessage(e)}',
+        error:
+            'Đã tải bản ghi lên nhưng chưa chốt được buổi học: ${_serverMessage(e)}',
       );
       return null;
     }
@@ -378,5 +388,6 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
 
 final lessonRecordingProvider =
     StateNotifierProvider<LessonRecordingNotifier, LessonRecordingState>(
-      (ref) => LessonRecordingNotifier(ref.read(appRecordingDatasourceProvider)),
+      (ref) =>
+          LessonRecordingNotifier(ref.read(appRecordingDatasourceProvider)),
     );

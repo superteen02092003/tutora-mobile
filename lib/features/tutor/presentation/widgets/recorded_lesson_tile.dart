@@ -17,13 +17,26 @@ class RecordedLessonTile extends StatelessWidget {
     final date = d == null
         ? '—'
         : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} · '
-            '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+              '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
     final (label, bg, fg) = switch (lesson.status) {
-      'sent' => lesson.deliveryStatus == 'sent'
-          ? ('Đã gửi', TutorColors.successBg, TutorColors.success)
-          : ('Đã duyệt · chờ gửi Zalo', TutorColors.accentBg, TutorColors.warning),
-      'awaiting_approval' => ('Chờ duyệt', TutorColors.primaryBg, TutorColors.primary),
-      'processing' => ('AI đang viết', TutorColors.accentBg, TutorColors.warning),
+      'sent' =>
+        lesson.deliveryStatus == 'sent'
+            ? ('Đã gửi', TutorColors.successBg, TutorColors.success)
+            : (
+                'Đã duyệt · chờ gửi Zalo',
+                TutorColors.accentBg,
+                TutorColors.warning,
+              ),
+      'awaiting_approval' => (
+        'Chờ duyệt',
+        TutorColors.primaryBg,
+        TutorColors.primary,
+      ),
+      'processing' => (
+        'AI đang viết',
+        TutorColors.accentBg,
+        TutorColors.warning,
+      ),
       'failed' => ('Lỗi', TutorColors.primaryBg, TutorColors.primary),
       _ => ('Đang ghi', TutorColors.accentBg, TutorColors.warning),
     };
@@ -54,30 +67,59 @@ class RecordedLessonTile extends StatelessWidget {
                   color: TutorColors.primaryBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.graphic_eq_rounded, size: 20, color: TutorColors.primary),
+                child: const Icon(
+                  Icons.graphic_eq_rounded,
+                  size: 20,
+                  color: TutorColors.primary,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(date,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: TutorColors.ink)),
+                    Text(
+                      date,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: TutorColors.ink,
+                      ),
+                    ),
                     const SizedBox(height: 3),
                     Text(
-                      minutes > 0 ? '$minutes phút ghi âm' : 'Dưới 1 phút ghi âm',
-                      style: const TextStyle(fontSize: 13, color: TutorColors.ink3),
+                      minutes > 0
+                          ? '$minutes phút ghi âm'
+                          : 'Dưới 1 phút ghi âm',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: TutorColors.ink3,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-                child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: fg)),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: fg,
+                  ),
+                ),
               ),
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded, size: 18, color: TutorColors.ink4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: TutorColors.ink4,
+              ),
             ],
           ),
         ),

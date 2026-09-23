@@ -102,12 +102,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           barrierColor: Colors.transparent,
           child: const TutorRecorderEntryScreen(),
           transitionsBuilder: (context, animation, _, child) => SlideTransition(
-            position: Tween(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            ),
+            position:
+                Tween(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           ),
         ),
@@ -120,8 +124,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.tutorRecordingDetail,
-        builder: (context, state) =>
-            TutorRecordingDetailScreen(args: state.extra! as RecordingDetailArgs),
+        builder: (context, state) => TutorRecordingDetailScreen(
+          args: state.extra! as RecordingDetailArgs,
+        ),
       ),
       GoRoute(
         path: AppRoutes.tutorReportReview,

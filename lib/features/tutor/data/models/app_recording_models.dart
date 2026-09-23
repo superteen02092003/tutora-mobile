@@ -44,14 +44,19 @@ class SessionMinutesDto {
     this.followUps = const [],
   });
 
-  factory SessionMinutesDto.fromJson(Map<String, dynamic> j) => SessionMinutesDto(
+  factory SessionMinutesDto.fromJson(Map<String, dynamic> j) =>
+      SessionMinutesDto(
         summary: j['summary'] as String?,
         keyPoints: _strings(j['keyPoints']),
         followUps: _strings(j['followUps']),
       );
 
   static List<String> _strings(Object? v) => v is List
-      ? v.whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+      ? v
+            .whereType<String>()
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList()
       : const [];
 
   final String? summary;
@@ -129,7 +134,9 @@ class AppRecordingStatusDto {
         audioAvailable: j['audioAvailable'] as bool? ?? false,
         audioExpiresAt: _t(j['audioExpiresAt']),
         sessionMinutes: j['sessionMinutes'] is Map<String, dynamic>
-            ? SessionMinutesDto.fromJson(j['sessionMinutes'] as Map<String, dynamic>)
+            ? SessionMinutesDto.fromJson(
+                j['sessionMinutes'] as Map<String, dynamic>,
+              )
             : null,
         parentPhone: j['parentPhone'] as String?,
         deliveryError: j['deliveryError'] as String?,
@@ -144,6 +151,7 @@ class AppRecordingStatusDto {
   }
 
   final String recordingId;
+
   /// Có khi buổi thuộc booking; null với học sinh ngoài nền tảng.
   final int? classSessionId;
 

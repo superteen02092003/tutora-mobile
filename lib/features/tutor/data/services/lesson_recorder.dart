@@ -127,12 +127,13 @@ class LessonRecorder {
     final dir = await segmentDir(key);
     if (!dir.existsSync()) return const [];
 
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.m4a'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final files =
+        dir
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.m4a'))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
 
     return [
       for (var i = 0; i < files.length; i++)

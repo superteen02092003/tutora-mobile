@@ -55,11 +55,14 @@ class TutorSessionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref.watch(_sessionDetailProvider(lesson.lessonId)).valueOrNull;
+    final detail = ref
+        .watch(_sessionDetailProvider(lesson.lessonId))
+        .valueOrNull;
     final start = lesson.startDt?.toLocal();
     final end = lesson.endDt?.toLocal();
     final now = DateTime.now();
-    final isToday = start != null &&
+    final isToday =
+        start != null &&
         start.year == now.year &&
         start.month == now.month &&
         start.day == now.day;
@@ -74,12 +77,15 @@ class TutorSessionDetailScreen extends ConsumerWidget {
 
     // Buổi trước cùng lớp — lấy từ lịch đã tải.
     final schedule =
-        ref.watch(tutorAgendaLessonsProvider).valueOrNull ?? const <TutorLessonDto>[];
+        ref.watch(tutorAgendaLessonsProvider).valueOrNull ??
+        const <TutorLessonDto>[];
     TutorLessonDto? previous;
     if (lesson.bookingId != null && start != null) {
       for (final l in schedule) {
         final s = l.startDt;
-        if (l.bookingId != lesson.bookingId || s == null || !s.isBefore(start)) {
+        if (l.bookingId != lesson.bookingId ||
+            s == null ||
+            !s.isBefore(start)) {
           continue;
         }
         if (previous == null || s.isAfter(previous.startDt!)) previous = l;
@@ -121,8 +127,9 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                         ),
                         child: Text(
                           status.label,
-                          style: TutorType.caption(color: status.fg)
-                              .copyWith(fontWeight: FontWeight.w600),
+                          style: TutorType.caption(
+                            color: status.fg,
+                          ).copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -156,8 +163,9 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                           children: [
                             Text(
                               lesson.studentName,
-                              style: TutorType.screenTitle()
-                                  .copyWith(height: 1.1),
+                              style: TutorType.screenTitle().copyWith(
+                                height: 1.1,
+                              ),
                             ),
                             if (subtitle.isNotEmpty) ...[
                               const SizedBox(height: 3),
@@ -285,8 +293,8 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                           SizedBox(
                             height: 36,
                             child: OutlinedButton(
-                              onPressed: () => Navigator.of(context)
-                                  .pushReplacement(
+                              onPressed: () =>
+                                  Navigator.of(context).pushReplacement(
                                     MaterialPageRoute<void>(
                                       builder: (_) => TutorSessionDetailScreen(
                                         lesson: prev,
@@ -425,14 +433,26 @@ class _Status {
       );
     }
     if (l.isAwaitingReport) {
-      return const _Status('Cần báo cáo', TutorColors.primaryBg, TutorColors.primary);
+      return const _Status(
+        'Cần báo cáo',
+        TutorColors.primaryBg,
+        TutorColors.primary,
+      );
     }
     if (l.isFinished) {
-      return const _Status('Đã hoàn thành', TutorColors.successBg, TutorColors.success);
+      return const _Status(
+        'Đã hoàn thành',
+        TutorColors.successBg,
+        TutorColors.success,
+      );
     }
     final end = l.endDt;
     if (end != null && end.isBefore(now)) {
-      return const _Status('Đã qua', TutorColors.surfaceSunken, TutorColors.ink3);
+      return const _Status(
+        'Đã qua',
+        TutorColors.surfaceSunken,
+        TutorColors.ink3,
+      );
     }
     return const _Status('Sắp diễn ra', Color(0xFFF0E3CA), Color(0xFF5C3A1A));
   }
@@ -487,8 +507,9 @@ class _RecordingState extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TutorType.rowSub(color: fg)
-                      .copyWith(fontWeight: FontWeight.w600),
+                  style: TutorType.rowSub(
+                    color: fg,
+                  ).copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
             ],

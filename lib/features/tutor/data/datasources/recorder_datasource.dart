@@ -13,7 +13,9 @@ class RecorderDatasource {
       res.data?['content'];
 
   static List<Map<String, dynamic>> _list(dynamic c) =>
-      (c is List ? c : const <dynamic>[]).whereType<Map<String, dynamic>>().toList();
+      (c is List ? c : const <dynamic>[])
+          .whereType<Map<String, dynamic>>()
+          .toList();
 
   static Map<String, dynamic> _map(dynamic c) =>
       c is Map<String, dynamic> ? c : const <String, dynamic>{};
@@ -54,7 +56,9 @@ class RecorderDatasource {
 
   /// Tạo link mời phụ huynh liên kết Zalo (link cũ còn hạn bị thu hồi).
   Future<RecorderParentInviteDto> createParentInvite(String studentId) async {
-    final res = await _dio.post<Map<String, dynamic>>('/recorder/students/$studentId/parent-invite');
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/recorder/students/$studentId/parent-invite',
+    );
     return RecorderParentInviteDto.fromJson(_map(_content(res)));
   }
 

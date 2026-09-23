@@ -73,13 +73,14 @@ class _TutorRecorderEntryScreenState
   }
 
   /// Học sinh ngoài nền tảng: đóng sheet rồi đi luồng xác nhận đồng ý + ghi.
-  Future<void> _startStudent(RecorderStudentDto student) => startStudentRecording(
-    context,
-    ref,
-    student,
-    // Đóng sheet ngay trước khi mở màn "Đang ghi" (giống _start).
-    onBeforeStart: () => context.pop(),
-  );
+  Future<void> _startStudent(RecorderStudentDto student) =>
+      startStudentRecording(
+        context,
+        ref,
+        student,
+        // Đóng sheet ngay trước khi mở màn "Đang ghi" (giống _start).
+        onBeforeStart: () => context.pop(),
+      );
 
   Future<void> _addStudent() async {
     final created = await TutorStudentFormScreen.open(context);
@@ -90,11 +91,17 @@ class _TutorRecorderEntryScreenState
   @override
   Widget build(BuildContext context) {
     final dash = ref.watch(tutorDashboardProvider);
-    final upcoming =
-        dash.data?.todaySessions ?? const <TutorTodaySessionDto>[];
+    final upcoming = dash.data?.todaySessions ?? const <TutorTodaySessionDto>[];
     final offPlatformToday =
-        (ref.watch(recorderTodayLessonsProvider).valueOrNull ?? const <TutorTodaySessionDto>[])
-            .where((s) => const {'scheduled', 'recording', 'uploading'}.contains(s.recorderStatus))
+        (ref.watch(recorderTodayLessonsProvider).valueOrNull ??
+                const <TutorTodaySessionDto>[])
+            .where(
+              (s) => const {
+                'scheduled',
+                'recording',
+                'uploading',
+              }.contains(s.recorderStatus),
+            )
             .toList();
     final today = [...sessionsToday(upcoming), ...offPlatformToday];
     // Bản debug: hôm nay không có buổi thì cho chọn buổi SẮP TỚI để test ghi âm —
@@ -106,7 +113,8 @@ class _TutorRecorderEntryScreenState
     final media = MediaQuery.of(context);
 
     final students =
-        ref.watch(recorderStudentsProvider).valueOrNull ?? const <RecorderStudentDto>[];
+        ref.watch(recorderStudentsProvider).valueOrNull ??
+        const <RecorderStudentDto>[];
 
     final Widget body;
     if (loading) {
@@ -200,12 +208,11 @@ class _ConfirmOne extends StatelessWidget {
     final start = DateTime.tryParse(session.scheduledStart)?.toLocal();
     final end = DateTime.tryParse(session.scheduledEnd)?.toLocal();
     final now = DateTime.now();
-    final live = start != null &&
-        end != null &&
-        now.isAfter(start) &&
-        now.isBefore(end);
-    final minutes =
-        (start != null && end != null) ? end.difference(start).inMinutes : null;
+    final live =
+        start != null && end != null && now.isAfter(start) && now.isBefore(end);
+    final minutes = (start != null && end != null)
+        ? end.difference(start).inMinutes
+        : null;
     final timeLine = [
       '${session.timeStart} – ${session.timeEnd}',
       if (minutes != null && minutes > 0) '$minutes phút',
@@ -374,7 +381,8 @@ class _PickSession extends StatefulWidget {
 class _PickSessionState extends State<_PickSession> {
   /// Buổi (TutorTodaySessionDto) hoặc học sinh (RecorderStudentDto) đang chọn.
   /// Không có buổi nào hôm nay thì chọn sẵn học sinh đầu tiên.
-  late Object? _selected = widget.closest ??
+  late Object? _selected =
+      widget.closest ??
       (widget.sessions.isEmpty && widget.students.isNotEmpty
           ? widget.students.first
           : null);
@@ -429,8 +437,7 @@ class _PickSessionState extends State<_PickSession> {
             ),
             const SizedBox(height: 10),
           ],
-          if (onAddStudent != null)
-            _AddStudentRow(onTap: onAddStudent!),
+          if (onAddStudent != null) _AddStudentRow(onTap: onAddStudent!),
         ],
       ],
     );
@@ -476,81 +483,85 @@ class _SessionRow extends StatelessWidget {
       child: InkWell(
         onTap: onSelect,
         child: Padding(
-      padding: const EdgeInsets.all(15),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          padding: const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Flexible(
-                      child: Text(
-                        session.studentName,
-                        style: TutorType.rowTitle(),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            session.studentName,
+                            style: TutorType.rowTitle(),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (closest) ...[
+                          const SizedBox(width: 7),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: TutorColors.primaryBg,
+                              border: Border.all(
+                                color: TutorColors.primaryBorder,
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'Gần nhất',
+                              style: TutorType.caption(
+                                color: TutorColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (closest) ...[
-                      const SizedBox(width: 7),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: TutorColors.primaryBg,
-                          border: Border.all(color: TutorColors.primaryBorder),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          'Gần nhất',
-                          style: TutorType.caption(color: TutorColors.primary),
-                        ),
-                      ),
-                    ],
+                    const SizedBox(height: 3),
+                    Text(sub, style: TutorType.rowSub()),
+                    const SizedBox(height: 3),
+                    Text('Báo cáo → Phụ huynh', style: TutorType.caption()),
                   ],
                 ),
-                const SizedBox(height: 3),
-                Text(sub, style: TutorType.rowSub()),
-                const SizedBox(height: 3),
-                Text('Báo cáo → Phụ huynh', style: TutorType.caption()),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 44,
+                child: selected
+                    ? FilledButton(
+                        onPressed: onStart,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: TutorColors.primary,
+                          foregroundColor: TutorColors.surface,
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          'Ghi âm',
+                          style: TutorType.action(color: TutorColors.surface),
+                        ),
+                      )
+                    : OutlinedButton(
+                        onPressed: onStart,
+                        style: OutlinedButton.styleFrom(
+                          // Theme app đặt minimumSize rộng vô hạn cho OutlinedButton.
+                          minimumSize: const Size(0, 36),
+                          backgroundColor: TutorColors.surface,
+                          side: const BorderSide(color: TutorColors.line),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text('Ghi âm', style: TutorType.action()),
+                      ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 44,
-            child: selected
-                ? FilledButton(
-                    onPressed: onStart,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: TutorColors.primary,
-                      foregroundColor: TutorColors.surface,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: Text(
-                      'Ghi âm',
-                      style: TutorType.action(color: TutorColors.surface),
-                    ),
-                  )
-                : OutlinedButton(
-                    onPressed: onStart,
-                    style: OutlinedButton.styleFrom(
-                      // Theme app đặt minimumSize rộng vô hạn cho OutlinedButton.
-                      minimumSize: const Size(0, 36),
-                      backgroundColor: TutorColors.surface,
-                      side: const BorderSide(color: TutorColors.line),
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: Text('Ghi âm', style: TutorType.action()),
-                  ),
-          ),
-        ],
-      ),
         ),
       ),
     );
@@ -602,7 +613,11 @@ class _NoSessionToday extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.event_busy_rounded, size: 34, color: TutorColors.ink4),
+          const Icon(
+            Icons.event_busy_rounded,
+            size: 34,
+            color: TutorColors.ink4,
+          ),
           const SizedBox(height: 12),
           Text(
             'Hôm nay không có buổi nào trên Tutora',
@@ -691,68 +706,68 @@ class _StudentRow extends StatelessWidget {
       child: InkWell(
         onTap: student.isDeclined ? null : onSelect,
         child: Padding(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          TutorAvatar(name: student.fullName, size: 40),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  student.fullName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TutorType.rowTitle(),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              TutorAvatar(name: student.fullName, size: 40),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TutorType.rowTitle(),
+                    ),
+                    if (sub.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TutorType.rowSub(
+                          color: student.hasConsent
+                              ? TutorColors.ink3
+                              : TutorColors.warning,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (sub.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TutorType.rowSub(
-                      color: student.hasConsent
-                          ? TutorColors.ink3
-                          : TutorColors.warning,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 44,
+                child: selected
+                    ? FilledButton(
+                        onPressed: student.isDeclined ? null : onStart,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: TutorColors.primary,
+                          foregroundColor: TutorColors.surface,
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          'Ghi âm',
+                          style: TutorType.action(color: TutorColors.surface),
+                        ),
+                      )
+                    : OutlinedButton(
+                        onPressed: student.isDeclined ? null : onStart,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 36),
+                          backgroundColor: TutorColors.surface,
+                          side: const BorderSide(color: TutorColors.line),
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text('Ghi âm', style: TutorType.action()),
+                      ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 44,
-            child: selected
-                ? FilledButton(
-                    onPressed: student.isDeclined ? null : onStart,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: TutorColors.primary,
-                      foregroundColor: TutorColors.surface,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: Text(
-                      'Ghi âm',
-                      style: TutorType.action(color: TutorColors.surface),
-                    ),
-                  )
-                : OutlinedButton(
-                    onPressed: student.isDeclined ? null : onStart,
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      backgroundColor: TutorColors.surface,
-                      side: const BorderSide(color: TutorColors.line),
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: Text('Ghi âm', style: TutorType.action()),
-                  ),
-          ),
-        ],
-      ),
         ),
       ),
     );
@@ -780,7 +795,11 @@ class _AddStudentRow extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.add_rounded, size: 18, color: TutorColors.primary),
+              const Icon(
+                Icons.add_rounded,
+                size: 18,
+                color: TutorColors.primary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Thêm học sinh ngoài Tutora',
@@ -814,7 +833,9 @@ class _PrimaryButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: TutorColors.primary,
           foregroundColor: TutorColors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
         icon: Icon(icon, size: 18),
         label: Text(label, style: TutorType.action(color: TutorColors.surface)),

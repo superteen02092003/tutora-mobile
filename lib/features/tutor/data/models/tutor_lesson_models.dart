@@ -34,9 +34,14 @@ class TutorLessonDto {
       'processing' || 'awaiting_approval' || 'failed' => 'in_progress',
       _ => 'scheduled',
     };
-    final recorded = {'processing', 'awaiting_approval', 'failed'}.contains(l.status);
+    final recorded = {
+      'processing',
+      'awaiting_approval',
+      'failed',
+    }.contains(l.status);
     final start = l.scheduledStart ?? l.startedAt;
-    final end = l.scheduledEnd ??
+    final end =
+        l.scheduledEnd ??
         (start != null && l.durationSec > 0
             ? start.add(Duration(seconds: l.durationSec))
             : start?.add(const Duration(minutes: 90)));
@@ -52,7 +57,9 @@ class TutorLessonDto {
       scheduledEnd: end?.toUtc().toIso8601String() ?? '',
       status: status,
       // Có checkOutTime + in_progress = "chờ báo cáo" theo quy ước của lịch.
-      checkOutTime: recorded ? (l.startedAt ?? start)?.toUtc().toIso8601String() : null,
+      checkOutTime: recorded
+          ? (l.startedAt ?? start)?.toUtc().toIso8601String()
+          : null,
       recorderLessonId: l.lessonId,
       recorderStudentId: l.studentId,
       recorderStatus: l.status,
@@ -425,8 +432,8 @@ class TutorSessionDetailDto {
     final student = j['student'] as Map<String, dynamic>?;
     return TutorSessionDetailDto(
       price: (j['classSessionPrice'] as num?)?.toDouble(),
-      gradeName: (student?['gradeLevelName'] ?? student?['gradeLevel'])
-          as String?,
+      gradeName:
+          (student?['gradeLevelName'] ?? student?['gradeLevel']) as String?,
     );
   }
 

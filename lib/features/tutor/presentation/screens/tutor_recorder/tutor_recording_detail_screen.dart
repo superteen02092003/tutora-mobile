@@ -52,7 +52,8 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
   Timer? _poll;
   int _tab = 0;
 
-  static bool _isProcessing(AppRecordingStatusDto s) => s.isAiRunning || s.status == 'processing';
+  static bool _isProcessing(AppRecordingStatusDto s) =>
+      s.isAiRunning || s.status == 'processing';
 
   @override
   void initState() {
@@ -72,7 +73,9 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
 
   Future<void> _load() async {
     try {
-      final s = await ref.read(appRecordingDatasourceProvider).status(widget.args.recordingId);
+      final s = await ref
+          .read(appRecordingDatasourceProvider)
+          .status(widget.args.recordingId);
       if (!mounted) return;
       setState(() {
         _s = s;
@@ -87,7 +90,9 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final s = _s;
-    final name = (s?.studentName.isNotEmpty ?? false) ? s!.studentName : widget.args.studentName;
+    final name = (s?.studentName.isNotEmpty ?? false)
+        ? s!.studentName
+        : widget.args.studentName;
     final when = s?.startedAt ?? s?.scheduledStart;
 
     return Scaffold(
@@ -100,14 +105,21 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
           when == null ? name : '$name · ${when.day}/${when.month}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: TutorColors.ink),
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: TutorColors.ink,
+          ),
         ),
       ),
       body: s == null
           ? Center(
               child: _error == null
                   ? const CircularProgressIndicator()
-                  : TextButton(onPressed: _load, child: const Text('Không tải được. Chạm để thử lại.')),
+                  : TextButton(
+                      onPressed: _load,
+                      child: const Text('Không tải được. Chạm để thử lại.'),
+                    ),
             )
           : Column(
               children: [
@@ -115,9 +127,17 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                   child: Row(
                     children: [
-                      _TabPill(label: 'Báo cáo', selected: _tab == 0, onTap: () => setState(() => _tab = 0)),
+                      _TabPill(
+                        label: 'Báo cáo',
+                        selected: _tab == 0,
+                        onTap: () => setState(() => _tab = 0),
+                      ),
                       const SizedBox(width: 8),
-                      _TabPill(label: 'Tóm tắt buổi', selected: _tab == 1, onTap: () => setState(() => _tab = 1)),
+                      _TabPill(
+                        label: 'Tóm tắt buổi',
+                        selected: _tab == 1,
+                        onTap: () => setState(() => _tab = 1),
+                      ),
                     ],
                   ),
                 ),
@@ -126,7 +146,12 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                     color: TutorColors.primary,
                     onRefresh: _load,
                     child: _tab == 0
-                        ? _SummaryTab(status: s, name: name, onEdit: _openEditor, onShare: _share)
+                        ? _SummaryTab(
+                            status: s,
+                            name: name,
+                            onEdit: _openEditor,
+                            onShare: _share,
+                          )
                         : _MinutesTab(status: s),
                   ),
                 ),
@@ -153,7 +178,9 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
 
   /// Soạn tin báo cáo cho phụ huynh từ các mục đã duyệt.
   String _shareText(AppRecordingStatusDto s) {
-    final name = s.studentName.isNotEmpty ? s.studentName : widget.args.studentName;
+    final name = s.studentName.isNotEmpty
+        ? s.studentName
+        : widget.args.studentName;
     final when = s.startedAt ?? s.scheduledStart;
     final buf = StringBuffer('Báo cáo buổi học của $name');
     if (when != null) buf.write(' — ngày ${_date(when)}');
@@ -176,20 +203,31 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
     if (s == null) return;
     await Clipboard.setData(ClipboardData(text: _shareText(s)));
     var phone = (s.parentPhone ?? '').replaceAll(RegExp(r'\D'), '');
-    if (phone.startsWith('84') && phone.length >= 11) phone = '0${phone.substring(2)}';
-    final uri = Uri.parse(phone.isNotEmpty ? 'https://zalo.me/$phone' : 'https://zalo.me');
+    if (phone.startsWith('84') && phone.length >= 11)
+      phone = '0${phone.substring(2)}';
+    final uri = Uri.parse(
+      phone.isNotEmpty ? 'https://zalo.me/$phone' : 'https://zalo.me',
+    );
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok
-          ? 'Đã sao chép báo cáo — dán vào khung chat Zalo rồi gửi.'
-          : 'Không mở được Zalo. Báo cáo đã được sao chép.'),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Đã sao chép báo cáo — dán vào khung chat Zalo rồi gửi.'
+              : 'Không mở được Zalo. Báo cáo đã được sao chép.',
+        ),
+      ),
+    );
   }
 }
 
 class _TabPill extends StatelessWidget {
-  const _TabPill({required this.label, required this.selected, required this.onTap});
+  const _TabPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -220,7 +258,12 @@ class _TabPill extends StatelessWidget {
 // ── Báo cáo ──────────────────────────────────────────────────────────────────
 
 class _SummaryTab extends StatelessWidget {
-  const _SummaryTab({required this.status, required this.name, required this.onEdit, required this.onShare});
+  const _SummaryTab({
+    required this.status,
+    required this.name,
+    required this.onEdit,
+    required this.onShare,
+  });
 
   final AppRecordingStatusDto status;
   final String name;
@@ -238,10 +281,19 @@ class _SummaryTab extends StatelessWidget {
     ].join(' · ');
 
     final (stLabel, stBg, stFg) = switch (s.status) {
-      'sent' => s.deliveryStatus == 'sent'
-          ? ('Đã gửi phụ huynh', TutorColors.successBg, TutorColors.success)
-          : ('Đã duyệt · chờ gửi Zalo', TutorColors.accentBg, TutorColors.warning),
-      'awaiting_approval' => ('Chờ bạn duyệt', TutorColors.primaryBg, TutorColors.primary),
+      'sent' =>
+        s.deliveryStatus == 'sent'
+            ? ('Đã gửi phụ huynh', TutorColors.successBg, TutorColors.success)
+            : (
+                'Đã duyệt · chờ gửi Zalo',
+                TutorColors.accentBg,
+                TutorColors.warning,
+              ),
+      'awaiting_approval' => (
+        'Chờ bạn duyệt',
+        TutorColors.primaryBg,
+        TutorColors.primary,
+      ),
       'failed' => ('AI lỗi', TutorColors.primaryBg, TutorColors.primary),
       _ => ('AI đang viết báo cáo', TutorColors.accentBg, TutorColors.warning),
     };
@@ -250,30 +302,67 @@ class _SummaryTab extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
       children: [
-        Text('Báo cáo buổi học',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.4, color: TutorColors.primary)),
+        Text(
+          'Báo cáo buổi học',
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: TutorColors.primary,
+          ),
+        ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           alignment: Alignment.centerLeft,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: stBg, borderRadius: BorderRadius.circular(999)),
-            child: Text(stLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: stFg)),
+            decoration: BoxDecoration(
+              color: stBg,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              stLabel,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: stFg,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 8),
-        _InfoCard(rows: [
-          (Icons.person_outline_rounded, 'Học sinh', subtitle.isEmpty ? name : '$name · $subtitle'),
-          if (start != null) (Icons.event_outlined, 'Ngày', _date(start)),
-          if (start != null)
-            (Icons.schedule_rounded, 'Giờ ghi', end == null ? _hm(start) : '${_hm(start)} – ${_hm(end)}'),
-          (Icons.timer_outlined, 'Thời lượng', s.durationSec > 0 ? _mmss(Duration(seconds: s.durationSec)) : '—'),
-          (Icons.graphic_eq_rounded, 'Số đoạn ghi', '${s.partCount} đoạn · ${(s.bytes / 1048576).toStringAsFixed(1)} MB'),
-        ]),
+        _InfoCard(
+          rows: [
+            (
+              Icons.person_outline_rounded,
+              'Học sinh',
+              subtitle.isEmpty ? name : '$name · $subtitle',
+            ),
+            if (start != null) (Icons.event_outlined, 'Ngày', _date(start)),
+            if (start != null)
+              (
+                Icons.schedule_rounded,
+                'Giờ ghi',
+                end == null ? _hm(start) : '${_hm(start)} – ${_hm(end)}',
+              ),
+            (
+              Icons.timer_outlined,
+              'Thời lượng',
+              s.durationSec > 0 ? _mmss(Duration(seconds: s.durationSec)) : '—',
+            ),
+            (
+              Icons.graphic_eq_rounded,
+              'Số đoạn ghi',
+              '${s.partCount} đoạn · ${(s.bytes / 1048576).toStringAsFixed(1)} MB',
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
         if (s.isAiRunning || s.status == 'processing')
-          const _Note('AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.')
+          const _Note(
+            'AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.',
+          )
         else if (s.isFailed && (s.lessonContent ?? '').isEmpty)
           _Note(s.errorMessage ?? 'AI chưa tạo được báo cáo từ bản ghi này.')
         else ...[
@@ -290,9 +379,15 @@ class _SummaryTab extends StatelessWidget {
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, 48),
                 backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Text(s.isAwaitingApproval ? 'Sửa & gửi phụ huynh' : 'Tự viết báo cáo'),
+              child: Text(
+                s.isAwaitingApproval
+                    ? 'Sửa & gửi phụ huynh'
+                    : 'Tự viết báo cáo',
+              ),
             ),
           ),
         ],
@@ -309,7 +404,9 @@ class _SummaryTab extends StatelessWidget {
                 minimumSize: const Size(0, 48),
                 foregroundColor: TutorColors.primary,
                 side: const BorderSide(color: TutorColors.primaryBorder),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
@@ -341,11 +438,26 @@ class _InfoCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 17, color: TutorColors.ink4),
                 const SizedBox(width: 10),
-                SizedBox(width: 110, child: Text(k, style: const TextStyle(fontSize: 13, color: TutorColors.ink4))),
+                SizedBox(
+                  width: 110,
+                  child: Text(
+                    k,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: TutorColors.ink4,
+                    ),
+                  ),
+                ),
                 Expanded(
-                  child: Text(v,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: TutorColors.ink)),
+                  child: Text(
+                    v,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: TutorColors.ink,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -370,9 +482,23 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: TutorColors.ink)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: TutorColors.ink,
+            ),
+          ),
           const SizedBox(height: 8),
-          SelectableText(text, style: const TextStyle(fontSize: 15, height: 1.55, color: TutorColors.ink2)),
+          SelectableText(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.55,
+              color: TutorColors.ink2,
+            ),
+          ),
         ],
       ),
     );
@@ -387,8 +513,18 @@ class _Note extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(color: TutorColors.surfaceSunken, borderRadius: BorderRadius.circular(10)),
-    child: Text(text, style: const TextStyle(fontSize: 13, color: TutorColors.ink3, height: 1.4)),
+    decoration: BoxDecoration(
+      color: TutorColors.surfaceSunken,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        color: TutorColors.ink3,
+        height: 1.4,
+      ),
+    ),
   );
 }
 
@@ -402,15 +538,22 @@ class _DeliveryState extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = status;
     final (IconData, String, Color)? v = switch (s.deliveryStatus) {
-      'sent' => (Icons.check_circle_outline_rounded, 'Đã gửi qua Zalo', TutorColors.success),
+      'sent' => (
+        Icons.check_circle_outline_rounded,
+        'Đã gửi qua Zalo',
+        TutorColors.success,
+      ),
       'failed' => (
-          Icons.error_outline_rounded,
-          '${(s.deliveryError ?? '').trim().isNotEmpty ? s.deliveryError!.trim() : 'Chưa gửi được qua Zalo.'}'
-              ' Bấm "Chia sẻ báo cáo" để tự gửi cho phụ huynh.',
-          TutorColors.warning,
-        ),
-      'pending' when s.deliveryChannel != 'booking' =>
-        (Icons.schedule_rounded, 'Đang chờ gửi qua Zalo', TutorColors.warning),
+        Icons.error_outline_rounded,
+        '${(s.deliveryError ?? '').trim().isNotEmpty ? s.deliveryError!.trim() : 'Chưa gửi được qua Zalo.'}'
+            ' Bấm "Chia sẻ báo cáo" để tự gửi cho phụ huynh.',
+        TutorColors.warning,
+      ),
+      'pending' when s.deliveryChannel != 'booking' => (
+        Icons.schedule_rounded,
+        'Đang chờ gửi qua Zalo',
+        TutorColors.warning,
+      ),
       _ => null,
     };
     if (v == null) return const SizedBox.shrink();
@@ -423,7 +566,15 @@ class _DeliveryState extends StatelessWidget {
           Icon(icon, size: 17, color: color),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: TextStyle(fontSize: 13, height: 1.4, fontWeight: FontWeight.w500, color: color)),
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
           ),
         ],
       ),
@@ -449,20 +600,41 @@ class _MinutesTab extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
       children: [
         if (m == null || m.isEmpty)
-          _Note(processing
-              ? 'AI đang tóm tắt buổi học. Thường mất 1–2 phút — màn này tự cập nhật.'
-              : 'Chưa có tóm tắt buổi cho bản ghi này.')
+          _Note(
+            processing
+                ? 'AI đang tóm tắt buổi học. Thường mất 1–2 phút — màn này tự cập nhật.'
+                : 'Chưa có tóm tắt buổi cho bản ghi này.',
+          )
         else ...[
           if (summary.isNotEmpty) ...[
-            const Text('Tóm tắt',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: TutorColors.ink)),
+            const Text(
+              'Tóm tắt',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: TutorColors.ink,
+              ),
+            ),
             const SizedBox(height: 8),
-            SelectableText(summary, style: const TextStyle(fontSize: 15, height: 1.55, color: TutorColors.ink2)),
+            SelectableText(
+              summary,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.55,
+                color: TutorColors.ink2,
+              ),
+            ),
             const SizedBox(height: 20),
           ],
           if (m.keyPoints.isNotEmpty) ...[
-            const Text('Ý chính',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: TutorColors.ink)),
+            const Text(
+              'Ý chính',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: TutorColors.ink,
+              ),
+            ),
             const SizedBox(height: 8),
             for (final k in m.keyPoints)
               _ListItem(
@@ -472,7 +644,10 @@ class _MinutesTab extends StatelessWidget {
                     width: 6,
                     height: 6,
                     child: DecoratedBox(
-                      decoration: BoxDecoration(color: TutorColors.primary, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: TutorColors.primary,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                 ),
@@ -481,14 +656,24 @@ class _MinutesTab extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (m.followUps.isNotEmpty) ...[
-            const Text('Việc cần làm buổi sau',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: TutorColors.ink)),
+            const Text(
+              'Việc cần làm buổi sau',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: TutorColors.ink,
+              ),
+            ),
             const SizedBox(height: 8),
             for (final f in m.followUps)
               _ListItem(
                 leading: const Padding(
                   padding: EdgeInsets.only(top: 1),
-                  child: Icon(Icons.check_box_outline_blank_rounded, size: 19, color: TutorColors.ink4),
+                  child: Icon(
+                    Icons.check_box_outline_blank_rounded,
+                    size: 19,
+                    color: TutorColors.ink4,
+                  ),
                 ),
                 text: f,
               ),
@@ -511,9 +696,21 @@ class _ListItem extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(width: 22, child: Align(alignment: Alignment.topLeft, child: leading)),
+        SizedBox(
+          width: 22,
+          child: Align(alignment: Alignment.topLeft, child: leading),
+        ),
         const SizedBox(width: 4),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 15, height: 1.5, color: TutorColors.ink2))),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.5,
+              color: TutorColors.ink2,
+            ),
+          ),
+        ),
       ],
     ),
   );

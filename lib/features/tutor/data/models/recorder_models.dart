@@ -8,8 +8,8 @@ DateTime? parseDateOnly(Object? v) {
 String? formatDateOnly(DateTime? d) => d == null
     ? null
     : '${d.year.toString().padLeft(4, '0')}-'
-        '${d.month.toString().padLeft(2, '0')}-'
-        '${d.day.toString().padLeft(2, '0')}';
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
 
 /// Số buổi của thời khoá biểu trong khoảng [from]..[until] (tính cả hai đầu).
 int countScheduledLessons(
@@ -19,9 +19,11 @@ int countScheduledLessons(
 ) {
   if (slots.isEmpty || until.isBefore(from)) return 0;
   var n = 0;
-  for (var d = DateTime(from.year, from.month, from.day);
-      !d.isAfter(until);
-      d = DateTime(d.year, d.month, d.day + 1)) {
+  for (
+    var d = DateTime(from.year, from.month, from.day);
+    !d.isAfter(until);
+    d = DateTime(d.year, d.month, d.day + 1)
+  ) {
     n += slots.where((s) => s.dayOfWeek == d.weekday).length;
   }
   return n;
@@ -66,10 +68,14 @@ class RecorderScheduleSlot {
     for (final s in slots) {
       (byTime['${s.start}–${s.end}'] ??= []).add(s.dayOfWeek);
     }
-    return byTime.entries.map((e) {
-      final days = (e.value..sort()).map((d) => dayLabels[d - 1]).join(', ');
-      return '$days · ${e.key}';
-    }).join('; ');
+    return byTime.entries
+        .map((e) {
+          final days = (e.value..sort())
+              .map((d) => dayLabels[d - 1])
+              .join(', ');
+          return '$days · ${e.key}';
+        })
+        .join('; ');
   }
 }
 
@@ -118,9 +124,13 @@ class RecorderStudentDto {
         scheduleFrom: parseDateOnly(j['scheduleFrom']),
         scheduleUntil: parseDateOnly(j['scheduleUntil']),
         parentLinkStatus: j['parentLinkStatus'] as String? ?? 'none',
-        parentLinkedAt: DateTime.tryParse(j['parentLinkedAt'] as String? ?? '')?.toLocal(),
+        parentLinkedAt: DateTime.tryParse(
+          j['parentLinkedAt'] as String? ?? '',
+        )?.toLocal(),
         parentZaloName: j['parentZaloName'] as String?,
-        inviteExpiresAt: DateTime.tryParse(j['inviteExpiresAt'] as String? ?? '')?.toLocal(),
+        inviteExpiresAt: DateTime.tryParse(
+          j['inviteExpiresAt'] as String? ?? '',
+        )?.toLocal(),
       );
 
   final String studentId;
@@ -157,7 +167,8 @@ class RecorderStudentDto {
   /// Hạn link mời đang chờ phụ huynh mở.
   final DateTime? inviteExpiresAt;
 
-  bool get isParentLinked => parentLinkStatus == 'linked' || parentLinkStatus == 'unfollowed';
+  bool get isParentLinked =>
+      parentLinkStatus == 'linked' || parentLinkStatus == 'unfollowed';
 
   /// "Toán · Lớp 9"
   String get subtitle => [
@@ -234,7 +245,8 @@ class RecorderLessonDto {
   });
 
   factory RecorderLessonDto.fromJson(Map<String, dynamic> j) {
-    DateTime? t(String k) => DateTime.tryParse(j[k] as String? ?? '')?.toLocal();
+    DateTime? t(String k) =>
+        DateTime.tryParse(j[k] as String? ?? '')?.toLocal();
     return RecorderLessonDto(
       lessonId: j['lessonId'] as String? ?? '',
       studentId: j['studentId'] as String?,
@@ -284,11 +296,14 @@ class RecorderParentInviteDto {
     this.expiresAt,
   });
 
-  factory RecorderParentInviteDto.fromJson(Map<String, dynamic> j) => RecorderParentInviteDto(
-    inviteUrl: j['inviteUrl'] as String? ?? '',
-    shareText: j['shareText'] as String? ?? '',
-    expiresAt: DateTime.tryParse(j['expiresAt'] as String? ?? '')?.toLocal(),
-  );
+  factory RecorderParentInviteDto.fromJson(Map<String, dynamic> j) =>
+      RecorderParentInviteDto(
+        inviteUrl: j['inviteUrl'] as String? ?? '',
+        shareText: j['shareText'] as String? ?? '',
+        expiresAt: DateTime.tryParse(
+          j['expiresAt'] as String? ?? '',
+        )?.toLocal(),
+      );
 
   final String inviteUrl;
 

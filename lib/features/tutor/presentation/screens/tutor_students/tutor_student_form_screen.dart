@@ -27,12 +27,17 @@ class TutorStudentFormScreen extends ConsumerStatefulWidget {
       _TutorStudentFormScreenState();
 }
 
-class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen> {
+class _TutorStudentFormScreenState
+    extends ConsumerState<TutorStudentFormScreen> {
   final _form = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.student?.fullName);
   late final _subject = TextEditingController(text: widget.student?.subject);
-  late final _parentName = TextEditingController(text: widget.student?.parentName);
-  late final _parentPhone = TextEditingController(text: widget.student?.parentPhone);
+  late final _parentName = TextEditingController(
+    text: widget.student?.parentName,
+  );
+  late final _parentPhone = TextEditingController(
+    text: widget.student?.parentPhone,
+  );
   late final _note = TextEditingController(text: widget.student?.note);
   late int? _grade = widget.student?.grade;
   late bool _consent = widget.student?.hasConsent ?? false;
@@ -43,7 +48,8 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
   /// Khoảng áp dụng lịch. Mặc định: từ hôm nay tới hết 3 tháng — để lịch lặp
   /// không kéo dài vô hạn (và không sinh hàng chục buổi thừa).
   late DateTime _from = widget.student?.scheduleFrom ?? _today();
-  late DateTime _until = widget.student?.scheduleUntil ??
+  late DateTime _until =
+      widget.student?.scheduleUntil ??
       DateTime(_from.year, _from.month + 3, _from.day);
 
   static DateTime _today() {
@@ -75,6 +81,7 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
       }
     });
   }
+
   bool _saving = false;
 
   bool get _editing => widget.student != null;
@@ -129,14 +136,22 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
           'Học sinh sẽ không còn trong danh sách. Các báo cáo đã gửi vẫn được giữ.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Thôi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ẩn')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Thôi'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ẩn'),
+          ),
         ],
       ),
     );
     if (ok != true || !mounted) return;
     try {
-      await ref.read(recorderDatasourceProvider).archiveStudent(widget.student!.studentId);
+      await ref
+          .read(recorderDatasourceProvider)
+          .archiveStudent(widget.student!.studentId);
       ref.invalidate(recorderStudentsProvider);
       if (mounted) Navigator.of(context).pop();
     } on Object catch (e) {
@@ -154,7 +169,9 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
 
   void _snack(String m) => ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(m), behavior: SnackBarBehavior.floating));
+    ..showSnackBar(
+      SnackBar(content: Text(m), behavior: SnackBarBehavior.floating),
+    );
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +200,8 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
               controller: _name,
               label: 'Họ tên học sinh',
               textCapitalization: TextCapitalization.words,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Nhập tên học sinh' : null,
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Nhập tên học sinh' : null,
             ),
             const SizedBox(height: 12),
             Row(
@@ -238,7 +256,11 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
               Text(
                 'Khoảng ${countScheduledLessons(_slots, _from, _until)} buổi. '
                 'Hết ngày kết thúc thì lịch dừng — gia hạn bằng cách sửa ngày.',
-                style: const TextStyle(fontSize: 12, color: TutorColors.ink4, height: 1.35),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: TutorColors.ink4,
+                  height: 1.35,
+                ),
               ),
             ],
             const SizedBox(height: 24),
@@ -253,7 +275,9 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
               controller: _parentPhone,
               label: 'SĐT phụ huynh (có dùng Zalo)',
               keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+ .]'))],
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9+ .]')),
+              ],
               validator: (v) {
                 final p = (v ?? '').replaceAll(RegExp(r'[\s.]'), '');
                 if (p.isEmpty) return null;
@@ -267,7 +291,9 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
               color: _consent ? TutorColors.successBg : TutorColors.surface,
               shape: RoundedRectangleBorder(
                 side: BorderSide(
-                  color: _consent ? TutorColors.successBorder : TutorColors.line,
+                  color: _consent
+                      ? TutorColors.successBorder
+                      : TutorColors.line,
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -278,21 +304,33 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
                 activeColor: TutorColors.success,
                 title: const Text(
                   'Phụ huynh đã đồng ý cho ghi âm buổi học và nhận báo cáo qua Zalo',
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: TutorColors.ink),
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: TutorColors.ink,
+                  ),
                 ),
                 subtitle: const Padding(
                   padding: EdgeInsets.only(top: 4),
                   child: Text(
                     'Bản ghi có giọng của học sinh, nên cần phụ huynh đồng ý trước. '
                     'Tutora sẽ gửi tin xác nhận cho phụ huynh.',
-                    style: TextStyle(fontSize: 12, color: TutorColors.ink4, height: 1.35),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: TutorColors.ink4,
+                      height: 1.35,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 24),
             const _Label('GHI CHÚ'),
-            _Input(controller: _note, label: 'Mục tiêu, lịch học… (không bắt buộc)', maxLines: 3),
+            _Input(
+              controller: _note,
+              label: 'Mục tiêu, lịch học… (không bắt buộc)',
+              maxLines: 3,
+            ),
           ],
         ),
       ),
@@ -306,11 +344,18 @@ class _TutorStudentFormScreenState extends ConsumerState<TutorStudentFormScreen>
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, 52),
                 backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: Text(
-                _saving ? 'Đang lưu…' : (_editing ? 'Lưu thay đổi' : 'Thêm học sinh'),
-                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                _saving
+                    ? 'Đang lưu…'
+                    : (_editing ? 'Lưu thay đổi' : 'Thêm học sinh'),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -407,7 +452,9 @@ class _ScheduleEditor extends StatelessWidget {
     );
     if (added == null || added.isEmpty) return;
     for (final a in added) {
-      final dup = slots.any((s) => s.dayOfWeek == a.dayOfWeek && s.start == a.start);
+      final dup = slots.any(
+        (s) => s.dayOfWeek == a.dayOfWeek && s.start == a.start,
+      );
       if (!dup) slots.add(a);
     }
     slots.sort((a, b) {
@@ -432,7 +479,11 @@ class _ScheduleEditor extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(16, 14, 16, 4),
               child: Text(
                 'Chưa có lịch. Thêm các buổi cố định trong tuần để lịch dạy tự hiện trong tab Lịch.',
-                style: TextStyle(fontSize: 13, color: TutorColors.ink3, height: 1.35),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: TutorColors.ink3,
+                  height: 1.35,
+                ),
               ),
             ),
           for (final slot in [...slots])
@@ -446,14 +497,29 @@ class _ScheduleEditor extends StatelessWidget {
                   color: TutorColors.surfaceSunken,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(slot.dayLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: TutorColors.ink)),
+                child: Text(
+                  slot.dayLabel,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: TutorColors.ink,
+                  ),
+                ),
               ),
-              title: Text('${slot.start} – ${slot.end}',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: TutorColors.ink)),
+              title: Text(
+                '${slot.start} – ${slot.end}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: TutorColors.ink,
+                ),
+              ),
               trailing: IconButton(
                 tooltip: 'Xoá',
-                icon: const Icon(Icons.close_rounded, size: 18, color: TutorColors.ink4),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: TutorColors.ink4,
+                ),
                 onPressed: () {
                   slots.remove(slot);
                   onChanged();
@@ -503,10 +569,14 @@ class _SlotSheetState extends State<_SlotSheet> {
     if (t == null) return;
     setState(() {
       if (start) {
-        final dur = (_end.hour * 60 + _end.minute) - (_start.hour * 60 + _start.minute);
+        final dur =
+            (_end.hour * 60 + _end.minute) - (_start.hour * 60 + _start.minute);
         _start = t;
         // Giữ nguyên độ dài buổi khi đổi giờ bắt đầu.
-        final endMin = (t.hour * 60 + t.minute + (dur > 0 ? dur : 90)).clamp(0, 23 * 60 + 59);
+        final endMin = (t.hour * 60 + t.minute + (dur > 0 ? dur : 90)).clamp(
+          0,
+          23 * 60 + 59,
+        );
         _end = TimeOfDay(hour: endMin ~/ 60, minute: endMin % 60);
       } else {
         _end = t;
@@ -516,16 +586,28 @@ class _SlotSheetState extends State<_SlotSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final valid = _days.isNotEmpty &&
+    final valid =
+        _days.isNotEmpty &&
         (_end.hour * 60 + _end.minute) > (_start.hour * 60 + _start.minute);
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        16 + MediaQuery.of(context).padding.bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Thêm buổi trong tuần',
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: TutorColors.ink)),
+          const Text(
+            'Thêm buổi trong tuần',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: TutorColors.ink,
+            ),
+          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -539,18 +621,33 @@ class _SlotSheetState extends State<_SlotSheet> {
                   selectedColor: TutorColors.ink,
                   labelStyle: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: _days.contains(d) ? TutorColors.surface : TutorColors.ink,
+                    color: _days.contains(d)
+                        ? TutorColors.surface
+                        : TutorColors.ink,
                   ),
-                  onSelected: (on) => setState(() => on ? _days.add(d) : _days.remove(d)),
+                  onSelected: (on) =>
+                      setState(() => on ? _days.add(d) : _days.remove(d)),
                 ),
             ],
           ),
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: _TimeBox(label: 'Bắt đầu', value: _fmt(_start), onTap: () => _pick(true))),
+              Expanded(
+                child: _TimeBox(
+                  label: 'Bắt đầu',
+                  value: _fmt(_start),
+                  onTap: () => _pick(true),
+                ),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _TimeBox(label: 'Kết thúc', value: _fmt(_end), onTap: () => _pick(false))),
+              Expanded(
+                child: _TimeBox(
+                  label: 'Kết thúc',
+                  value: _fmt(_end),
+                  onTap: () => _pick(false),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -559,14 +656,20 @@ class _SlotSheetState extends State<_SlotSheet> {
             child: FilledButton(
               onPressed: valid
                   ? () => Navigator.pop(context, [
-                        for (final d in (_days.toList()..sort()))
-                          RecorderScheduleSlot(dayOfWeek: d, start: _fmt(_start), end: _fmt(_end)),
-                      ])
+                      for (final d in (_days.toList()..sort()))
+                        RecorderScheduleSlot(
+                          dayOfWeek: d,
+                          start: _fmt(_start),
+                          end: _fmt(_end),
+                        ),
+                    ])
                   : null,
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, 48),
                 backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Thêm vào lịch'),
             ),
@@ -578,7 +681,11 @@ class _SlotSheetState extends State<_SlotSheet> {
 }
 
 class _TimeBox extends StatelessWidget {
-  const _TimeBox({required this.label, required this.value, required this.onTap});
+  const _TimeBox({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
 
   final String label;
   final String value;
@@ -599,9 +706,19 @@ class _TimeBox extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: TutorColors.ink4)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: TutorColors.ink4),
+            ),
             const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: TutorColors.ink)),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                color: TutorColors.ink,
+              ),
+            ),
           ],
         ),
       ),

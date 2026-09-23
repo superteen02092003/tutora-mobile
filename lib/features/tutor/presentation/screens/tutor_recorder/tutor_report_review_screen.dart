@@ -126,12 +126,15 @@ class _TutorReportReviewScreenState
 
   void _snack(String m) => ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(m), behavior: SnackBarBehavior.floating));
+    ..showSnackBar(
+      SnackBar(content: Text(m), behavior: SnackBarBehavior.floating),
+    );
 
   @override
   Widget build(BuildContext context) {
     final s = _status;
-    final editable = s != null && (s.isAwaitingApproval || (_manual && s.isFailed));
+    final editable =
+        s != null && (s.isAwaitingApproval || (_manual && s.isFailed));
 
     Widget body;
     if (s == null) {
@@ -156,7 +159,8 @@ class _TutorReportReviewScreenState
     } else if (s.isFailed && !_manual) {
       body = _StateCard.error(
         title: 'Chưa tạo được báo cáo',
-        text: s.errorMessage ??
+        text:
+            s.errorMessage ??
             'AI chưa xử lý được bản ghi. Bản ghi vẫn được giữ.',
         action: 'Tự viết báo cáo',
         onAction: () => setState(() => _manual = true),
@@ -243,12 +247,14 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final r = await ref.read(appRecordingDatasourceProvider).approve(
-        widget.status.recordingId,
-        lessonContent: widget.content,
-        homework: widget.homework.isEmpty ? null : widget.homework,
-        tutorNotes: widget.status.tutorNotes,
-      );
+      final r = await ref
+          .read(appRecordingDatasourceProvider)
+          .approve(
+            widget.status.recordingId,
+            lessonContent: widget.content,
+            homework: widget.homework.isEmpty ? null : widget.homework,
+            tutorNotes: widget.status.tutorNotes,
+          );
       ref.invalidate(recorderPendingReviewsProvider);
       if (r.studentId != null) {
         ref.invalidate(recorderStudentLessonsProvider(r.studentId!));
@@ -292,7 +298,8 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
         ? student!.parentName!
         : 'Phụ huynh của ${widget.studentName}';
     final now = DateTime.now();
-    final date = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}';
+    final date =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}';
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
@@ -317,11 +324,16 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                         _ZaloCard(
                           title: 'Báo cáo buổi học $date',
                           lines: [
-                            ('Học sinh', [widget.studentName, widget.subtitle]
-                                .where((p) => p.isNotEmpty)
-                                .join(' · ')),
+                            (
+                              'Học sinh',
+                              [
+                                widget.studentName,
+                                widget.subtitle,
+                              ].where((p) => p.isNotEmpty).join(' · '),
+                            ),
                             ('Nội dung', _shorten(widget.content, 90)),
-                            if (widget.homework.isNotEmpty) ('BTVN', widget.homework),
+                            if (widget.homework.isNotEmpty)
+                              ('BTVN', widget.homework),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -330,14 +342,22 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                           children: [
                             const Padding(
                               padding: EdgeInsets.only(top: 1),
-                              child: Icon(Icons.info_outline_rounded,
-                                  size: 14, color: TutorColors.ink4),
+                              child: Icon(
+                                Icons.info_outline_rounded,
+                                size: 14,
+                                color: TutorColors.ink4,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Đây là những gì $parentName sẽ nhận trên Zalo. Bản đầy đủ nằm sau đường link.',
-                                style: _t(12, FontWeight.w500, TutorColors.ink4, h: 1.35),
+                                style: _t(
+                                  12,
+                                  FontWeight.w500,
+                                  TutorColors.ink4,
+                                  h: 1.35,
+                                ),
                               ),
                             ),
                           ],
@@ -352,13 +372,21 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                     channel: _offPlatform
                         ? 'Gửi qua tin giao dịch Zalo OA'
                         : 'Gửi qua báo cáo buổi học trên Tutora',
-                    showZalo: _offPlatform && (student?.parentPhone?.isNotEmpty ?? false),
+                    showZalo:
+                        _offPlatform &&
+                        (student?.parentPhone?.isNotEmpty ?? false),
                   ),
-                  if (_offPlatform && (student?.parentPhone?.isEmpty ?? true)) ...[
+                  if (_offPlatform &&
+                      (student?.parentPhone?.isEmpty ?? true)) ...[
                     const SizedBox(height: 12),
                     Text(
                       'Chưa có SĐT phụ huynh — báo cáo được lưu nhưng chưa gửi Zalo được. Thêm số trong hồ sơ học sinh.',
-                      style: _t(12, FontWeight.w500, TutorColors.primary, h: 1.4),
+                      style: _t(
+                        12,
+                        FontWeight.w500,
+                        TutorColors.primary,
+                        h: 1.4,
+                      ),
                     ),
                   ],
                 ],
@@ -377,7 +405,9 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
 
   static String _shorten(String s, int max) {
     final firstSentence = s.split(RegExp(r'(?<=[.!?])\s')).first.trim();
-    final t = firstSentence.length <= max ? firstSentence : '${firstSentence.substring(0, max - 1).trimRight()}…';
+    final t = firstSentence.length <= max
+        ? firstSentence
+        : '${firstSentence.substring(0, max - 1).trimRight()}…';
     return t;
   }
 }
@@ -385,7 +415,13 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
 // ── Mảnh giao diện ───────────────────────────────────────────────────────────
 
 TextStyle _t(double size, FontWeight w, Color c, {double? h, double ls = 0}) =>
-    TextStyle(fontSize: size, fontWeight: w, color: c, height: h, letterSpacing: ls);
+    TextStyle(
+      fontSize: size,
+      fontWeight: w,
+      color: c,
+      height: h,
+      letterSpacing: ls,
+    );
 
 class _TitleBar extends StatelessWidget {
   const _TitleBar({required this.title});
@@ -401,14 +437,20 @@ class _TitleBar extends StatelessWidget {
           label: 'Quay lại',
           child: Material(
             color: TutorColors.surface,
-            shape: const CircleBorder(side: BorderSide(color: TutorColors.line)),
+            shape: const CircleBorder(
+              side: BorderSide(color: TutorColors.line),
+            ),
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: () => Navigator.of(context).maybePop(),
               child: const SizedBox(
                 width: 38,
                 height: 38,
-                child: Icon(Icons.chevron_left_rounded, size: 22, color: TutorColors.ink),
+                child: Icon(
+                  Icons.chevron_left_rounded,
+                  size: 22,
+                  color: TutorColors.ink,
+                ),
               ),
             ),
           ),
@@ -421,7 +463,11 @@ class _TitleBar extends StatelessWidget {
 }
 
 class _InfoStrip extends StatelessWidget {
-  const _InfoStrip({required this.name, required this.subtitle, required this.durationSec});
+  const _InfoStrip({
+    required this.name,
+    required this.subtitle,
+    required this.durationSec,
+  });
 
   final String name;
   final String subtitle;
@@ -447,10 +493,15 @@ class _InfoStrip extends StatelessWidget {
           const SizedBox(width: 9),
           Expanded(
             child: Text.rich(
-              TextSpan(children: [
-                TextSpan(text: name, style: _t(13, FontWeight.w600, TutorColors.ink)),
-                TextSpan(text: ' · ${parts.join(' · ')}'),
-              ]),
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: name,
+                    style: _t(13, FontWeight.w600, TutorColors.ink),
+                  ),
+                  TextSpan(text: ' · ${parts.join(' · ')}'),
+                ],
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: _t(13, FontWeight.w400, TutorColors.ink3, h: 1.35),
@@ -463,7 +514,12 @@ class _InfoStrip extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name, this.size = 32, this.fontSize = 12, this.dark = false});
+  const _Avatar({
+    required this.name,
+    this.size = 32,
+    this.fontSize = 12,
+    this.dark = false,
+  });
 
   final String name;
   final double size;
@@ -473,7 +529,9 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = name.trim();
-    final initial = t.isEmpty ? '?' : t.split(' ').last.characters.first.toUpperCase();
+    final initial = t.isEmpty
+        ? '?'
+        : t.split(' ').last.characters.first.toUpperCase();
     return Container(
       width: size,
       height: size,
@@ -483,14 +541,24 @@ class _Avatar extends StatelessWidget {
         shape: BoxShape.circle,
         border: dark ? null : Border.all(color: TutorColors.line),
       ),
-      child: Text(initial,
-          style: _t(fontSize, FontWeight.w700, dark ? TutorColors.surface : TutorColors.ink)),
+      child: Text(
+        initial,
+        style: _t(
+          fontSize,
+          FontWeight.w700,
+          dark ? TutorColors.surface : TutorColors.ink,
+        ),
+      ),
     );
   }
 }
 
 class _Editor extends StatelessWidget {
-  const _Editor({required this.content, required this.homework, required this.aiWritten});
+  const _Editor({
+    required this.content,
+    required this.homework,
+    required this.aiWritten,
+  });
 
   final TextEditingController content;
   final TextEditingController homework;
@@ -503,7 +571,12 @@ class _Editor extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text('Đã dạy gì', style: _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1))),
+            Expanded(
+              child: Text(
+                'Đã dạy gì',
+                style: _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1),
+              ),
+            ),
             if (aiWritten)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -515,9 +588,16 @@ class _Editor extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.auto_awesome_outlined, size: 11, color: TutorColors.warning),
+                    const Icon(
+                      Icons.auto_awesome_outlined,
+                      size: 11,
+                      color: TutorColors.warning,
+                    ),
                     const SizedBox(width: 5),
-                    Text('AI viết sẵn', style: _t(12, FontWeight.w500, TutorColors.warning)),
+                    Text(
+                      'AI viết sẵn',
+                      style: _t(12, FontWeight.w500, TutorColors.warning),
+                    ),
                   ],
                 ),
               ),
@@ -526,7 +606,10 @@ class _Editor extends StatelessWidget {
         const SizedBox(height: 10),
         _Field(controller: content, minLines: 7, label: 'Nội dung đã dạy'),
         const SizedBox(height: 20),
-        Text('Bài tập về nhà', style: _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1)),
+        Text(
+          'Bài tập về nhà',
+          style: _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1),
+        ),
         const SizedBox(height: 10),
         _Field(
           controller: homework,
@@ -545,7 +628,12 @@ class _Editor extends StatelessWidget {
 }
 
 class _Field extends StatelessWidget {
-  const _Field({required this.controller, required this.minLines, required this.label, this.maxLength});
+  const _Field({
+    required this.controller,
+    required this.minLines,
+    required this.label,
+    this.maxLength,
+  });
 
   final TextEditingController controller;
   final int minLines;
@@ -586,7 +674,8 @@ class _Field extends StatelessWidget {
 class _StateCard extends StatelessWidget {
   const _StateCard.pending()
     : title = 'Đang tạo báo cáo',
-      text = 'Bạn cứ đi, xong sẽ có thông báo. Thường mất 1–2 phút cho buổi 90 phút.',
+      text =
+          'Bạn cứ đi, xong sẽ có thông báo. Thường mất 1–2 phút cho buổi 90 phút.',
       action = null,
       onAction = null,
       tone = _Tone.pending;
@@ -612,9 +701,24 @@ class _StateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, border, fg, icon) = switch (tone) {
-      _Tone.pending => (TutorColors.surfaceSunken, Colors.transparent, TutorColors.ink, Icons.auto_awesome_outlined),
-      _Tone.error => (TutorColors.primaryBg, TutorColors.primaryBorder, TutorColors.primary, Icons.error_outline_rounded),
-      _Tone.done => (TutorColors.successBg, TutorColors.successBorder, TutorColors.success, Icons.check_circle_outline_rounded),
+      _Tone.pending => (
+        TutorColors.surfaceSunken,
+        Colors.transparent,
+        TutorColors.ink,
+        Icons.auto_awesome_outlined,
+      ),
+      _Tone.error => (
+        TutorColors.primaryBg,
+        TutorColors.primaryBorder,
+        TutorColors.primary,
+        Icons.error_outline_rounded,
+      ),
+      _Tone.done => (
+        TutorColors.successBg,
+        TutorColors.successBorder,
+        TutorColors.success,
+        Icons.check_circle_outline_rounded,
+      ),
     };
     return Container(
       padding: const EdgeInsets.all(14),
@@ -628,21 +732,34 @@ class _StateCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 17, color: tone == _Tone.pending ? TutorColors.warning : fg),
+              Icon(
+                icon,
+                size: 17,
+                color: tone == _Tone.pending ? TutorColors.warning : fg,
+              ),
               const SizedBox(width: 8),
               Expanded(child: Text(title, style: _t(13, FontWeight.w600, fg))),
               if (tone == _Tone.pending)
                 const SizedBox(
                   width: 14,
                   height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: TutorColors.warning),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: TutorColors.warning,
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 9),
-          Text(text,
-              style: _t(12, FontWeight.w500,
-                  tone == _Tone.pending ? TutorColors.ink3 : fg, h: 1.4)),
+          Text(
+            text,
+            style: _t(
+              12,
+              FontWeight.w500,
+              tone == _Tone.pending ? TutorColors.ink3 : fg,
+              h: 1.4,
+            ),
+          ),
           if (action != null) ...[
             const SizedBox(height: 10),
             SizedBox(
@@ -653,9 +770,14 @@ class _StateCard extends StatelessWidget {
                   minimumSize: const Size(0, 36),
                   backgroundColor: TutorColors.primary,
                   foregroundColor: TutorColors.surface,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: Text(action!, style: _t(13.5, FontWeight.w600, TutorColors.surface)),
+                child: Text(
+                  action!,
+                  style: _t(13.5, FontWeight.w600, TutorColors.surface),
+                ),
               ),
             ),
           ],
@@ -696,12 +818,18 @@ class _ZaloCard extends StatelessWidget {
                 Text('Tutora', style: _t(13, FontWeight.w600, TutorColors.ink)),
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: TutorColors.surfaceSunken,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text('Official Account', style: _t(12, FontWeight.w500, TutorColors.ink4)),
+                  child: Text(
+                    'Official Account',
+                    style: _t(12, FontWeight.w500, TutorColors.ink4),
+                  ),
                 ),
               ],
             ),
@@ -711,14 +839,22 @@ class _ZaloCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(title, style: _t(15, FontWeight.w600, TutorColors.ink, ls: -0.1)),
+                Text(
+                  title,
+                  style: _t(15, FontWeight.w600, TutorColors.ink, ls: -0.1),
+                ),
                 const SizedBox(height: 11),
                 for (final (k, v) in lines) ...[
                   Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: '$k: ', style: _t(13, FontWeight.w400, TutorColors.ink4)),
-                      TextSpan(text: v),
-                    ]),
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$k: ',
+                          style: _t(13, FontWeight.w400, TutorColors.ink4),
+                        ),
+                        TextSpan(text: v),
+                      ],
+                    ),
                     style: _t(13, FontWeight.w400, TutorColors.ink3, h: 1.45),
                   ),
                   const SizedBox(height: 7),
@@ -726,7 +862,10 @@ class _ZaloCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 const Divider(height: 1, color: TutorColors.line),
                 const SizedBox(height: 11),
-                Text('Xem báo cáo đầy đủ →', style: _t(13, FontWeight.w600, TutorColors.primary)),
+                Text(
+                  'Xem báo cáo đầy đủ →',
+                  style: _t(13, FontWeight.w600, TutorColors.primary),
+                ),
               ],
             ),
           ),
@@ -737,7 +876,12 @@ class _ZaloCard extends StatelessWidget {
 }
 
 class _RecipientCard extends StatelessWidget {
-  const _RecipientCard({required this.name, required this.channel, this.phone, this.showZalo = false});
+  const _RecipientCard({
+    required this.name,
+    required this.channel,
+    this.phone,
+    this.showZalo = false,
+  });
 
   final String name;
   final String? phone;
@@ -764,9 +908,14 @@ class _RecipientCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: _t(15, FontWeight.w600, TutorColors.ink, ls: -0.1)),
                     Text(
-                      phone == null || phone!.isEmpty ? 'Phụ huynh' : 'Phụ huynh · $phone',
+                      name,
+                      style: _t(15, FontWeight.w600, TutorColors.ink, ls: -0.1),
+                    ),
+                    Text(
+                      phone == null || phone!.isEmpty
+                          ? 'Phụ huynh'
+                          : 'Phụ huynh · $phone',
                       style: _t(13, FontWeight.w400, TutorColors.ink3, h: 1.35),
                     ),
                   ],
@@ -774,7 +923,10 @@ class _RecipientCard extends StatelessWidget {
               ),
               if (showZalo)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: TutorColors.successBg,
                     border: Border.all(color: TutorColors.successBorder),
@@ -783,9 +935,16 @@ class _RecipientCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.check_rounded, size: 12, color: TutorColors.success),
+                      const Icon(
+                        Icons.check_rounded,
+                        size: 12,
+                        color: TutorColors.success,
+                      ),
                       const SizedBox(width: 4),
-                      Text('Zalo', style: _t(12, FontWeight.w500, TutorColors.success)),
+                      Text(
+                        'Zalo',
+                        style: _t(12, FontWeight.w500, TutorColors.success),
+                      ),
                     ],
                   ),
                 ),
@@ -794,7 +953,10 @@ class _RecipientCard extends StatelessWidget {
           const SizedBox(height: 12),
           const Divider(height: 1, color: TutorColors.line),
           const SizedBox(height: 12),
-          Text(channel, style: _t(12, FontWeight.w500, TutorColors.ink4, h: 1.3)),
+          Text(
+            channel,
+            style: _t(12, FontWeight.w500, TutorColors.ink4, h: 1.3),
+          ),
         ],
       ),
     );
@@ -820,7 +982,9 @@ class _BottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(10));
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    );
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
       decoration: const BoxDecoration(
@@ -841,17 +1005,25 @@ class _BottomBar extends StatelessWidget {
                       shape: shape,
                       side: const BorderSide(color: TutorColors.line),
                     ),
-                    child: Text(primary, style: _t(13.5, FontWeight.w600, TutorColors.ink)),
+                    child: Text(
+                      primary,
+                      style: _t(13.5, FontWeight.w600, TutorColors.ink),
+                    ),
                   )
                 : FilledButton(
                     onPressed: onPrimary,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 52),
                       backgroundColor: TutorColors.primary,
-                      disabledBackgroundColor: TutorColors.primary.withValues(alpha: 0.5),
+                      disabledBackgroundColor: TutorColors.primary.withValues(
+                        alpha: 0.5,
+                      ),
                       shape: shape,
                     ),
-                    child: Text(primary, style: _t(13.5, FontWeight.w600, TutorColors.surface)),
+                    child: Text(
+                      primary,
+                      style: _t(13.5, FontWeight.w600, TutorColors.surface),
+                    ),
                   ),
           ),
           if (secondary != null) ...[
@@ -861,14 +1033,20 @@ class _BottomBar extends StatelessWidget {
               child: TextButton(
                 onPressed: onSecondary,
                 style: TextButton.styleFrom(minimumSize: const Size(0, 40)),
-                child: Text(secondary!, style: _t(13.5, FontWeight.w600, TutorColors.ink3)),
+                child: Text(
+                  secondary!,
+                  style: _t(13.5, FontWeight.w600, TutorColors.ink3),
+                ),
               ),
             ),
           ],
           if (caption != null) ...[
             const SizedBox(height: 9),
-            Text(caption!, textAlign: TextAlign.center,
-                style: _t(12, FontWeight.w500, TutorColors.ink4, h: 1.3)),
+            Text(
+              caption!,
+              textAlign: TextAlign.center,
+              style: _t(12, FontWeight.w500, TutorColors.ink4, h: 1.3),
+            ),
           ],
         ],
       ),

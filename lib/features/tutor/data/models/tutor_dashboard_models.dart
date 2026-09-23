@@ -295,7 +295,9 @@ List<TutorTodaySessionDto> sessionsToday(List<TutorTodaySessionDto> all) {
     final end = DateTime.tryParse(s.scheduledEnd)?.toLocal();
     if (start == null) return false;
     final sameDay =
-        start.year == now.year && start.month == now.month && start.day == now.day;
+        start.year == now.year &&
+        start.month == now.month &&
+        start.day == now.day;
     final live = end != null && !start.isAfter(now) && end.isAfter(now);
     return sameDay || live;
   }).toList();
