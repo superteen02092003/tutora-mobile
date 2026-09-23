@@ -67,3 +67,5 @@ analyze.txt
 
 # Code bị cắt khỏi bản app gia sư (tạm giữ, xoá tay sau)
 _to_delete/
+
+android/build/
