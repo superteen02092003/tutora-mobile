@@ -50,7 +50,6 @@ class LoginController extends StateNotifier<LoginState> {
 final AutoDisposeStateNotifierProvider<LoginController, LoginState>
 loginControllerProvider =
     StateNotifierProvider.autoDispose<LoginController, LoginState>((ref) {
-      return LoginController(
-        LoginUseCase(ref.read(authRepositoryProvider)),
-      );
+      final repository = ref.read(authRepositoryProvider);
+      return LoginController(LoginUseCase(repository));
     });

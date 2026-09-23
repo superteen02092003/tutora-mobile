@@ -1,3 +1,4 @@
+import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/shared/widgets/status_chip.dart';
 
 // GET /api/tutorlesson/lessons  &  /api/tutorlesson/calendar
@@ -17,7 +18,53 @@ class TutorLessonDto {
     this.isDisputeRelearn = false,
     this.originalClassSessionId,
     this.skipConfirmedByBothSides = false,
+    this.recorderLessonId,
+    this.recorderStudentId,
+    this.recorderStatus,
   });
+
+  /// Buổi của học sinh ngoài nền tảng (recorder.lessons) hiển thị chung lịch.
+  ///
+  /// Đổi trạng thái sang từ vựng của buổi booking để lịch vẽ đúng: đã ghi
+  /// nhưng chưa duyệt báo cáo = "đang chờ báo cáo", đã duyệt = "xong".
+  factory TutorLessonDto.fromRecorder(RecorderLessonDto l) {
+    final status = switch (l.status) {
+      'sent' => 'completed',
+      'recording' || 'uploading' => 'in_progress',
+      'processing' || 'awaiting_approval' || 'failed' => 'in_progress',
+      _ => 'scheduled',
+    };
+    final recorded = {
+      'processing',
+      'awaiting_approval',
+      'failed',
+    }.contains(l.status);
+    final start = l.scheduledStart ?? l.startedAt;
+    final end =
+        l.scheduledEnd ??
+        (start != null && l.durationSec > 0
+            ? start.add(Duration(seconds: l.durationSec))
+            : start?.add(const Duration(minutes: 90)));
+    return TutorLessonDto(
+      lessonId: 0,
+      bookingId: null,
+      studentName: l.studentName,
+      subjectName: [
+        if (l.subject != null && l.subject!.isNotEmpty) l.subject!,
+        if (l.grade != null) 'Lớp ${l.grade}',
+      ].join(' · '),
+      scheduledStart: start?.toUtc().toIso8601String() ?? '',
+      scheduledEnd: end?.toUtc().toIso8601String() ?? '',
+      status: status,
+      // Có checkOutTime + in_progress = "chờ báo cáo" theo quy ước của lịch.
+      checkOutTime: recorded
+          ? (l.startedAt ?? start)?.toUtc().toIso8601String()
+          : null,
+      recorderLessonId: l.lessonId,
+      recorderStudentId: l.studentId,
+      recorderStatus: l.status,
+    );
+  }
 
   /// [calendarDate] là khoá ngày do BE gom sẵn — xem [TutorLessonDto.calendarDate].
   factory TutorLessonDto.fromJson(
@@ -76,6 +123,15 @@ class TutorLessonDto {
   /// Buổi phụ đã được cả hai phía đồng ý bỏ
   final bool skipConfirmedByBothSides;
 
+  /// Có khi là buổi của học sinh ngoài nền tảng (recorder.lessons).
+  final String? recorderLessonId;
+  final String? recorderStudentId;
+
+  /// Trạng thái gốc bên recorder (scheduled | recording | … | sent).
+  final String? recorderStatus;
+
+  bool get isOffPlatform => recorderLessonId != null;
+
   // BE trả UTC tuyệt đối → .toLocal() mới ra giờ người dùng thấy.
   DateTime? get startDt => DateTime.tryParse(scheduledStart)?.toLocal();
   DateTime? get endDt => DateTime.tryParse(scheduledEnd)?.toLocal();
@@ -119,7 +175,8 @@ class TutorLessonDto {
   bool get isFinished => isCompleted || isPendingConfirmation;
 
   /// Nhãn cho buổi sinh thêm
-  String? get linkLabel => isExtra ? 'Buổi học phụ' : null;
+  String? get linkLabel =>
+      isOffPlatform ? 'Ngoài Tutora' : (isExtra ? 'Buổi học phụ' : null);
 
   /// Buổi SINH THÊM để bù cho buổi gốc
   bool get isExtra => isContinuation || isDisputeRelearn;
@@ -366,3 +423,23 @@ List<SessionChain> groupSessionChains(List<TutorLessonDto> sessions) {
   'cancelled' => ('Đã huỷ', ChipTone.ox),
   _ => (status, ChipTone.line),
 };
+
+/// Phần chi tiết của một buổi (GET /api/class-sessions/{id}) mà lịch không có.
+class TutorSessionDetailDto {
+  const TutorSessionDetailDto({this.price, this.gradeName});
+
+  factory TutorSessionDetailDto.fromJson(Map<String, dynamic> j) {
+    final student = j['student'] as Map<String, dynamic>?;
+    return TutorSessionDetailDto(
+      price: (j['classSessionPrice'] as num?)?.toDouble(),
+      gradeName:
+          (student?['gradeLevelName'] ?? student?['gradeLevel']) as String?,
+    );
+  }
+
+  /// Học phí buổi (VND).
+  final double? price;
+
+  /// "Lớp 9" — khối lớp của học sinh.
+  final String? gradeName;
+}

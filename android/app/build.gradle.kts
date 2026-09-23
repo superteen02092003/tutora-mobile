@@ -3,7 +3,12 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
+}
+
+// Firebase chỉ dùng cho push notification. google-services.json không nằm trên git
+// (xem .gitignore) — thiếu file thì vẫn build được, app chạy bình thường nhưng không có push.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {

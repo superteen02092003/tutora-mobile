@@ -8,6 +8,10 @@ import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
+import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:tutora/features/auth/presentation/pages/login_page.dart'
+    show tutorOnlyMessage;
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -45,16 +49,25 @@ class _SplashPageState extends ConsumerState<SplashPage> {
       return;
     }
 
-    switch (claims.role) {
-      case UserRole.student:
-        context.go(AppRoutes.studentHome);
-      case UserRole.tutor:
-        context.go(AppRoutes.tutorHome);
-      case UserRole.parent:
-        context.go(AppRoutes.parentHome);
-      case UserRole.unknown:
-        context.go(AppRoutes.login);
+    if (claims.role == UserRole.tutor) {
+      context.go(AppRoutes.tutorHome);
+      return;
     }
+
+    // Phiên cũ của học sinh / phụ huynh (hoặc vai trò lạ): app này chỉ dành
+    // cho gia sư → đăng xuất (gỡ push token của phiên cũ + xoá token), về
+    // trang đăng nhập kèm lời nhắn dùng web.
+    await ref.read(authControllerProvider.notifier).logout();
+    if (!mounted) return;
+    if (claims.role != UserRole.unknown) {
+      AppToast.show(
+        context,
+        message: tutorOnlyMessage,
+        type: AppToastType.warning,
+        duration: const Duration(seconds: 6),
+      );
+    }
+    context.go(AppRoutes.login);
   }
 
   @override

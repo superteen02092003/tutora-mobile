@@ -1,14 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
+
+    <!-- Ghi âm buổi học: bản ghi phải chạy tiếp khi gia sư khoá màn hình hoặc
+         mở app khác tra bài, nên cần foreground service. Từ Android 14 phải
+         khai báo thêm loại "microphone" — thiếu là service không start được.
+         POST_NOTIFICATIONS (Android 13+) để hiện thông báo "đang ghi", vừa là
+         yêu cầu của foreground service vừa là chỉ báo bắt buộc theo chính sách
+         cửa hàng: người trong phòng phải biết máy đang ghi. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- HTTP thường (cleartext) chỉ bật ở bản debug: xem src/debug/AndroidManifest.xml. -->
     <application
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:label="Tutora"
-        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
@@ -32,6 +39,15 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- flutter_foreground_task: service giữ cho bản ghi chạy tiếp khi app
+             xuống nền. Loại "microphone" phải khớp với quyền
+             FOREGROUND_SERVICE_MICROPHONE khai ở trên; sai loại thì Android 14+
+             ném SecurityException ngay lúc startService. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="microphone"
+            android:exported="false" />
+
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_name" />

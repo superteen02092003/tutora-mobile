@@ -236,6 +236,8 @@ class TutorTodaySessionDto {
     required this.scheduledStart,
     required this.scheduledEnd,
     required this.status,
+    this.recorderLessonId,
+    this.recorderStatus,
   });
 
   factory TutorTodaySessionDto.fromJson(Map<String, dynamic> j) =>
@@ -256,16 +258,25 @@ class TutorTodaySessionDto {
   final String scheduledEnd;
   final String status;
 
+  /// Có khi là buổi của học sinh ngoài nền tảng — ghi âm vào đúng buổi này.
+  final String? recorderLessonId;
+
+  /// Trạng thái gốc bên recorder (scheduled | recording | … | sent).
+  final String? recorderStatus;
+
+  bool get isOffPlatform => recorderLessonId != null;
+
   String get timeStart {
     if (scheduledStart.isEmpty) return '';
-    final dt = DateTime.tryParse(scheduledStart);
+    // BE trả UTC → phải .toLocal(), không thì 07:30 hiện thành 00:30.
+    final dt = DateTime.tryParse(scheduledStart)?.toLocal();
     if (dt == null) return scheduledStart;
     return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   String get timeEnd {
     if (scheduledEnd.isEmpty) return '';
-    final dt = DateTime.tryParse(scheduledEnd);
+    final dt = DateTime.tryParse(scheduledEnd)?.toLocal();
     if (dt == null) return scheduledEnd;
     return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
@@ -273,4 +284,21 @@ class TutorTodaySessionDto {
   bool get isUpcoming =>
       status.toLowerCase() == 'scheduled' ||
       status.toLowerCase() == 'confirmed';
+}
+
+/// `nextClassSessions` của BE là các buổi SẮP TỚI (mọi ngày), không phải buổi
+/// hôm nay. Lọc lại: buổi bắt đầu trong hôm nay theo giờ máy, hoặc đang diễn ra.
+List<TutorTodaySessionDto> sessionsToday(List<TutorTodaySessionDto> all) {
+  final now = DateTime.now();
+  return all.where((s) {
+    final start = DateTime.tryParse(s.scheduledStart)?.toLocal();
+    final end = DateTime.tryParse(s.scheduledEnd)?.toLocal();
+    if (start == null) return false;
+    final sameDay =
+        start.year == now.year &&
+        start.month == now.month &&
+        start.day == now.day;
+    final live = end != null && !start.isAfter(now) && end.isAfter(now);
+    return sameDay || live;
+  }).toList();
 }

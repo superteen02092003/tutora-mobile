@@ -25,32 +25,6 @@ class AuthRepositoryImpl implements AuthRepository {
   final SecureStorageService storage;
 
   @override
-  Future<Result<String>> register({
-    required String phone,
-    required String password,
-    required String fullName,
-    required String role,
-    String? email,
-  }) async {
-    try {
-      await datasource.register(
-        RegisterRequest(
-          phone: phone,
-          password: password,
-          fullName: fullName,
-          role: role,
-          email: email,
-        ),
-      );
-      return (data: phone, failure: null);
-    } on AppException catch (e) {
-      return (data: null, failure: _mapException(e));
-    } catch (_) {
-      return (data: null, failure: const ServerFailure());
-    }
-  }
-
-  @override
   Future<Result<AuthToken>> login({
     required String emailOrPhone,
     required String password,

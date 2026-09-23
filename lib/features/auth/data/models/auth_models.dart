@@ -1,48 +1,5 @@
 import 'package:tutora/features/auth/domain/entities/auth_token.dart';
 
-class RegisterRequest {
-  const RegisterRequest({
-    required this.phone,
-    required this.password,
-    required this.fullName,
-    required this.role,
-    this.email,
-  });
-
-  final String phone;
-  final String password;
-  final String fullName;
-  final String role;
-  final String? email;
-
-  Map<String, dynamic> toJson() => {
-    'phone': phone,
-    'password': password,
-    'fullName': fullName,
-    'role': role,
-    if (email != null && email!.isNotEmpty) 'email': email,
-  };
-}
-
-class RegisterResponse {
-  const RegisterResponse({
-    required this.message,
-    required this.requiresPhoneVerification,
-  });
-
-  factory RegisterResponse.fromJson(Map<String, dynamic> json) {
-    final content = json['content'] as Map<String, dynamic>? ?? {};
-    return RegisterResponse(
-      message: (json['message'] as String?) ?? 'Đăng ký thành công',
-      requiresPhoneVerification:
-          (content['requiresPhoneVerification'] as bool?) ?? true,
-    );
-  }
-
-  final String message;
-  final bool requiresPhoneVerification;
-}
-
 class LoginRequest {
   const LoginRequest({required this.emailOrPhone, required this.password});
 

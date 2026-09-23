@@ -79,6 +79,15 @@ class TutorLessonDatasource {
   }
 
   // GET /api/tutor/availabilities
+  /// GET /api/class-sessions/{id} — học phí buổi và khối lớp của học sinh.
+  Future<TutorSessionDetailDto> getSessionDetail(int id) async {
+    final res = await _dio.get<Map<String, dynamic>>('/class-sessions/$id');
+    final content = res.data?['content'];
+    return TutorSessionDetailDto.fromJson(
+      content is Map<String, dynamic> ? content : const {},
+    );
+  }
+
   Future<List<TutorAvailabilityDto>> getAvailability() async {
     final res = await _dio.get<Map<String, dynamic>>(
       '/tutor/availabilities',

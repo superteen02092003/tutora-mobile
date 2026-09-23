@@ -7,18 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:tutora/features/tutor/data/datasources/tutor_profile_datasource.dart';
-import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
-import 'package:tutora/features/tutor/presentation/providers/tutor_dispute_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_bookings/tutor_booking_requests_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_disputes/tutor_disputes_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_feedbacks/tutor_feedbacks_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_change_password_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_personal_info_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_bank_account_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_transactions_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -75,16 +66,6 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
               controller: _scrollController,
               padding: EdgeInsets.fromLTRB(14, 14, 14, bottomPad + 100),
               children: [
-                // Wallet shortcut
-                _WalletBanner(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const TutorWalletScreen(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
                 // Hồ sơ gia sư
                 const SectionLabel('Hồ sơ gia sư'),
                 SectionCard(
@@ -96,74 +77,6 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const TutorEditPersonalInfoScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Booking & đánh giá
-                const SectionLabel('Yêu cầu & đánh giá'),
-                SectionCard(
-                  children: [
-                    const _AcceptingBookingsRow(),
-                    SettingRow(
-                      icon: Icons.event_available_outlined,
-                      label: 'Yêu cầu đặt lịch',
-                      sub: 'Nhận hoặc từ chối yêu cầu từ phụ huynh',
-                      trailing: const _PendingBookingBadge(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorBookingRequestsScreen(),
-                        ),
-                      ),
-                    ),
-                    SettingRow(
-                      icon: Icons.star_outline_rounded,
-                      label: 'Đánh giá từ phụ huynh',
-                      sub: 'Trả lời đánh giá trên web',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorFeedbacksScreen(),
-                        ),
-                      ),
-                    ),
-                    SettingRow(
-                      icon: Icons.gavel_rounded,
-                      label: 'Khiếu nại',
-                      sub: 'Phản hồi khiếu nại về buổi dạy của bạn',
-                      trailing: const _OpenDisputeBadge(),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorDisputesScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Tài chính
-                const SectionLabel('Tài chính'),
-                SectionCard(
-                  children: [
-                    SettingRow(
-                      icon: Icons.account_balance_outlined,
-                      label: 'Tài khoản ngân hàng',
-                      sub: 'Nơi nhận tiền khi rút',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorBankAccountScreen(),
-                        ),
-                      ),
-                    ),
-                    SettingRow(
-                      icon: Icons.receipt_long_rounded,
-                      label: 'Lịch sử giao dịch',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const TutorTransactionsScreen(),
                         ),
                       ),
                     ),
@@ -260,69 +173,6 @@ class _TutorProfileHeader extends ConsumerWidget {
     );
   }
 
-  void _showAvatarPicker(BuildContext context, WidgetRef widgetRef) {
-    unawaited(
-      showModalBottomSheet<void>(
-        context: context,
-        useRootNavigator: true,
-        backgroundColor: AppColors.paper,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (sheetCtx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.line,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Ảnh đại diện',
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _PickerOption(
-                  icon: Icons.camera_alt_outlined,
-                  label: 'Chụp ảnh',
-                  onTap: () {
-                    Navigator.of(sheetCtx).pop();
-                    unawaited(
-                      _pickAndUpload(context, widgetRef, ImageSource.camera),
-                    );
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.line),
-                _PickerOption(
-                  icon: Icons.photo_library_outlined,
-                  label: 'Chọn từ thư viện',
-                  onTap: () {
-                    Navigator.of(sheetCtx).pop();
-                    unawaited(
-                      _pickAndUpload(context, widgetRef, ImageSource.gallery),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(tutorProfileProvider);
@@ -337,11 +187,20 @@ class _TutorProfileHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Tôi', style: AppTextStyles.h2()),
-              // placeholder for settings icon
-              const SizedBox(width: 36),
+              IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                color: AppColors.ink,
+                tooltip: 'Quay lại',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(child: Text('Tôi', style: AppTextStyles.h2())),
             ],
           ),
           const SizedBox(height: 18),
@@ -351,7 +210,11 @@ class _TutorProfileHeader extends ConsumerWidget {
               GestureDetector(
                 onTap: isUploading
                     ? null
-                    : () => _showAvatarPicker(context, ref),
+                    // Chỉ chọn từ thư viện ảnh — không dùng camera nên app
+                    // không cần xin quyền CAMERA.
+                    : () => unawaited(
+                        _pickAndUpload(context, ref, ImageSource.gallery),
+                      ),
                 child: Stack(
                   children: [
                     _AvatarWidget(
@@ -508,210 +371,4 @@ class _Fallback extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PickerOption extends StatelessWidget {
-  const _PickerOption({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.cream2,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 18, color: AppColors.ink2),
-            ),
-            const SizedBox(width: 14),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.ink,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Wallet banner shortcut
-class _WalletBanner extends StatelessWidget {
-  const _WalletBanner({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.account_balance_wallet_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Ví gia sư',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white54,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Công tắc tạm dừng nhận yêu cầu đặt lịch mới.
-///
-/// Khi tắt, gia sư bị ẩn khỏi marketplace — nói rõ điều đó ở phụ đề vì đây là
-/// hệ quả không hiển nhiên từ chữ "tạm dừng".
-class _AcceptingBookingsRow extends ConsumerStatefulWidget {
-  const _AcceptingBookingsRow();
-
-  @override
-  ConsumerState<_AcceptingBookingsRow> createState() =>
-      _AcceptingBookingsRowState();
-}
-
-class _AcceptingBookingsRowState extends ConsumerState<_AcceptingBookingsRow> {
-  bool _saving = false;
-
-  Future<void> _toggle({required bool value}) async {
-    setState(() => _saving = true);
-    try {
-      await ref
-          .read(tutorProfileDatasourceProvider)
-          .setAcceptingBookings(accepting: value);
-      if (!mounted) return;
-      ref.invalidate(tutorAcceptingBookingsProvider);
-      AppToast.show(
-        context,
-        message: value
-            ? 'Đã mở nhận yêu cầu đặt lịch.'
-            : 'Đã tạm dừng. Bạn sẽ không hiện trong tìm kiếm.',
-        type: AppToastType.success,
-      );
-    } catch (_) {
-      if (mounted) {
-        AppToast.show(
-          context,
-          message: 'Không đổi được trạng thái. Thử lại sau.',
-          type: AppToastType.error,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final profile = ref.watch(tutorAcceptingBookingsProvider);
-    final accepting = profile.valueOrNull ?? true;
-    final ready = profile.hasValue && !_saving;
-
-    return SettingRow(
-      icon: accepting
-          ? Icons.toggle_on_rounded
-          : Icons.pause_circle_outline_rounded,
-      label: 'Nhận yêu cầu mới',
-      sub: accepting
-          ? 'Đang hiện trong tìm kiếm của phụ huynh'
-          : 'Đang tạm dừng, bạn bị ẩn khỏi tìm kiếm',
-      trailing: Switch(
-        value: accepting,
-        onChanged: ready ? (v) => _toggle(value: v) : null,
-      ),
-    );
-  }
-}
-
-/// Badge số việc cần xử lý ở cuối một hàng cài đặt. Khi không có việc nào thì
-/// hiện mũi tên thường — badge chỉ xuất hiện lúc thật sự cần gia sư hành động.
-class _CountBadge extends StatelessWidget {
-  const _CountBadge(this.count);
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    if (count == 0) {
-      return const Icon(
-        Icons.chevron_right_rounded,
-        size: 18,
-        color: AppColors.ink4,
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.oxblood,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '$count',
-        style: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.paper,
-        ),
-      ),
-    );
-  }
-}
-
-class _OpenDisputeBadge extends ConsumerWidget {
-  const _OpenDisputeBadge();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      _CountBadge(ref.watch(openDisputeCountProvider));
-}
-
-class _PendingBookingBadge extends ConsumerWidget {
-  const _PendingBookingBadge();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      _CountBadge(ref.watch(pendingBookingsProvider).length);
 }

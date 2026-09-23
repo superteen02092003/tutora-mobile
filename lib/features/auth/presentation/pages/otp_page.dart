@@ -91,11 +91,14 @@ class _OtpPageState extends ConsumerState<OtpPage> {
 
   Future<void> _onVerify() async {
     if (_isForgot) {
+      // Trước đây nhánh này gọi nhầm verify-phone nên mật khẩu mới không bao giờ
+      // được lưu — màn vẫn báo "Đặt lại mật khẩu thành công".
       await ref
           .read(otpControllerProvider.notifier)
-          .verify(
+          .resetPassword(
             phone: widget.phone,
             otp: _otp,
+            newPassword: _newPassCtrl.text,
           );
     } else {
       await ref
@@ -116,7 +119,12 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     });
     _timer?.cancel();
     _startTimer();
-    await ref.read(otpControllerProvider.notifier).resend(phone: widget.phone);
+    final notifier = ref.read(otpControllerProvider.notifier);
+    if (_isForgot) {
+      await notifier.resendForgot(phone: widget.phone);
+    } else {
+      await notifier.resend(phone: widget.phone);
+    }
   }
 
   @override
