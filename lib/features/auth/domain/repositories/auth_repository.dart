@@ -15,6 +15,9 @@ abstract interface class AuthRepository {
     required String password,
   });
 
+  /// Đăng nhập bằng Zalo: gửi access token Zalo (từ SDK) để đổi lấy token Tutora.
+  Future<Result<AuthToken>> loginWithZalo({required String zaloAccessToken});
+
   Future<Result<AuthToken>> verifyPhone({
     required String phone,
     required String otp,

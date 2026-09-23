@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_lesson_datasource.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 
@@ -242,3 +243,66 @@ final AutoDisposeFutureProvider<List<TutorLessonDto>> awaitingReportProvider =
             (b.startDt ?? DateTime(0)).compareTo(a.startDt ?? DateTime(0)),
       );
     });
+
+/// Khoảng tháng mà agenda Lịch dạy tải: 6 tháng trước → 12 tháng sau.
+const tutorAgendaMonthsBefore = 6;
+const tutorAgendaMonthsAfter = 12;
+
+/// Tháng đầu tiên của agenda (theo hôm nay).
+DateTime tutorAgendaFirstMonth([DateTime? now]) {
+  final n = now ?? DateTime.now();
+  return DateTime(n.year, n.month - tutorAgendaMonthsBefore);
+}
+
+/// Toàn bộ buổi dạy trong khoảng agenda, xếp theo giờ bắt đầu.
+/// Tải theo cụm 3 tháng song song để không vượt giới hạn khoảng ngày của BE.
+final AutoDisposeFutureProvider<List<TutorLessonDto>>
+tutorAgendaLessonsProvider = FutureProvider.autoDispose<List<TutorLessonDto>>((
+  ref,
+) async {
+  final ds = ref.read(tutorLessonDatasourceProvider);
+  final first = tutorAgendaFirstMonth();
+  const total = tutorAgendaMonthsBefore + tutorAgendaMonthsAfter + 1;
+  String ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  final futures = <Future<List<TutorLessonDto>>>[];
+  for (var i = 0; i < total; i += 3) {
+    final from = DateTime(first.year, first.month + i);
+    final span = (total - i) < 3 ? total - i : 3;
+    final to = DateTime(first.year, first.month + i + span, 0);
+    futures.add(ds.getCalendar(from: ymd(from), to: ymd(to)));
+  }
+  // Buổi của học sinh ngoài nền tảng (recorder) — cùng khoảng ngày, một lần gọi.
+  final lastDay = DateTime(first.year, first.month + total, 0);
+  final offPlatform = ref
+      .read(recorderDatasourceProvider)
+      .lessons(from: first, to: lastDay.add(const Duration(days: 1)))
+      .then(
+        (list) => list
+            .where((l) => l.studentId != null && l.when != null)
+            .map(TutorLessonDto.fromRecorder)
+            .toList(),
+      )
+      // Hỏng phần này thì lịch booking vẫn hiện bình thường.
+      .catchError((Object _) => <TutorLessonDto>[]);
+  futures.add(offPlatform);
+  final chunks = await Future.wait(futures);
+
+  final seen = <int>{};
+  final all = <TutorLessonDto>[];
+  for (final l in chunks.expand((c) => c)) {
+    if (!l.countsAsSession) continue;
+    if (l.lessonId != 0 && !seen.add(l.lessonId)) continue;
+    all.add(l);
+  }
+  all.sort((a, b) {
+    final x = a.startDt;
+    final y = b.startDt;
+    if (x == null || y == null) return 0;
+    return x.compareTo(y);
+  });
+  return all;
+});

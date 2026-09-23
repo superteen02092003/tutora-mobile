@@ -61,3 +61,6 @@ GoogleService-Info.plist
 .claude/
 CLAUDE.md
 scripts/
+
+# Output của 'flutter analyze > analyze.txt' khi review, không commit.
+analyze.txt

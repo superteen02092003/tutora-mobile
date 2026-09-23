@@ -31,6 +31,14 @@ dependencies:
   shared_preferences: ^2.3.3
   flutter_secure_storage: ^9.2.2
 
+  # --- Ghi âm buổi học ---
+  # Để "any" có chủ đích: máy chạy lệnh của Claude không có Flutter SDK nên
+  # không resolve được version. Chạy `flutter pub get` một lần, pub sẽ ghi
+  # version thật vào pubspec.lock, rồi ghim lại bằng caret theo đúng version đó.
+  record: any
+  path_provider: any
+  flutter_foreground_task: any
+
   # --- Media ---
   image_picker: ^1.1.2
   camera: ^0.11.0+2
@@ -59,6 +67,7 @@ dependencies:
   uuid: ^4.5.3
   image: ^4.8.0
   url_launcher: ^6.3.1
+  crypto: ^3.0.6
   agora_rtc_engine: ^6.5.2
   permission_handler: ^11.3.1
   youtube_player_flutter: ^10.0.1

@@ -132,6 +132,18 @@ class _TutorMessagesScreenState extends ConsumerState<TutorMessagesScreen>
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                    color: AppColors.ink,
+                    tooltip: 'Quay lại',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   Expanded(child: Text('Tin nhắn', style: AppTextStyles.h2())),
                   GestureDetector(
                     onTap: () => ref.read(channelListProvider.notifier).load(),

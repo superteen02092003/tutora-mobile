@@ -47,6 +47,11 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dar
 import 'package:tutora/features/tutor/presentation/screens/tutor_messages_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorder_entry_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
@@ -274,7 +279,61 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, _) => const TutorNotificationsScreen(),
       ),
 
-      // Tutor shell (5 tabs)
+      // Ví · Tin nhắn · Tôi: màn con đứng riêng, vào từ header Trang chủ.
+      // Ở v0.1 thanh tab gia sư chỉ còn Trang chủ + Lịch + nút ghi âm, nên ba
+      // màn này ra khỏi shell thay vì giữ branch rỗng — vào bằng push để nút
+      // quay lại của TutorChildHeader trả đúng về màn trước.
+      // Luồng ghi âm — đứng ngoài shell: khi đang ghi, thanh tab biến mất để
+      // không ai bấm nhầm sang tab khác giữa buổi.
+      GoRoute(
+        path: AppRoutes.tutorRecorder,
+        // Sheet: trong suốt để trang chủ vẫn nằm phía sau, trượt từ dưới lên.
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          opaque: false,
+          barrierColor: Colors.transparent,
+          child: const TutorRecorderEntryScreen(),
+          transitionsBuilder: (context, animation, _, child) => SlideTransition(
+            position: Tween(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorRecording,
+        builder: (context, state) {
+          return TutorRecordingScreen(target: state.extra! as RecordingTarget);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.tutorRecordingDetail,
+        builder: (context, state) =>
+            TutorRecordingDetailScreen(args: state.extra! as RecordingDetailArgs),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorReportReview,
+        builder: (context, state) =>
+            TutorReportReviewScreen(args: state.extra! as ReportReviewArgs),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorWallet,
+        builder: (context, _) => const TutorWalletScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorMessages,
+        builder: (context, _) => const TutorMessagesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorProfile,
+        builder: (context, _) => const TutorProfileScreen(),
+      ),
+
+      // Tutor shell (2 tab + nút ghi âm ở giữa)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShellV2(navigationShell: shell),
         branches: [
@@ -291,30 +350,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.tutorSchedule,
                 builder: (context, _) => const TutorScheduleScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorWallet,
-                builder: (context, _) => const TutorWalletScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorMessages,
-                builder: (context, _) => const TutorMessagesScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorProfile,
-                builder: (context, _) => const TutorProfileScreen(),
               ),
             ],
           ),

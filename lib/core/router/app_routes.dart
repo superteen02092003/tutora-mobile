@@ -46,6 +46,10 @@ abstract final class AppRoutes {
   // Tutor sub-routes
   static const tutorBookingDetail = '/tutor/schedule/booking/:id';
   static const tutorNotifications = '/tutor/notifications';
+  static const tutorRecorder = '/tutor/recorder';
+  static const tutorRecording = '/tutor/recorder/session';
+  static const tutorReportReview = '/tutor/recorder/report';
+  static const tutorRecordingDetail = '/tutor/recorder/detail';
   static const tutorDisputes = '/tutor/disputes';
 
   // Parent shell tabs

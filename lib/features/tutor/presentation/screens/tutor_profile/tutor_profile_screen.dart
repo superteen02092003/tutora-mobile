@@ -337,11 +337,20 @@ class _TutorProfileHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Tôi', style: AppTextStyles.h2()),
-              // placeholder for settings icon
-              const SizedBox(width: 36),
+              IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                color: AppColors.ink,
+                tooltip: 'Quay lại',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(
+                  width: 36,
+                  height: 36,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(child: Text('Tôi', style: AppTextStyles.h2())),
             ],
           ),
           const SizedBox(height: 18),

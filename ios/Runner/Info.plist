@@ -5,7 +5,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Tutora cần truy cập camera để bạn tham gia buổi học trực tuyến.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Tutora cần truy cập micro để bạn trao đổi trong buổi học trực tuyến.</string>
+	<string>Tutora cần truy cập micro để bạn trao đổi trong buổi học trực tuyến, và để ghi âm buổi dạy khi bạn chủ động bấm ghi. Bản ghi chỉ dùng để tạo báo cáo buổi học gửi phụ huynh, sau khi bạn xem và duyệt.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -47,6 +47,12 @@
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Ghi âm buổi học phải chạy tiếp khi máy khoá màn hình hoặc gia sư mở
+	     app khác tra bài. Thiếu key này iOS treo session sau vài giây nền. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 </dict>

@@ -43,6 +43,45 @@ class RegisterResponse {
   final bool requiresPhoneVerification;
 }
 
+/// Body của POST /auth/zalo/app — access token Zalo lấy từ SDK native.
+class ZaloAppLoginRequest {
+  const ZaloAppLoginRequest({required this.accessToken});
+
+  final String accessToken;
+
+  Map<String, dynamic> toJson() => {'accessToken': accessToken};
+}
+
+/// POST /auth/zalo/app trả về 1 trong 2 dạng:
+///  - Đã có tài khoản: `{ content: { token, refreshToken } }`.
+///  - Tài khoản Zalo chưa liên kết / chưa có SĐT: object thô
+///    `{ requiresRoleSelection, requiresPhoneInput, socialRegistrationToken, ... }`.
+class ZaloLoginResponse {
+  const ZaloLoginResponse({
+    required this.token,
+    required this.refreshToken,
+    this.requiresRegistration = false,
+  });
+
+  factory ZaloLoginResponse.fromJson(Map<String, dynamic> json) {
+    final requiresRegistration =
+        (json['requiresRoleSelection'] as bool? ?? false) ||
+        (json['requiresPhoneInput'] as bool? ?? false);
+    final content = json['content'] as Map<String, dynamic>? ?? const {};
+    return ZaloLoginResponse(
+      token: (content['token'] as String?) ?? '',
+      refreshToken: (content['refreshToken'] as String?) ?? '',
+      requiresRegistration: requiresRegistration,
+    );
+  }
+
+  final String token;
+  final String refreshToken;
+  final bool requiresRegistration;
+
+  AuthToken toEntity() => AuthToken(token: token, refreshToken: refreshToken);
+}
+
 class LoginRequest {
   const LoginRequest({required this.emailOrPhone, required this.password});
 

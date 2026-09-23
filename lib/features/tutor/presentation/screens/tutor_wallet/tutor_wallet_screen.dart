@@ -13,7 +13,6 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_tr
 import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/withdraw_sheet.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_transaction_list.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
-import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
 /// Ví gia sư — rút được bao nhiêu → làm gì với nó → gần đây có gì.
 class TutorWalletScreen extends ConsumerWidget {
@@ -44,11 +43,10 @@ class TutorWalletScreen extends ConsumerWidget {
             color: TutorColors.primary,
             onRefresh: () async => ref.invalidate(tutorWalletProvider),
             child: ListView(
-              padding: const EdgeInsets.only(
-                bottom: kTutorNavTotalHeight + 16,
-              ),
+              // Màn con: không còn thanh tab phía dưới nên chỉ chừa lề thường.
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
-                const TutorScreenHeader(title: 'Ví của tôi'),
+                const TutorChildHeader(title: 'Ví của tôi'),
                 Padding(
                   padding: TutorSurface.screenPadding,
                   child: _BalanceHero(summary: data.summary),

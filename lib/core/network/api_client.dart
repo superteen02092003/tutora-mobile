@@ -8,7 +8,10 @@ import 'package:tutora/core/network/interceptors/auth_interceptor.dart';
 const String _configuredBaseUrl = String.fromEnvironment(
   'BASE_URL',
 );
-const String _debugDefaultBaseUrl = 'http://10.0.2.2:5166';
+/// Bản debug mặc định gọi `localhost:5166` — chạy trên điện thoại thật cắm USB
+/// kèm `adb reverse tcp:5166 tcp:5166`. Dùng emulator thì truyền
+/// `--dart-define=BASE_URL=http://10.0.2.2:5166`.
+const String _debugDefaultBaseUrl = 'http://localhost:5166';
 
 String get appBaseUrl {
   if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
@@ -34,9 +37,13 @@ final apiClientProvider = Provider<Dio>((ref) {
 
   dio.interceptors.addAll([
     AuthInterceptor(ref),
-    PrettyDioLogger(
-      requestBody: true,
-    ),
+    // Chỉ log ở bản debug, và bỏ qua toàn bộ /auth/* — body ở đó chứa mật khẩu,
+    // OTP và token, không được in ra console/logcat.
+    if (kDebugMode)
+      PrettyDioLogger(
+        requestBody: true,
+        filter: (options, _) => !options.path.startsWith('/auth/'),
+      ),
   ]);
 
   return dio;

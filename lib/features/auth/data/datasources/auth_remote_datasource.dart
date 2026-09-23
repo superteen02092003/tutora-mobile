@@ -31,6 +31,18 @@ class AuthRemoteDatasource {
     }
   }
 
+  Future<ZaloLoginResponse> loginWithZalo(ZaloAppLoginRequest request) async {
+    try {
+      final response = await _dio.post<dynamic>(
+        '/auth/zalo/app',
+        data: request.toJson(),
+      );
+      return ZaloLoginResponse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
   Future<VerifyPhoneResponse> verifyPhone(VerifyPhoneRequest request) async {
     try {
       final response = await _dio.post<dynamic>(

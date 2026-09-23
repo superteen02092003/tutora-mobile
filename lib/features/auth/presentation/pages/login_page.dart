@@ -41,6 +41,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         .login(_identifierCtrl.text, _passCtrl.text);
   }
 
+  Future<void> _loginWithZalo() async {
+    await ref.read(loginControllerProvider.notifier).loginWithZalo();
+  }
+
   Future<void> _navigateByRole() async {
     final token = await ref.read(secureStorageProvider).getAccessToken();
     if (!mounted || token == null) return;
@@ -177,6 +181,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                     _Divider(),
 
+                    _ZaloButton(onPressed: isLoading ? null : _loginWithZalo),
+
+                    const SizedBox(height: 10),
+
                     _GoogleButton(),
 
                     const SizedBox(height: 32),
@@ -239,6 +247,58 @@ class _Divider extends StatelessWidget {
             ),
           ),
           const Expanded(child: Divider(color: AppColors.line)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ZaloButton extends StatelessWidget {
+  const _ZaloButton({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        side: const BorderSide(color: AppColors.line, width: 1.5),
+        backgroundColor: AppColors.paper,
+      ),
+      onPressed: onPressed,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0068FF),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Text(
+              'Z',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Tiếp tục với Zalo',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
+          ),
         ],
       ),
     );

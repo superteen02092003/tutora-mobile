@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
 /// Chi tiết lớp — buổi gom theo tháng vì một lớp kéo dài nhiều tuần.
@@ -33,6 +35,21 @@ class TutorClassDetailScreen extends ConsumerWidget {
     final async = ref.watch(classSessionsProvider(item.bookingId));
     final sessions = async.value ?? const <TutorLessonDto>[];
 
+    // Buổi đã ghi âm của lớp này (recorder.lessons gắn classSessionId).
+    final sessionIds = {for (final s in sessions) s.lessonId};
+    final recorded = (ref.watch(recorderAllLessonsProvider).valueOrNull ?? const [])
+        .where((l) => l.classSessionId != null && sessionIds.contains(l.classSessionId))
+        .where((l) => l.status != 'scheduled')
+        .toList()
+      ..sort((a, b) => (b.startedAt ?? DateTime(0)).compareTo(a.startedAt ?? DateTime(0)));
+
+    // Sắp tới: buổi chưa diễn ra, gần nhất trước.
+    final now = DateTime.now();
+    final upcoming = sessions
+        .where((s) => s.isScheduled && (s.endDt ?? s.startDt ?? now).isAfter(now))
+        .toList()
+      ..sort((a, b) => (a.startDt ?? now).compareTo(b.startDt ?? now));
+
     // Buổi phụ / học lại gom về đúng buổi gốc, rồi mới chia theo tháng.
     final chains = groupSessionChains(sessions);
     final groups = <String, List<SessionChain>>{};
@@ -59,6 +76,35 @@ class TutorClassDetailScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: TutorSurface.sectionGap),
+            if (upcoming.isNotEmpty) ...[
+              const _Label('SẮP TỚI'),
+              for (final s in upcoming.take(3))
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    0,
+                    TutorSurface.gutter,
+                    TutorSurface.rowGap,
+                  ),
+                  child: _SessionRow(lesson: s),
+                ),
+              const SizedBox(height: 8),
+            ],
+            if (recorded.isNotEmpty) ...[
+              _Label('BUỔI ĐÃ GHI ÂM · ${recorded.length}'),
+              for (final l in recorded)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    0,
+                    TutorSurface.gutter,
+                    TutorSurface.rowGap,
+                  ),
+                  child: RecordedLessonTile(lesson: l),
+                ),
+              const SizedBox(height: 8),
+            ],
+            if (sessions.isNotEmpty) const _Label('TẤT CẢ BUỔI HỌC'),
             if (async.isLoading && sessions.isEmpty)
               const Padding(
                 padding: TutorSurface.screenPadding,
@@ -435,4 +481,24 @@ class _SessionRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(TutorSurface.gutter, 4, TutorSurface.gutter, 10),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.8,
+        color: TutorColors.ink4,
+      ),
+    ),
+  );
 }

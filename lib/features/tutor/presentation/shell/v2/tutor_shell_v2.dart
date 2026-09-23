@@ -3,13 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
+import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
 import 'package:tutora/shared/widgets/floating_pill_nav_bar.dart';
 import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
-/// Shell gia sư — 5 tab: Trang chủ · Lịch · Ví · Tin nhắn · Tôi.
+/// Shell gia sư — 2 tab: Trang chủ · Lịch, cộng nút ghi âm nổi ở giữa.
+///
+/// v0.1 cố tình rút gọn: việc chính của gia sư trong app này là bấm ghi âm
+/// buổi học, nên nút đó phải là thứ to nhất và ở chỗ ngón cái chạm tới. Ví,
+/// Tin nhắn và Tôi chuyển thành màn con vào từ header Trang chủ — chúng vẫn
+/// còn nguyên, chỉ không chiếm một ô tab.
 class TutorShellV2 extends ConsumerStatefulWidget {
   const TutorShellV2({required this.navigationShell, super.key});
 
@@ -20,6 +26,18 @@ class TutorShellV2 extends ConsumerStatefulWidget {
 }
 
 class _TutorShellV2State extends ConsumerState<TutorShellV2> {
+  /// Đang có buổi ghi dở (đã thu nhỏ về trang chủ) → mở lại màn "Đang ghi";
+  /// chưa ghi → mở màn chọn buổi.
+  void _onRecordTap() {
+    final recording = ref.read(lessonRecordingProvider);
+    final target = ref.read(lessonRecordingProvider.notifier).target;
+    if (recording.isRecording && target != null) {
+      unawaited(context.push(AppRoutes.tutorRecording, extra: target));
+    } else {
+      unawaited(context.push(AppRoutes.tutorRecorder));
+    }
+  }
+
   final GlobalKey _bodyKey = GlobalKey();
   final _navVisible = ValueNotifier<bool>(true);
 
@@ -49,39 +67,18 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
 
   @override
   Widget build(BuildContext context) {
-    final unread = ref.watch(chatUnreadTotalProvider);
-
     final items = [
       const TutorNavItem(
         index: 0,
         icon: Icons.home_outlined,
         activeIcon: Icons.home_rounded,
-        label: 'Home',
+        label: 'Trang chủ',
       ),
       const TutorNavItem(
         index: 1,
         icon: Icons.calendar_today_outlined,
         activeIcon: Icons.calendar_month_rounded,
         label: 'Lịch',
-      ),
-      const TutorNavItem(
-        index: 2,
-        icon: Icons.account_balance_wallet_outlined,
-        activeIcon: Icons.account_balance_wallet_rounded,
-        label: 'Ví',
-      ),
-      TutorNavItem(
-        index: 3,
-        icon: Icons.chat_bubble_outline_rounded,
-        activeIcon: Icons.chat_bubble_rounded,
-        label: 'Chat',
-        badgeCount: unread,
-      ),
-      const TutorNavItem(
-        index: 4,
-        icon: Icons.person_outline_rounded,
-        activeIcon: Icons.person_rounded,
-        label: 'Tôi',
       ),
     ];
 
@@ -114,6 +111,8 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
               items: items,
               currentIndex: widget.navigationShell.currentIndex,
               onTap: _onTap,
+              centerTooltip: 'Ghi âm buổi học',
+              onCenterTap: _onRecordTap,
             ),
           ),
         ),
