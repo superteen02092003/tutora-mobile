@@ -203,8 +203,9 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
     if (s == null) return;
     await Clipboard.setData(ClipboardData(text: _shareText(s)));
     var phone = (s.parentPhone ?? '').replaceAll(RegExp(r'\D'), '');
-    if (phone.startsWith('84') && phone.length >= 11)
+    if (phone.startsWith('84') && phone.length >= 11) {
       phone = '0${phone.substring(2)}';
+    }
     final uri = Uri.parse(
       phone.isNotEmpty ? 'https://zalo.me/$phone' : 'https://zalo.me',
     );
@@ -302,9 +303,9 @@ class _SummaryTab extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
       children: [
-        Text(
+        const Text(
           'Báo cáo buổi học',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
@@ -537,7 +538,7 @@ class _DeliveryState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = status;
-    final (IconData, String, Color)? v = switch (s.deliveryStatus) {
+    final v = switch (s.deliveryStatus) {
       'sent' => (
         Icons.check_circle_outline_rounded,
         'Đã gửi qua Zalo',

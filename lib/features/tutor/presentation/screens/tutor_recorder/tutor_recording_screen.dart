@@ -161,7 +161,7 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     final state = ref.watch(lessonRecordingProvider);
     final paused = state.isPaused;
     final remaining = _remaining();
-    final white = TutorColors.surface;
+    const white = TutorColors.surface;
     final muted = white.withValues(alpha: 0.66);
 
     return Scaffold(
@@ -192,7 +192,7 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                             color: white.withValues(alpha: 0.22),
                           ),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.remove_rounded,
                           size: 18,
                           color: white,
@@ -464,7 +464,7 @@ class _Controls extends StatelessWidget {
                 : const Icon(Icons.stop_rounded, size: 18),
             label: Text(
               busy ? 'Đang lưu…' : 'Kết thúc',
-              style: TutorType.action(color: TutorColors.heroInk),
+              style: TutorType.action(),
             ),
           ),
         ),

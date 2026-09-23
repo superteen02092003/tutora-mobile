@@ -75,9 +75,9 @@ class SessionMinutesDto {
 class AppRecordingStatusDto {
   const AppRecordingStatusDto({
     required this.recordingId,
-    this.classSessionId,
     required this.status,
     required this.aiStatus,
+    this.classSessionId,
     this.partCount = 0,
     this.bytes = 0,
     this.durationSec = 0,

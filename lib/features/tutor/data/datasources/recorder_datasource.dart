@@ -78,7 +78,7 @@ class RecorderDatasource {
       queryParameters: {
         if (from != null) 'from': from.toUtc().toIso8601String(),
         if (to != null) 'to': to.toUtc().toIso8601String(),
-        if (studentId != null) 'studentId': studentId,
+        'studentId': ?studentId,
       },
     );
     return _list(_content(res)).map(RecorderLessonDto.fromJson).toList();

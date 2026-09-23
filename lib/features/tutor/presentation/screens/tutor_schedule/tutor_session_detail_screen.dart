@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -344,15 +346,17 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                         onPressed: () {
                           final router = GoRouter.of(context);
                           Navigator.of(context).pop();
-                          router.push(
-                            AppRoutes.tutorRecording,
-                            extra: RecordingTarget(
-                              lessonId: lesson.lessonId,
-                              studentName: lesson.studentName,
-                              subjectName: lesson.subjectName,
-                              timeStart: lesson.timeStart,
-                              timeEnd: lesson.timeEnd,
-                              scheduledEnd: end,
+                          unawaited(
+                            router.push(
+                              AppRoutes.tutorRecording,
+                              extra: RecordingTarget(
+                                lessonId: lesson.lessonId,
+                                studentName: lesson.studentName,
+                                subjectName: lesson.subjectName,
+                                timeStart: lesson.timeStart,
+                                timeEnd: lesson.timeEnd,
+                                scheduledEnd: end,
+                              ),
                             ),
                           );
                         },
@@ -424,6 +428,8 @@ class _Status {
   final Color bg;
   final Color fg;
 
+  // Trả về các hằng `_Status` dựng sẵn, không phải khởi tạo mới.
+  // ignore: prefer_constructors_over_static_methods
   static _Status of(TutorLessonDto l, DateTime now) {
     if (l.isLive) {
       return const _Status(

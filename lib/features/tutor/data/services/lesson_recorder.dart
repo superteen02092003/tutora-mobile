@@ -1,3 +1,7 @@
+// `lessonRecorderCallback` là entry-point của foreground service nên analyzer
+// coi file là "executable library" và báo nhầm unreachable_from_main.
+// ignore_for_file: unreachable_from_main
+
 import 'dart:async';
 import 'dart:io';
 
@@ -84,7 +88,6 @@ class LessonRecorder {
     // AAC-LC 32 kbps mono 16 kHz: đủ rõ cho lời nói, và buổi 90 phút chỉ ~22 MB
     // nên upload qua 4G không thành vấn đề. Model cũng hạ về 16 kHz nên lấy mẫu
     // cao hơn chỉ tốn dung lượng chứ không thêm thông tin.
-    encoder: AudioEncoder.aacLc,
     bitRate: 32000,
     numChannels: 1,
     sampleRate: 16000,
@@ -274,14 +277,9 @@ class LessonRecorder {
             'Hiện trong lúc Tutora đang ghi âm buổi dạy của bạn.',
         onlyAlertOnce: true,
       ),
-      iosNotificationOptions: const IOSNotificationOptions(
-        showNotification: true,
-        playSound: false,
-      ),
+      iosNotificationOptions: const IOSNotificationOptions(),
       foregroundTaskOptions: ForegroundTaskOptions(
         eventAction: ForegroundTaskEventAction.repeat(60000),
-        allowWakeLock: true,
-        allowWifiLock: false,
       ),
     );
 

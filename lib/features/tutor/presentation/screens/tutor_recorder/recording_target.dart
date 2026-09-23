@@ -9,8 +9,8 @@ import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 /// sư nhìn và chắc chắn mình đang ghi đúng buổi.
 class RecordingTarget {
   const RecordingTarget({
-    this.lessonId = 0,
     required this.studentName,
+    this.lessonId = 0,
     this.studentId,
     this.recorderLessonId,
     this.subjectName = '',
@@ -29,22 +29,6 @@ class RecordingTarget {
         timeEnd: s.timeEnd,
         scheduledEnd: DateTime.tryParse(s.scheduledEnd)?.toLocal(),
       );
-
-  /// classSessionId của buổi có booking; 0 khi không phải buổi booking.
-  final int lessonId;
-
-  /// Học sinh ngoài nền tảng — ghi ngay, server tự tạo buổi.
-  final String? studentId;
-
-  /// Buổi đã tạo sẵn trong nhật ký (học sinh ngoài nền tảng).
-  final String? recorderLessonId;
-
-  bool get isOffPlatform => studentId != null || recorderLessonId != null;
-  final String studentName;
-  final String subjectName;
-  final String timeStart;
-  final String timeEnd;
-  final DateTime? scheduledEnd;
 
   factory RecordingTarget.fromStudent(RecorderStudentDto s) => RecordingTarget(
     studentId: s.studentId,
@@ -68,6 +52,22 @@ class RecordingTarget {
       scheduledEnd: l.scheduledEnd,
     );
   }
+
+  /// classSessionId của buổi có booking; 0 khi không phải buổi booking.
+  final int lessonId;
+
+  /// Học sinh ngoài nền tảng — ghi ngay, server tự tạo buổi.
+  final String? studentId;
+
+  /// Buổi đã tạo sẵn trong nhật ký (học sinh ngoài nền tảng).
+  final String? recorderLessonId;
+
+  bool get isOffPlatform => studentId != null || recorderLessonId != null;
+  final String studentName;
+  final String subjectName;
+  final String timeStart;
+  final String timeEnd;
+  final DateTime? scheduledEnd;
 
   /// "Toán 9 · 19:00 – 20:30"
   String get subtitle {

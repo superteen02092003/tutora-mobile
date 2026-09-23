@@ -709,7 +709,7 @@ class _StudentRow extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              TutorAvatar(name: student.fullName, size: 40),
+              TutorAvatar(name: student.fullName),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

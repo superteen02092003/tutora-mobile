@@ -109,10 +109,10 @@ class TutorStudentDetailScreen extends ConsumerWidget {
               children: [
                 _Row(
                   icon: Icons.person_outline_rounded,
-                  title: student.parentName?.isNotEmpty == true
+                  title: student.parentName?.isNotEmpty ?? false
                       ? student.parentName!
                       : 'Chưa có tên phụ huynh',
-                  sub: student.parentPhone?.isNotEmpty == true
+                  sub: student.parentPhone?.isNotEmpty ?? false
                       ? 'Phụ huynh · ${student.parentPhone}'
                       : 'Chưa có SĐT — chưa gửi được báo cáo qua Zalo',
                   warn: student.parentPhone?.isEmpty ?? true,
@@ -260,8 +260,9 @@ Future<void> startStudentRecording(
   if (ref.read(lessonRecordingProvider).isRecording) {
     final target = ref.read(lessonRecordingProvider.notifier).target;
     onBeforeStart?.call();
-    if (target != null)
+    if (target != null) {
       unawaited(router.push(AppRoutes.tutorRecording, extra: target));
+    }
     return;
   }
 

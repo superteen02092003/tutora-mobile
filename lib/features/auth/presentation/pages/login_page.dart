@@ -20,7 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 const tutorOnlyMessage =
     'Ứng dụng này dành cho gia sư. Vui lòng dùng web tutora.vn.';
 
-final _webUri = Uri.parse('https://tutora.vn');
+final Uri _webUri = Uri.parse('https://tutora.vn');
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});

@@ -57,7 +57,7 @@ int _rowsOf(DateTime m) {
 class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
   late DateTime _today = _dateOnly(DateTime.now());
   late final DateTime _firstMonth = tutorAgendaFirstMonth(_today);
-  static const _monthCount =
+  static const int _monthCount =
       tutorAgendaMonthsBefore + tutorAgendaMonthsAfter + 1;
 
   late int _page = _indexOf(_today);
@@ -65,7 +65,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
 
   late final PageController _pages = PageController(initialPage: _page);
   final _scroll = ScrollController();
-  final _viewportKey = GlobalKey();
+  final GlobalKey _viewportKey = GlobalKey();
   final Map<DateTime, GlobalKey> _dayKeys = {};
 
   /// Agenda đang cuộn do code (chạm lịch / vuốt tháng) → tắt scroll-spy.
@@ -146,7 +146,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
       _today = now;
       _selected = now;
     });
-    _syncPageTo(now);
+    unawaited(_syncPageTo(now));
     _scrollToDay(now);
   }
 
@@ -189,10 +189,12 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
   void _shiftMonth(int delta) {
     final target = (_page + delta).clamp(0, _monthCount - 1);
     if (target == _page) return;
-    _pages.animateToPage(
-      target,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
+    unawaited(
+      _pages.animateToPage(
+        target,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      ),
     );
   }
 
@@ -246,7 +248,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
     final current = _offsets[found].$1;
     if (current == _selected) return;
     setState(() => _selected = current);
-    if (_indexOf(current) != _page) _syncPageTo(current);
+    if (_indexOf(current) != _page) unawaited(_syncPageTo(current));
   }
 
   /// Đo vị trí tiêu đề các ngày trong nội dung cuộn (không phụ thuộc offset hiện tại).
@@ -566,7 +568,7 @@ class _DayCell extends StatelessWidget {
   final List<TutorLessonDto> lessons;
   final ValueChanged<DateTime> onTap;
 
-  static const _navy = TutorColors.ink;
+  static const Color _navy = TutorColors.ink;
   static const _future = Color(0xFFC4BEB0);
   static const _outside = Color(0xFFC4C0B6);
 
@@ -922,7 +924,7 @@ class _LessonRow extends StatelessWidget {
   /// hoặc hồ sơ học sinh (có nút ghi âm).
   static void _open(BuildContext context, TutorLessonDto l) {
     if (!l.isOffPlatform) {
-      TutorSessionDetailScreen.open(context, l);
+      unawaited(TutorSessionDetailScreen.open(context, l));
       return;
     }
     const recorded = {'processing', 'awaiting_approval', 'failed', 'sent'};

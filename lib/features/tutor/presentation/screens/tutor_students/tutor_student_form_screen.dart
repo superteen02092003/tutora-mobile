@@ -276,7 +276,7 @@ class _TutorStudentFormScreenState
               label: 'SĐT phụ huynh (có dùng Zalo)',
               keyboardType: TextInputType.phone,
               inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9+ .]')),
+                FilteringTextInputFormatter.allow(RegExp('[0-9+ .]')),
               ],
               validator: (v) {
                 final p = (v ?? '').replaceAll(RegExp(r'[\s.]'), '');

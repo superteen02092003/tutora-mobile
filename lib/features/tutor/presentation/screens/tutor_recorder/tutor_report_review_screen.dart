@@ -184,7 +184,7 @@ class _TutorReportReviewScreenState
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 children: [
-                  _TitleBar(title: 'Nội dung buổi'),
+                  const _TitleBar(title: 'Nội dung buổi'),
                   const SizedBox(height: 20),
                   _InfoStrip(
                     name: _name,
@@ -294,7 +294,7 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
         if (s.studentId == widget.status.studentId) student = s;
       }
     }
-    final parentName = student?.parentName?.isNotEmpty == true
+    final parentName = student?.parentName?.isNotEmpty ?? false
         ? student!.parentName!
         : 'Phụ huynh của ${widget.studentName}';
     final now = DateTime.now();
@@ -489,7 +489,7 @@ class _InfoStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _Avatar(name: name, size: 30, fontSize: 12),
+          _Avatar(name: name, size: 30),
           const SizedBox(width: 9),
           Expanded(
             child: Text.rich(
