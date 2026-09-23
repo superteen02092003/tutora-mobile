@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -11,15 +9,13 @@ import 'package:tutora/core/network/interceptors/auth_interceptor.dart'
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
-import 'package:tutora/features/parent/presentation/providers/parent_chat_provider.dart';
-import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
 
 const _androidChannel = AndroidNotificationChannel(
   'high_importance_channel',
   'Thông báo quan trọng',
   description:
-      'Kênh hiển thị thông báo realtime (booking, buổi học, tin nhắn...)',
+      'Kênh hiển thị thông báo realtime (lịch dạy, buổi học, báo cáo...)',
   importance: Importance.max,
 );
 
@@ -127,50 +123,17 @@ class FcmNotificationHandler {
     final claims = accessToken == null ? null : parseJwt(accessToken);
     final role = claims?.role ?? UserRole.unknown;
 
+    // App chỉ dành cho gia sư — vai trò khác không điều hướng.
+    if (role != UserRole.tutor) return null;
+
     switch (type) {
       case 'booking_new':
       case 'booking_accepted':
       case 'booking_declined':
-        return switch (role) {
-          UserRole.student => '/student/bookings/$referenceId',
-          UserRole.tutor => '/tutor/schedule/booking/$referenceId',
-          UserRole.parent => AppRoutes.parentBookings,
-          _ => null,
-        };
-
-      case 'lesson_checkin':
-      case 'lesson_report':
-      case 'lesson_confirmed':
-      case 'lesson_no_show':
-      case 'lesson_reminder':
-        return switch (role) {
-          UserRole.parent => '/parent/lesson/$referenceId/confirm',
-          UserRole.student => AppRoutes.studentLessons,
-          _ => null,
-        };
-
-      case 'payment_success':
-        return switch (role) {
-          UserRole.student => '/student/bookings/$referenceId',
-          UserRole.parent => AppRoutes.parentBookings,
-          _ => null,
-        };
-
-      case 'message':
-        return switch (role) {
-          UserRole.student => AppRoutes.studentMessages,
-          UserRole.tutor => AppRoutes.tutorMessages,
-          UserRole.parent => AppRoutes.parentHome,
-          _ => null,
-        };
+        return AppRoutes.tutorSchedule;
 
       case 'warning':
-        return switch (role) {
-          UserRole.student => AppRoutes.studentProfile,
-          UserRole.tutor => AppRoutes.tutorProfile,
-          UserRole.parent => AppRoutes.parentProfile,
-          _ => null,
-        };
+        return AppRoutes.tutorProfile;
 
       default:
         return null;
@@ -189,9 +152,4 @@ final fcmNotificationHandlerProvider = Provider<FcmNotificationHandler>((ref) {
 /// Nạp lại dữ liệu liên quan tới loại push vừa nhận.
 void refreshOnPush(Ref ref, String type) {
   ref.invalidate(unreadCountProvider);
-
-  if (type == 'message') {
-    unawaited(ref.read(channelListProvider.notifier).load());
-    unawaited(ref.read(parentChannelListProvider.notifier).load());
-  }
 }

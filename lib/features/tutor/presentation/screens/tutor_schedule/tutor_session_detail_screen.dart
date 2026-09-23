@@ -367,15 +367,6 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                   Row(
                     children: [
                       _ActionBtn(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: 'Nhắn tin',
-                        onTap: () {
-                          final router = GoRouter.of(context);
-                          Navigator.of(context).pop();
-                          router.push(AppRoutes.tutorMessages);
-                        },
-                      ),
-                      _ActionBtn(
                         icon: Icons.calendar_today_outlined,
                         label: 'Đổi lịch',
                         onTap: () => _soon(context),

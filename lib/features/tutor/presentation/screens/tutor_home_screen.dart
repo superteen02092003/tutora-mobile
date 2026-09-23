@@ -7,21 +7,18 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
-import 'package:tutora/features/tutor/presentation/providers/chat_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_bookings/tutor_booking_requests_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_class_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
-import 'package:tutora/features/tutor/presentation/widgets/booking_request_card.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
-import 'package:tutora/shared/providers/notification_provider.dart';
+import 'package:tutora/shared/widgets/notification_bell.dart';
 import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
 /// Trang chủ gia sư — bản tối giản theo prototype "Home":
@@ -54,9 +51,6 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
   Widget build(BuildContext context) {
     final profile = ref.watch(tutorProfileProvider);
     final dash = ref.watch(tutorDashboardProvider);
-    // valueOrNull: mất mạng thì chỉ mất chấm đỏ, không sập cả trang chủ.
-    final unread = ref.watch(unreadCountProvider).valueOrNull ?? 0;
-    final chatUnread = ref.watch(chatUnreadTotalProvider);
 
     final name = profile.user?.fullName ?? '';
     final first = _firstName(name);
@@ -98,16 +92,27 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
                       ),
                     ),
                   ),
+                  // Chuông thông báo: số chưa đọc hiện ngay trên icon.
+                  IconButton(
+                    tooltip: 'Thông báo',
+                    onPressed: () => context.push(AppRoutes.tutorNotifications),
+                    icon: const NotificationBadge(
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        size: 26,
+                        color: TutorColors.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   _AvatarButton(
                     initial: first.isEmpty ? '?' : first[0].toUpperCase(),
-                    badge: unread > 0 || chatUnread > 0,
+                    badge: false,
                     onTap: () => context.push(AppRoutes.tutorProfile),
                   ),
                 ],
               ),
               const SizedBox(height: 28),
-              // Yêu cầu đặt lịch có hạn 24h — chỉ hiện khi thật sự có.
-              const _PendingBookingsSection(),
               // Báo cáo AI chờ duyệt — gửi phụ huynh càng sớm càng tốt.
               const _PendingReviewsSection(),
               if (loading)
@@ -980,64 +985,5 @@ class _ReviewRow extends StatelessWidget {
       ),
     );
   }
-}
-
-// ── Yêu cầu đặt lịch (chỉ hiện khi có) ────────────────────────────────────
-
-class _PendingBookingsSection extends ConsumerWidget {
-  const _PendingBookingsSection();
-
-  static const _maxInline = 2;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pending = ref.watch(pendingBookingsProvider);
-    if (pending.isEmpty) return const SizedBox.shrink();
-
-    final shown = pending.take(_maxInline).toList();
-    final hiddenCount = pending.length - shown.length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionTitle(
-          title: 'Cần xử lý · ${pending.length}',
-          action: pending.length > _maxInline ? 'Xem tất cả' : null,
-          onAction: () => _openAll(context),
-        ),
-        Padding(
-          padding: EdgeInsets.zero,
-          child: Column(
-            children: [
-              for (var i = 0; i < shown.length; i++) ...[
-                if (i > 0) const SizedBox(height: TutorSurface.rowGap),
-                BookingRequestCard(booking: shown[i]),
-              ],
-              if (hiddenCount > 0) ...[
-                const SizedBox(height: TutorSurface.rowGap),
-                TutorCard(
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  onTap: () => _openAll(context),
-                  child: Center(
-                    child: Text(
-                      'Còn $hiddenCount yêu cầu khác',
-                      style: TutorType.action(color: TutorColors.ink2),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 28),
-      ],
-    );
-  }
-
-  static void _openAll(BuildContext context) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => const TutorBookingRequestsScreen(),
-    ),
-  );
 }
 

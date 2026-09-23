@@ -11,6 +11,7 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    - _to_delete/**   # code đã cắt khỏi bản app gia sư, chờ xoá tay
 
 linter:
   rules:

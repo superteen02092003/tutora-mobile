@@ -5,10 +5,6 @@ import 'package:tutora/core/network/interceptors/auth_interceptor.dart'
     show navigatorKeyProvider;
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:tutora/features/parent/presentation/providers/parent_profile_provider.dart';
-import 'package:tutora/features/parent/presentation/providers/parent_provider.dart';
-import 'package:tutora/features/student/presentation/providers/class_provider.dart';
-import 'package:tutora/features/student/presentation/providers/profile_provider.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class AuthListener extends ConsumerWidget {
@@ -30,13 +26,6 @@ class AuthListener extends ConsumerWidget {
           type: AppToastType.success,
         );
         rootContext.go(AppRoutes.login);
-
-        ref
-          ..invalidate(profileProvider)
-          ..invalidate(classListProvider)
-          ..invalidate(parentProfileProvider)
-          ..invalidate(parentStudentsProvider)
-          ..invalidate(parentDashboardProvider);
       } else if (next is AuthError) {
         AppToast.show(
           context,

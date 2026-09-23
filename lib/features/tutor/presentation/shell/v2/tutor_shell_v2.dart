@@ -13,9 +13,9 @@ import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 /// Shell gia sư — 2 tab: Trang chủ · Lịch, cộng nút ghi âm nổi ở giữa.
 ///
 /// v0.1 cố tình rút gọn: việc chính của gia sư trong app này là bấm ghi âm
-/// buổi học, nên nút đó phải là thứ to nhất và ở chỗ ngón cái chạm tới. Ví,
-/// Tin nhắn và Tôi chuyển thành màn con vào từ header Trang chủ — chúng vẫn
-/// còn nguyên, chỉ không chiếm một ô tab.
+/// buổi học, nên nút đó phải là thứ to nhất và ở chỗ ngón cái chạm tới.
+/// Thông báo và Tôi (hồ sơ) là màn con vào từ header Trang chủ. Ví, tin nhắn,
+/// đặt lịch... chỉ có trên web tutora.vn.
 class TutorShellV2 extends ConsumerStatefulWidget {
   const TutorShellV2({required this.navigationShell, super.key});
 

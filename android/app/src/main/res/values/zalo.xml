@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Zalo Login App ID — công khai, trùng ZaloOA:AppId của backend. -->
-    <string name="zalo_app_id" translatable="false">2826711589202947693</string>
-    <string name="zalo_app_id_protocol" translatable="false">zalo-2826711589202947693</string>
-</resources>

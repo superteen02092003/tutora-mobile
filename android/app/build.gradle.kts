@@ -52,6 +52,4 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    // Zalo SDK v4 (đăng nhập bằng app Zalo) — Maven Central. Xem MainActivity.kt.
-    implementation("me.zalo:sdk-auth:4.2.0724")
 }

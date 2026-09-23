@@ -25,32 +25,6 @@ class AuthRepositoryImpl implements AuthRepository {
   final SecureStorageService storage;
 
   @override
-  Future<Result<String>> register({
-    required String phone,
-    required String password,
-    required String fullName,
-    required String role,
-    String? email,
-  }) async {
-    try {
-      await datasource.register(
-        RegisterRequest(
-          phone: phone,
-          password: password,
-          fullName: fullName,
-          role: role,
-          email: email,
-        ),
-      );
-      return (data: phone, failure: null);
-    } on AppException catch (e) {
-      return (data: null, failure: _mapException(e));
-    } catch (_) {
-      return (data: null, failure: const ServerFailure());
-    }
-  }
-
-  @override
   Future<Result<AuthToken>> login({
     required String emailOrPhone,
     required String password,
@@ -145,37 +119,6 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Result<AuthToken>> loginWithZalo({
-    required String zaloAccessToken,
-  }) async {
-    try {
-      final response = await datasource.loginWithZalo(
-        ZaloAppLoginRequest(accessToken: zaloAccessToken),
-      );
-      if (response.requiresRegistration || response.token.isEmpty) {
-        // App chưa có luồng chọn vai trò + nhập SĐT cho tài khoản Zalo mới.
-        return (
-          data: null,
-          failure: const ValidationFailure(
-            'Tài khoản Zalo này chưa liên kết với Tutora. '
-            'Vui lòng hoàn tất đăng ký trên tutora.vn rồi đăng nhập lại.',
-          ),
-        );
-      }
-      final entity = response.toEntity();
-      await storage.saveTokens(
-        access: entity.token,
-        refresh: entity.refreshToken,
-      );
-      return (data: entity, failure: null);
-    } on AppException catch (e) {
-      return (data: null, failure: _mapZaloException(e));
-    } catch (_) {
-      return (data: null, failure: const ServerFailure());
-    }
-  }
-
-  @override
   Future<Result<void>> logout() async {
     try {
       await storage.clearTokens();
@@ -192,14 +135,6 @@ class AuthRepositoryImpl implements AuthRepository {
     NetworkException() => const NetworkFailure(),
     ServerException() => ServerFailure(e.message),
     _ => const ServerFailure(),
-  };
-
-  Failure _mapZaloException(AppException e) => switch (e) {
-    NetworkException() => const NetworkFailure(),
-    ServerException() => ServerFailure(e.message),
-    _ => ServerFailure(
-      e.message.isNotEmpty ? e.message : 'Đăng nhập Zalo thất bại.',
-    ),
   };
 
   Failure _mapOtpException(AppException e) => switch (e) {
