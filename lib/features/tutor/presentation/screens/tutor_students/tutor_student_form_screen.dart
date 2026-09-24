@@ -9,7 +9,6 @@ import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
-import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 
 /// Thêm / sửa học sinh ngoài nền tảng. Trả về học sinh đã lưu (hoặc null khi
@@ -168,11 +167,7 @@ class _TutorStudentFormScreenState
       final saved = _editing
           ? await ds.updateStudent(widget.student!.studentId, input)
           : await ds.createStudent(input);
-      ref
-        ..invalidate(recorderStudentsProvider)
-        ..invalidate(tutorAgendaLessonsProvider)
-        ..invalidate(recorderTodayLessonsProvider)
-        ..invalidate(recorderStudentLessonsProvider);
+      reloadRecorderStudentData(ref);
       if (mounted) Navigator.of(context).pop(saved);
     } on Object catch (e) {
       if (!mounted) return;
@@ -211,11 +206,7 @@ class _TutorStudentFormScreenState
       await ref
           .read(recorderDatasourceProvider)
           .deleteStudentPermanently(widget.student!.studentId);
-      ref
-        ..invalidate(recorderStudentsProvider)
-        ..invalidate(tutorAgendaLessonsProvider)
-        ..invalidate(recorderTodayLessonsProvider)
-        ..invalidate(recorderStudentLessonsProvider);
+      reloadRecorderStudentData(ref);
       if (mounted) Navigator.of(context).pop();
     } on Object catch (e) {
       if (!mounted) return;
