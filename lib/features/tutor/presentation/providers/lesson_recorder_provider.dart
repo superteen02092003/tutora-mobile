@@ -94,9 +94,42 @@ class LessonRecordingState {
 /// chết khi gia sư rời màn hình — họ sẽ rời thật, để tra bài hoặc xem lịch
 /// giữa buổi.
 class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
-  LessonRecordingNotifier(this._api) : super(const LessonRecordingState());
+  LessonRecordingNotifier(this._api) : super(const LessonRecordingState()) {
+    unawaited(_sweepLocalRecordings());
+  }
 
   final AppRecordingDatasource _api;
+
+  /// Dọn thư mục bản ghi còn sót trên máy — từ bản app cũ chưa xoá sau khi
+  /// upload, hoặc từ lượt ghi bị gián đoạn. Lỗi nào cũng bỏ qua: lần mở app
+  /// sau thử lại.
+  Future<void> _sweepLocalRecordings() async {
+    try {
+      final now = DateTime.now();
+      for (final r in await LessonRecorder.localRecordings()) {
+        if (r.key == state.recordingId) continue;
+        String? status;
+        var notFound = false;
+        try {
+          status = (await _api.status(r.key)).status;
+        } on DioException catch (e) {
+          notFound = e.response?.statusCode == 404;
+        } on Object {
+          // mất mạng / chưa đăng nhập: status để null
+        }
+        if (r.key == state.recordingId) continue;
+        if (shouldDeleteLocalRecording(
+          age: now.difference(r.modified),
+          serverStatus: status,
+          notFound: notFound,
+        )) {
+          await LessonRecorder.deleteSegments(r.key);
+        }
+      }
+    } on Object catch (e) {
+      debugPrint('[recorder] sweep local recordings failed: $e');
+    }
+  }
 
   /// Bản debug cắt đoạn 30 giây thay vì 5 phút: test 2–3 phút là đã có vài đoạn,
   /// đủ để đi qua bước ghép ffmpeg trên server. Bản release luôn là 5 phút.
@@ -324,7 +357,15 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
 
     try {
       final status = await _api.complete(recordingId, state.elapsed.inSeconds);
+      // Server đã nhận đủ các đoạn → xoá bản trên máy (xem
+      // LessonRecorder.deleteSegments). Xoá hỏng thì lần mở app sau dọn tiếp.
+      try {
+        await LessonRecorder.deleteSegments(recordingId);
+      } on Object catch (e) {
+        debugPrint('[recorder] delete local segments failed: $e');
+      }
       state = state.copyWith(
+        segments: const [],
         isRecording: false,
         isFinishing: false,
         isPaused: false,
