@@ -2,12 +2,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 
 /// Danh bạ học sinh ngoài nền tảng. Không autoDispose: trang chủ, bảng ghi âm
-/// và màn học sinh cùng đọc — tải một lần, làm mới bằng invalidate.
+/// và màn học sinh cùng đọc — tải một lần, làm mới bằng
+/// [reloadRecorderStudentData].
 final recorderStudentsProvider = FutureProvider<List<RecorderStudentDto>>(
   (ref) => ref.read(recorderDatasourceProvider).students(),
 );
+
+/// Tải lại dữ liệu học sinh ngoài nền tảng ngay sau khi thêm / sửa / xoá.
+///
+/// Provider không autoDispose dùng `refresh` (gọi API ngay) thay vì
+/// `invalidate`. Log server 2026-09-25: sau khi tạo và sau khi xoá học sinh,
+/// app không gọi lại `GET /recorder/students` cho tới khi gia sư kéo làm mới
+/// trang chủ (38 s, 94 s), dù form đã invalidate. Chưa rõ vì sao lượt làm mới
+/// theo lịch của Riverpod bị bỏ qua; `refresh` không phụ thuộc lượt đó.
+void reloadRecorderStudentData(WidgetRef ref) {
+  ref
+    // Bỏ kết quả refresh có chủ đích: màn hình đọc dữ liệu mới qua ref.watch.
+    // ignore: unused_result
+    ..refresh(recorderStudentsProvider)
+    // Bỏ kết quả refresh có chủ đích (như trên).
+    // ignore: unused_result
+    ..refresh(recorderTodayLessonsProvider)
+    ..invalidate(tutorAgendaLessonsProvider)
+    ..invalidate(recorderStudentLessonsProvider);
+}
 
 /// Các buổi của một học sinh, mới nhất trước.
 final AutoDisposeFutureProviderFamily<List<RecorderLessonDto>, String>
