@@ -1,4 +1,5 @@
 import 'package:tutora/core/errors/failure.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/auth/domain/repositories/auth_repository.dart';
 
 class ResetPasswordUseCase {
@@ -17,10 +18,12 @@ class ResetPasswordUseCase {
         failure: const ValidationFailure('Mã OTP phải có 6 chữ số.'),
       ));
     }
-    if (newPassword.length < 8) {
+    if (newPassword.length < passwordMinLength) {
       return Future.value((
         data: null,
-        failure: const ValidationFailure('Mật khẩu phải có ít nhất 8 ký tự.'),
+        failure: const ValidationFailure(
+          'Mật khẩu phải có ít nhất $passwordMinLength ký tự.',
+        ),
       ));
     }
     return _repository.resetPassword(

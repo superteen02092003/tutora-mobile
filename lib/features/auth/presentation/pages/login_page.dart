@@ -2,11 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
@@ -16,6 +14,10 @@ import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
 import 'package:tutora/shared/services/push_token_service.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
+
+/// Thông báo khi tài khoản học sinh / phụ huynh đăng nhập vào app gia sư.
+const tutorOnlyMessage =
+    'Ứng dụng này dành cho gia sư. Vui lòng dùng web tutora.vn.';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -47,18 +49,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final claims = parseJwt(token);
     if (!mounted || claims == null) return;
 
-    unawaited(ref.read(pushTokenServiceProvider).registerToken());
-
-    switch (claims.role) {
-      case UserRole.student:
-        context.go(AppRoutes.studentHome);
-      case UserRole.tutor:
-        context.go(AppRoutes.tutorHome);
-      case UserRole.parent:
-        context.go(AppRoutes.parentHome);
-      case UserRole.unknown:
-        break;
+    // App chỉ dành cho gia sư: học sinh / phụ huynh bị đăng xuất ngay, ở lại
+    // trang đăng nhập. Push token chỉ đăng ký sau khi qua bước này.
+    if (claims.role != UserRole.tutor) {
+      await ref.read(secureStorageProvider).clearTokens();
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: tutorOnlyMessage,
+        type: AppToastType.warning,
+        duration: const Duration(seconds: 6),
+      );
+      return;
     }
+
+    unawaited(ref.read(pushTokenServiceProvider).registerToken());
+    context.go(AppRoutes.tutorHome);
   }
 
   @override
@@ -175,10 +181,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           : const Text('Đăng nhập'),
                     ),
 
-                    _Divider(),
-
-                    _GoogleButton(),
-
                     const SizedBox(height: 32),
 
                     Center(
@@ -197,7 +199,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     ? null
                                     : () => context.push(AppRoutes.register),
                                 child: Text(
-                                  'Đăng ký ngay',
+                                  'Đăng ký gia sư',
                                   style: GoogleFonts.inter(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
@@ -213,72 +215,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ],
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Internal helpers ───────────────────────────────────────────────────────
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Row(
-        children: [
-          const Expanded(child: Divider(color: AppColors.line)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Text(
-              'hoặc',
-              style: GoogleFonts.inter(fontSize: 11, color: AppColors.ink4),
-            ),
-          ),
-          const Expanded(child: Divider(color: AppColors.line)),
-        ],
-      ),
-    );
-  }
-}
-
-class _GoogleButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 48),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        side: const BorderSide(color: AppColors.line, width: 1.5),
-        backgroundColor: AppColors.paper,
-      ),
-      onPressed: null,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgPicture.string(
-            '''
-<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-</svg>''',
-            width: 18,
-            height: 18,
-          ),
-          const SizedBox(width: 10),
-          Text(
-            'Tiếp tục với Google',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
             ),
           ),
         ],

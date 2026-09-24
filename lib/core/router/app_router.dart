@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,44 +9,17 @@ import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
-import 'package:tutora/features/auth/presentation/pages/register_parent_page.dart';
-import 'package:tutora/features/auth/presentation/pages/register_role_page.dart';
-import 'package:tutora/features/auth/presentation/pages/register_student_page.dart';
-import 'package:tutora/features/auth/presentation/pages/register_tutor_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_bookings_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_classes_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_home_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_marketplace_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_messages_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_tutor_detail_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/parent_wallet_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/profile/parent_add_child_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/profile/parent_calendar_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/profile/parent_edit_info_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/profile/parent_profile_screen.dart';
-import 'package:tutora/features/parent/presentation/screens/profile/parent_student_detail_screen.dart';
-import 'package:tutora/features/parent/presentation/shell/parent_shell.dart';
-import 'package:tutora/features/student/presentation/screens/student_booking_detail_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_booking_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_capture_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_home_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_lessons_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_marketplace_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_messages_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_notifications_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_profile_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_solve_chat_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_solve_history_screen.dart';
-import 'package:tutora/features/student/presentation/screens/student_verify_identity_screen.dart';
-import 'package:tutora/features/student/presentation/screens/tutor_detail_screen.dart';
-import 'package:tutora/features/student/presentation/shell/v2/student_shell_v2.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_messages_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorder_entry_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_wallet/tutor_wallet_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
 // Auth-only routes — no role guard needed
@@ -56,48 +27,11 @@ const Set<String> _publicPaths = {
   AppRoutes.splash,
   AppRoutes.login,
   AppRoutes.register,
-  AppRoutes.registerStudent,
-  AppRoutes.registerTutor,
-  AppRoutes.registerParent,
   AppRoutes.forgot,
   AppRoutes.otp,
 };
 
-// Routes that belong exclusively to each role
-const _studentOnlyPrefixes = ['/student/'];
-const _tutorOnlyPrefixes = ['/tutor/'];
-const _parentOnlyPrefixes = ['/parent/'];
-
 bool _isPublic(String path) => _publicPaths.any((p) => path == p);
-
-String? _roleGuard(String path, UserRole role) {
-  if (_isPublic(path)) return null;
-
-  final isStudentPath = _studentOnlyPrefixes.any(path.startsWith);
-  final isTutorPath = _tutorOnlyPrefixes.any(path.startsWith);
-  final isParentPath = _parentOnlyPrefixes.any(path.startsWith);
-
-  // If on a role-specific path, verify it matches the JWT role
-  if (isStudentPath && role != UserRole.student) {
-    return _homeForRole(role);
-  }
-  if (isTutorPath && role != UserRole.tutor) {
-    return _homeForRole(role);
-  }
-  if (isParentPath && role != UserRole.parent) {
-    return _homeForRole(role);
-  }
-
-  // Shared routes like /notifications — guard: must be logged in (handled by token check below)
-  return null;
-}
-
-String _homeForRole(UserRole role) => switch (role) {
-  UserRole.student => AppRoutes.studentHome,
-  UserRole.tutor => AppRoutes.tutorHome,
-  UserRole.parent => AppRoutes.parentHome,
-  UserRole.unknown => AppRoutes.login,
-};
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final storage = ref.read(secureStorageProvider);
@@ -123,8 +57,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Invalid / expired token → login
       if (claims == null || claims.isExpired) return AppRoutes.login;
 
-      // Role guard
-      return _roleGuard(path, claims.role);
+      // App chỉ dành cho gia sư: vai trò khác về trang đăng nhập (splash và
+      // login tự xoá token + báo dùng web tutora.vn).
+      if (claims.role != UserRole.tutor) return AppRoutes.login;
+      return null;
     },
     routes: [
       GoRoute(
@@ -137,19 +73,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (context, _) => const RegisterRolePage(),
-      ),
-      GoRoute(
-        path: AppRoutes.registerStudent,
-        builder: (context, _) => const RegisterStudentPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.registerTutor,
-        builder: (context, _) => const RegisterTutorPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.registerParent,
-        builder: (context, _) => const RegisterParentPage(),
+        builder: (context, _) => const RegisterPage(),
       ),
       GoRoute(
         path: AppRoutes.forgot,
@@ -166,115 +90,61 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // Student-only standalone routes
-      GoRoute(
-        path: AppRoutes.notifications,
-        builder: (context, _) => const StudentNotificationsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.studentMessages,
-        builder: (context, _) => const StudentMessagesScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.studentCapture,
-        builder: (context, _) => const StudentCapturePage(),
-      ),
-      GoRoute(
-        path: AppRoutes.studentBookings,
-        builder: (context, _) => const StudentBookingScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.studentVerifyIdentity,
-        builder: (context, _) => const StudentVerifyIdentityPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.studentBookingDetail,
-        builder: (context, state) => StudentBookingDetailScreen(
-          bookingId: int.parse(state.pathParameters['id'] ?? '0'),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.studentSolution,
-        builder: (context, state) => StudentSolveChatPage(
-          imageBytes: state.extra as Uint8List?,
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.studentSolveHistory,
-        builder: (context, state) => StudentSolveHistoryPage(
-          onOpenSession: (sessionId) => context.push(
-            AppRoutes.studentSolveSession.replaceFirst(':sessionId', sessionId),
-          ),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.studentSolveSession,
-        builder: (context, state) => StudentSolveChatPage(
-          openSessionId: state.pathParameters['sessionId'],
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.tutorDetail,
-        builder: (context, state) => TutorDetailPage(
-          tutorId: state.pathParameters['id'] ?? '0',
-        ),
-      ),
-
-      // Student shell (5 tabs)
-      StatefulShellRoute.indexedStack(
-        builder: (context, _, shell) => StudentShellV2(navigationShell: shell),
-        branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.studentHome,
-                builder: (context, _) => const StudentHomePage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.studentSearch,
-                builder: (context, _) => const StudentMarketplacePage(),
-              ),
-            ],
-          ),
-          // Branch slot kept to preserve tab indices (0-4); FAB pushes outside shell
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/student/capture-stub',
-                builder: (context, _) => const SizedBox.shrink(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.studentLessons,
-                builder: (context, _) => const StudentLessonsPage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.studentProfile,
-                builder: (context, _) => const StudentProfilePage(),
-              ),
-            ],
-          ),
-        ],
-      ),
-
       // Tutor-only standalone routes
       GoRoute(
         path: AppRoutes.tutorNotifications,
         builder: (context, _) => const TutorNotificationsScreen(),
       ),
 
-      // Tutor shell (5 tabs)
+      // Hồ sơ (Tôi): màn con đứng riêng, vào từ avatar ở header Trang chủ.
+      // Luồng ghi âm — đứng ngoài shell: khi đang ghi, thanh tab biến mất để
+      // không ai bấm nhầm sang tab khác giữa buổi.
+      GoRoute(
+        path: AppRoutes.tutorRecorder,
+        // Sheet: trong suốt để trang chủ vẫn nằm phía sau, trượt từ dưới lên.
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          opaque: false,
+          barrierColor: Colors.transparent,
+          child: const TutorRecorderEntryScreen(),
+          transitionsBuilder: (context, animation, _, child) => SlideTransition(
+            position:
+                Tween(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorRecording,
+        builder: (context, state) {
+          return TutorRecordingScreen(target: state.extra! as RecordingTarget);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.tutorRecordingDetail,
+        builder: (context, state) => TutorRecordingDetailScreen(
+          args: state.extra! as RecordingDetailArgs,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorReportReview,
+        builder: (context, state) =>
+            TutorReportReviewScreen(args: state.extra! as ReportReviewArgs),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorProfile,
+        builder: (context, _) => const TutorProfileScreen(),
+      ),
+
+      // Tutor shell (2 tab + nút ghi âm ở giữa)
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShellV2(navigationShell: shell),
         branches: [
@@ -291,123 +161,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRoutes.tutorSchedule,
                 builder: (context, _) => const TutorScheduleScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorWallet,
-                builder: (context, _) => const TutorWalletScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorMessages,
-                builder: (context, _) => const TutorMessagesScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.tutorProfile,
-                builder: (context, _) => const TutorProfileScreen(),
-              ),
-            ],
-          ),
-        ],
-      ),
-
-      // Parent-only standalone routes
-      GoRoute(
-        path: AppRoutes.parentNotifications,
-        builder: (context, _) => const StudentNotificationsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.parentCalendar,
-        builder: (context, _) => const ParentCalendarPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.parentWallet,
-        builder: (context, _) => const ParentWalletScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.parentBookings,
-        builder: (context, _) => const ParentBookingsPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.parentLessonConfirm,
-        builder: (context, _) => const ParentHomePage(),
-      ),
-      GoRoute(
-        path: AppRoutes.parentEditInfo,
-        builder: (context, _) => const ParentEditInfoScreen(),
-      ),
-
-      // Parent shell (5 tabs)
-      StatefulShellRoute.indexedStack(
-        builder: (context, _, shell) => ParentShell(navigationShell: shell),
-        branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.parentHome,
-                builder: (context, _) => const ParentHomePage(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.parentSearch,
-                builder: (context, _) => const ParentMarketplacePage(),
-                routes: [
-                  GoRoute(
-                    path: 'tutor/:id',
-                    builder: (context, state) => ParentTutorDetailPage(
-                      tutorId: state.pathParameters['id'] ?? '0',
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.parentInfo,
-                builder: (context, _) => const ParentClassesScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.parentMessages,
-                builder: (context, _) => const ParentMessagesScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: AppRoutes.parentProfile,
-                builder: (context, _) => const ParentProfilePage(),
-                routes: [
-                  GoRoute(
-                    path: 'student/:id',
-                    builder: (context, state) => ParentStudentDetailPage(
-                      studentId: state.pathParameters['id'] ?? '',
-                    ),
-                  ),
-                  GoRoute(
-                    path: 'add-child',
-                    builder: (context, _) => const ParentAddChildScreen(),
-                  ),
-                ],
               ),
             ],
           ),

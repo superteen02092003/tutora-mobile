@@ -1,48 +1,5 @@
 import 'package:tutora/features/auth/domain/entities/auth_token.dart';
 
-class RegisterRequest {
-  const RegisterRequest({
-    required this.phone,
-    required this.password,
-    required this.fullName,
-    required this.role,
-    this.email,
-  });
-
-  final String phone;
-  final String password;
-  final String fullName;
-  final String role;
-  final String? email;
-
-  Map<String, dynamic> toJson() => {
-    'phone': phone,
-    'password': password,
-    'fullName': fullName,
-    'role': role,
-    if (email != null && email!.isNotEmpty) 'email': email,
-  };
-}
-
-class RegisterResponse {
-  const RegisterResponse({
-    required this.message,
-    required this.requiresPhoneVerification,
-  });
-
-  factory RegisterResponse.fromJson(Map<String, dynamic> json) {
-    final content = json['content'] as Map<String, dynamic>? ?? {};
-    return RegisterResponse(
-      message: (json['message'] as String?) ?? 'Đăng ký thành công',
-      requiresPhoneVerification:
-          (content['requiresPhoneVerification'] as bool?) ?? true,
-    );
-  }
-
-  final String message;
-  final bool requiresPhoneVerification;
-}
-
 class LoginRequest {
   const LoginRequest({required this.emailOrPhone, required this.password});
 
@@ -90,6 +47,53 @@ class LoginResponse {
   final String? phone;
 
   AuthToken toEntity() => AuthToken(token: token, refreshToken: refreshToken);
+}
+
+class RegisterRequest {
+  const RegisterRequest({
+    required this.fullName,
+    required this.phone,
+    required this.password,
+    required this.role,
+    required this.acceptedTerms,
+    required this.acceptedPrivacy,
+  });
+
+  final String fullName;
+  final String phone;
+  final String password;
+
+  /// Vai trò theo backend: `Student` | `Tutor` | `Parent`.
+  final String role;
+
+  /// Đã tick đồng ý Điều khoản sử dụng — backend lưu vào
+  /// user_policy_acceptances kèm phiên bản văn bản đang xuất bản.
+  final bool acceptedTerms;
+
+  /// Đã tick đồng ý Chính sách quyền riêng tư.
+  final bool acceptedPrivacy;
+
+  Map<String, dynamic> toJson() => {
+    'fullName': fullName,
+    'phone': phone,
+    'password': password,
+    'role': role,
+    'acceptedTerms': acceptedTerms,
+    'acceptedPrivacy': acceptedPrivacy,
+    'source': 'mobile',
+  };
+}
+
+class RegisterResponse {
+  const RegisterResponse({this.phone});
+
+  factory RegisterResponse.fromJson(Map<String, dynamic> json) {
+    final content = json['content'] as Map<String, dynamic>? ?? {};
+    return RegisterResponse(phone: content['phone'] as String?);
+  }
+
+  /// Số điện thoại backend đã gửi OTP (đã trim).
+  final String? phone;
 }
 
 class VerifyPhoneRequest {

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:tutora/features/auth/domain/usecases/register_usecase.dart';
+import 'package:tutora/features/auth/domain/usecases/register_tutor_usecase.dart';
 
 sealed class RegisterState {}
 
@@ -8,6 +8,7 @@ final class RegisterIdle extends RegisterState {}
 
 final class RegisterLoading extends RegisterState {}
 
+// Đã tạo tài khoản — backend gửi OTP qua Zalo, cần navigate sang OTP
 final class RegisterSuccess extends RegisterState {
   RegisterSuccess(this.phone);
   final String phone;
@@ -21,22 +22,18 @@ final class RegisterError extends RegisterState {
 class RegisterController extends StateNotifier<RegisterState> {
   RegisterController(this._useCase) : super(RegisterIdle());
 
-  final RegisterUseCase _useCase;
+  final RegisterTutorUseCase _useCase;
 
   Future<void> register({
+    required String fullName,
     required String phone,
     required String password,
-    required String fullName,
-    required String role,
-    String? email,
   }) async {
     state = RegisterLoading();
     final result = await _useCase(
+      fullName: fullName,
       phone: phone,
       password: password,
-      fullName: fullName,
-      role: role,
-      email: email,
     );
     if (result.failure != null) {
       state = RegisterError(result.failure!.message);
@@ -54,6 +51,6 @@ final AutoDisposeStateNotifierProvider<RegisterController, RegisterState>
 registerControllerProvider =
     StateNotifierProvider.autoDispose<RegisterController, RegisterState>((ref) {
       return RegisterController(
-        RegisterUseCase(ref.read(authRepositoryProvider)),
+        RegisterTutorUseCase(ref.read(authRepositoryProvider)),
       );
     });

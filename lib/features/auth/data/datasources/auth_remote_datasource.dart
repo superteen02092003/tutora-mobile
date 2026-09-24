@@ -7,18 +7,6 @@ class AuthRemoteDatasource {
 
   final Dio _dio;
 
-  Future<RegisterResponse> register(RegisterRequest request) async {
-    try {
-      final response = await _dio.post<dynamic>(
-        '/auth/register',
-        data: request.toJson(),
-      );
-      return RegisterResponse.fromJson(response.data as Map<String, dynamic>);
-    } on DioException catch (e) {
-      throw mapDioException(e);
-    }
-  }
-
   Future<LoginResponse> login(LoginRequest request) async {
     try {
       final response = await _dio.post<dynamic>(
@@ -26,6 +14,19 @@ class AuthRemoteDatasource {
         data: request.toJson(),
       );
       return LoginResponse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  /// Tạo tài khoản + gửi OTP xác minh SĐT (qua Zalo). Chưa trả JWT.
+  Future<RegisterResponse> register(RegisterRequest request) async {
+    try {
+      final response = await _dio.post<dynamic>(
+        '/auth/register',
+        data: request.toJson(),
+      );
+      return RegisterResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw mapDioException(e);
     }

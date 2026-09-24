@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:tutora/features/auth/domain/usecases/forgot_password_usecase.dart';
 import 'package:tutora/features/auth/domain/usecases/reset_password_usecase.dart';
@@ -34,7 +35,8 @@ class ForgotController extends StateNotifier<ForgotState> {
     if (result.failure != null) {
       state = ForgotError(result.failure!.message);
     } else {
-      state = ForgotOtpSent(phone);
+      // Bước OTP / đặt lại mật khẩu phải dùng đúng số đã gửi OTP.
+      state = ForgotOtpSent(normalizePhone(phone));
     }
   }
 

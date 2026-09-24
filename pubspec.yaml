@@ -21,30 +21,24 @@ dependencies:
   # --- Network ---
   dio: ^5.8.0+1
   pretty_dio_logger: ^1.4.0
-  signalr_netcore: ^1.3.6
-
-  # --- Models (immutable + JSON) ---
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.9.0
 
   # --- Storage ---
-  shared_preferences: ^2.3.3
   flutter_secure_storage: ^9.2.2
 
-  # --- Media ---
-  image_picker: ^1.1.2
-  camera: ^0.11.0+2
-  image_cropper: ^8.0.2
+  # --- Ghi âm buổi học ---
+  # Để "any" có chủ đích: máy chạy lệnh của Claude không có Flutter SDK nên
+  # không resolve được version. Chạy `flutter pub get` một lần, pub sẽ ghi
+  # version thật vào pubspec.lock, rồi ghim lại bằng caret theo đúng version đó.
+  record: any
+  path_provider: any
+  flutter_foreground_task: any
 
-  # --- Math rendering ---
-  flutter_math_fork: ^0.7.2
+  # --- Media ---
+  # Chỉ dùng để chọn ảnh đại diện từ thư viện (không dùng camera).
+  image_picker: ^1.1.2
 
   # --- UI ---
   google_fonts: ^6.2.1
-  cached_network_image: ^3.4.1
-  flutter_svg: ^2.0.10+1
-  lottie: ^3.1.2
-  shimmer: ^3.0.0
 
   # --- Firebase ---
   firebase_core: ^3.13.1
@@ -53,16 +47,7 @@ dependencies:
 
   # --- Utils ---
   intl: ^0.20.2
-  video_player: ^2.11.1
-  chewie: ^1.13.1
-  http: ^1.6.0
-  uuid: ^4.5.3
-  image: ^4.8.0
   url_launcher: ^6.3.1
-  agora_rtc_engine: ^6.5.2
-  permission_handler: ^11.3.1
-  youtube_player_flutter: ^10.0.1
-  flutter_slidable: ^4.0.3
 
 dev_dependencies:
   flutter_test:
@@ -81,6 +66,4 @@ flutter:
   assets:
     - assets/images/
     - assets/images/common/
-    - assets/images/parent/
-    - assets/mascot/
     - assets/icons/

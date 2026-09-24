@@ -8,7 +8,13 @@ import 'package:tutora/app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  // Firebase chỉ phục vụ push notification. Máy dev chưa có google-services.json thì
+  // bỏ qua để app vẫn chạy (không có push), thay vì crash ngay khi mở.
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase chưa được cấu hình, tắt push notification: $e');
+  }
 
   await initializeDateFormatting('vi_VN');
   Intl.defaultLocale = 'vi_VN';

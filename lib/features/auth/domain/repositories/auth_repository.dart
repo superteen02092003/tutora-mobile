@@ -2,16 +2,15 @@ import 'package:tutora/core/errors/failure.dart';
 import 'package:tutora/features/auth/domain/entities/auth_token.dart';
 
 abstract interface class AuthRepository {
-  Future<Result<String>> register({
-    required String phone,
-    required String password,
-    required String fullName,
-    required String role,
-    String? email,
-  });
-
   Future<Result<AuthToken>> login({
     required String emailOrPhone,
+    required String password,
+  });
+
+  /// Đăng ký gia sư. Thành công trả về SĐT cần xác minh OTP.
+  Future<Result<String>> registerTutor({
+    required String fullName,
+    required String phone,
     required String password,
   });
 

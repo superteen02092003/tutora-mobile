@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/tutor/data/models/tutor_profile_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_form_widgets.dart';
@@ -32,7 +33,11 @@ class _TutorEditPersonalInfoScreenState
     final user = ref.read(tutorProfileProvider).user;
     _fullName = user?.fullName ?? '';
     _gender = user?.gender ?? '';
-    _birthdateCtrl = TextEditingController(text: user?.birthdate ?? '');
+    // BE có thể trả ISO datetime — chỉ giữ phần yyyy-MM-dd.
+    final birth = parseIsoDate(user?.birthdate);
+    _birthdateCtrl = TextEditingController(
+      text: birth == null ? (user?.birthdate ?? '') : formatIsoDate(birth),
+    );
     _addressCtrl = TextEditingController(text: user?.address ?? '');
   }
 
@@ -41,6 +46,26 @@ class _TutorEditPersonalInfoScreenState
     _birthdateCtrl.dispose();
     _addressCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickBirthdate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // Gia sư phải từ 18 tuổi: lịch chỉ cho chọn tới ngày vừa đủ 18.
+    final last = latestBirthdateForAge(tutorMinAge, today);
+    final current = parseIsoDate(_birthdateCtrl.text);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current != null && !current.isAfter(last)
+          ? current
+          : DateTime(today.year - 25),
+      firstDate: DateTime(1900),
+      lastDate: last,
+      helpText: 'Chọn ngày sinh',
+    );
+    if (picked != null) {
+      setState(() => _birthdateCtrl.text = formatIsoDate(picked));
+    }
   }
 
   Future<void> _save() async {
@@ -53,7 +78,7 @@ class _TutorEditPersonalInfoScreenState
           UpdateTutorUserRequest(
             fullName: _fullName,
             birthdate: _birthdateCtrl.text.trim(),
-            address: _addressCtrl.text.trim(),
+            address: collapseSpaces(_addressCtrl.text),
             gender: _gender,
           ),
         );
@@ -124,18 +149,22 @@ class _TutorEditPersonalInfoScreenState
                     TutorFormField(
                       label: 'Ngày sinh',
                       controller: _birthdateCtrl,
-                      hint: 'YYYY-MM-DD',
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Không được để trống'
-                          : null,
+                      hint: 'Chọn ngày sinh',
+                      readOnly: true,
+                      onTap: _pickBirthdate,
+                      suffixIcon: const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 18,
+                        color: AppColors.ink4,
+                      ),
+                      validator: (v) =>
+                          validateBirthdate(v, minAge: tutorMinAge),
                     ),
                     const SizedBox(height: 16),
                     TutorFormField(
                       label: 'Địa chỉ',
                       controller: _addressCtrl,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Không được để trống'
-                          : null,
+                      validator: validateAddress,
                     ),
                     const SizedBox(height: 32),
                     TutorSaveButton(saving: _saving, onSave: _save),

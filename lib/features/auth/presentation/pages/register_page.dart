@@ -7,97 +7,105 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/constants/legal_links.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/auth/presentation/controllers/register_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
-import 'package:tutora/features/auth/presentation/widgets/role_tab.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
+/// Đăng ký tài khoản gia sư: họ tên + SĐT + mật khẩu → OTP gửi qua Zalo.
+/// Bắt buộc đồng ý Điều khoản sử dụng và Chính sách quyền riêng tư.
 class RegisterPage extends ConsumerStatefulWidget {
-  const RegisterPage({required this.role, super.key});
-
-  final AuthRole role;
+  const RegisterPage({super.key});
 
   @override
   ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
-  int _step = 1;
-  AuthRole get _role => widget.role;
-
   final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
 
-  bool _agreed = false;
+  bool _acceptedTerms = false;
+  bool _acceptedPrivacy = false;
 
-  String? _emailError;
+  String? _nameError;
   String? _phoneError;
+  String? _passError;
   String? _confirmError;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
   }
 
-  bool get _step1Valid =>
-      _nameCtrl.text.trim().isNotEmpty && _phoneCtrl.text.trim().isNotEmpty;
-
-  bool get _step2Valid =>
+  bool get _canSubmit =>
+      _nameCtrl.text.trim().isNotEmpty &&
+      _phoneCtrl.text.trim().isNotEmpty &&
       _passCtrl.text.isNotEmpty &&
       _confirmCtrl.text.isNotEmpty &&
-      _passCtrl.text == _confirmCtrl.text &&
-      _agreed;
+      _acceptedTerms &&
+      _acceptedPrivacy;
 
-  int _passStrength(String p) {
-    if (p.isEmpty) return 0;
-    if (p.length < 6) return 1;
-    if (p.length < 10) return 2;
-    return 3;
+  void _backToLogin() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.login);
+    }
   }
 
-  Color _strengthColor(int s) =>
-      [Colors.transparent, AppColors.error, AppColors.gold, AppColors.green][s];
+  void _openLink(String url) => unawaited(_launchLink(url));
 
-  String _strengthLabel(int s) => ['', 'Yếu', 'Trung bình', 'Mạnh'][s];
+  Future<void> _launchLink(String url) async {
+    final opened = await openExternalUrl(url);
+    if (!opened && mounted) {
+      AppToast.show(
+        context,
+        message: 'Không mở được liên kết.',
+        type: AppToastType.error,
+      );
+    }
+  }
 
-  Future<void> _goNext() async {
-    if (_step == 1) {
-      final phone = _phoneCtrl.text.trim();
-      if (!RegExp(r'^(0|\+84)\d{9,10}$').hasMatch(phone)) {
-        setState(() => _phoneError = 'Số điện thoại không hợp lệ');
-        return;
-      }
-      setState(() {
-        _phoneError = null;
-        _step = 2;
-      });
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+    final phone = normalizePhone(_phoneCtrl.text);
+    final nameError = validatePersonName(_nameCtrl.text);
+    final phoneError = validatePhone(phone);
+    final passError = _passCtrl.text.length < passwordMinLength
+        ? 'Mật khẩu phải có ít nhất $passwordMinLength ký tự'
+        : null;
+    final confirmError = _passCtrl.text == _confirmCtrl.text
+        ? null
+        : 'Mật khẩu không khớp';
+    setState(() {
+      _nameError = nameError;
+      _phoneError = phoneError;
+      _passError = passError;
+      _confirmError = confirmError;
+    });
+    if (nameError != null ||
+        phoneError != null ||
+        passError != null ||
+        confirmError != null) {
       return;
     }
-
-    if (_passCtrl.text != _confirmCtrl.text) {
-      setState(() => _confirmError = 'Mật khẩu không khớp');
-      return;
-    }
-    setState(() => _confirmError = null);
 
     await ref
         .read(registerControllerProvider.notifier)
         .register(
-          phone: _phoneCtrl.text.trim(),
+          fullName: collapseSpaces(_nameCtrl.text),
+          phone: phone,
           password: _passCtrl.text,
-          fullName: _nameCtrl.text.trim(),
-          role: _role.apiValue,
-          email: _emailCtrl.text.trim().isEmpty ? null : _emailCtrl.text.trim(),
         );
   }
 
@@ -106,9 +114,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     ref.listen(registerControllerProvider, (_, state) {
       if (!context.mounted) return;
       if (state is RegisterSuccess) {
-        context.go(
-          AppRoutes.otp,
-          extra: OtpArgs(phone: state.phone, mode: OtpMode.register),
+        unawaited(
+          context.push(
+            AppRoutes.otp,
+            extra: OtpArgs(phone: state.phone, mode: OtpMode.register),
+          ),
         );
       } else if (state is RegisterError) {
         AppToast.show(
@@ -126,15 +136,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Scaffold(
       body: Column(
         children: [
-          AuthTopDeco(
+          const AuthTopDeco(
             bgColor: AppColors.ink,
-            line1: _role == AuthRole.tutor
-                ? 'Chia sẻ tri thức,'
-                : 'Hiểu sâu hơn,',
-            italicWord: _role == AuthRole.tutor ? 'truyền' : 'không chỉ',
-            line2Suffix: _role == AuthRole.tutor
-                ? 'cảm hứng học tập'
-                : 'tìm đáp án',
+            line1: 'Chia sẻ tri thức,',
+            italicWord: 'truyền',
+            line2Suffix: 'cảm hứng học tập',
           ),
           Expanded(
             child: SafeArea(
@@ -144,27 +150,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _StepHeader(
-                      step: _step,
-                      onBack: () {
-                        if (_step == 1) {
-                          context.pop();
-                        } else {
-                          setState(() => _step = 1);
-                        }
-                      },
-                    ),
+                    _BackLink(onTap: _backToLogin),
                     const SizedBox(height: 22),
 
-                    Text(
-                      _step == 1 ? 'Tạo tài khoản' : 'Thiết lập mật khẩu',
-                      style: AppTextStyles.h2(),
-                    ),
+                    Text('Đăng ký gia sư', style: AppTextStyles.h2()),
                     const SizedBox(height: 4),
                     Text(
-                      _step == 1
-                          ? 'Đăng ký với vai trò ${_role.label}.'
-                          : 'Mật khẩu mạnh bảo vệ tài khoản của bạn.',
+                      'Mã xác minh sẽ được gửi qua Zalo tới số điện thoại.',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: AppColors.ink3,
@@ -172,40 +164,74 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     const SizedBox(height: 22),
 
-                    if (_step == 1) ...[
-                      _Step1Fields(
-                        nameCtrl: _nameCtrl,
-                        emailCtrl: _emailCtrl,
-                        phoneCtrl: _phoneCtrl,
-                        emailError: _emailError,
-                        phoneError: _phoneError,
-                        enabled: !isLoading,
-                        onEmailChanged: (_) =>
-                            setState(() => _emailError = null),
-                        onPhoneChanged: (_) =>
-                            setState(() => _phoneError = null),
-                      ),
-                    ] else ...[
-                      _Step2Fields(
-                        passCtrl: _passCtrl,
-                        confirmCtrl: _confirmCtrl,
-                        confirmError: _confirmError,
-                        agreed: _agreed,
-                        enabled: !isLoading,
-                        onConfirmChanged: (_) =>
-                            setState(() => _confirmError = null),
-                        onPassChanged: (_) => setState(() {}),
-                        onAgreedChanged: (v) => setState(() => _agreed = v),
-                        passStrength: _passStrength(_passCtrl.text),
-                        strengthColor: _strengthColor(
-                          _passStrength(_passCtrl.text),
-                        ),
-                        strengthLabel: _strengthLabel(
-                          _passStrength(_passCtrl.text),
-                        ),
-                      ),
-                    ],
+                    AuthInput(
+                      label: 'Họ và tên',
+                      controller: _nameCtrl,
+                      hint: 'Nguyễn Văn A',
+                      textInputAction: TextInputAction.next,
+                      errorText: _nameError,
+                      enabled: !isLoading,
+                      onChanged: (_) => setState(() => _nameError = null),
+                    ),
+                    const SizedBox(height: 14),
 
+                    AuthInput(
+                      label: 'Số điện thoại (Zalo)',
+                      controller: _phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      hint: '09x xxx xxxx',
+                      errorText: _phoneError,
+                      enabled: !isLoading,
+                      onChanged: (_) => setState(() => _phoneError = null),
+                    ),
+                    const SizedBox(height: 14),
+
+                    AuthInput(
+                      label: 'Mật khẩu',
+                      controller: _passCtrl,
+                      obscureText: true,
+                      hint: 'Tối thiểu $passwordMinLength ký tự',
+                      textInputAction: TextInputAction.next,
+                      errorText: _passError,
+                      enabled: !isLoading,
+                      onChanged: (_) => setState(() => _passError = null),
+                    ),
+                    if (_passCtrl.text.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _PasswordStrength(password: _passCtrl.text),
+                    ],
+                    const SizedBox(height: 14),
+
+                    AuthInput(
+                      label: 'Xác nhận mật khẩu',
+                      controller: _confirmCtrl,
+                      obscureText: true,
+                      hint: 'Nhập lại mật khẩu',
+                      textInputAction: TextInputAction.done,
+                      errorText: _confirmError,
+                      enabled: !isLoading,
+                      onChanged: (_) => setState(() => _confirmError = null),
+                    ),
+                    const SizedBox(height: 18),
+
+                    _ConsentRow(
+                      checked: _acceptedTerms,
+                      enabled: !isLoading,
+                      linkLabel: 'Điều khoản sử dụng',
+                      url: LegalLinks.terms,
+                      onChanged: (v) => setState(() => _acceptedTerms = v),
+                      onOpenLink: _openLink,
+                    ),
+                    const SizedBox(height: 10),
+                    _ConsentRow(
+                      checked: _acceptedPrivacy,
+                      enabled: !isLoading,
+                      linkLabel: 'Chính sách quyền riêng tư',
+                      url: LegalLinks.privacy,
+                      onChanged: (v) => setState(() => _acceptedPrivacy = v),
+                      onOpenLink: _openLink,
+                    ),
                     const SizedBox(height: 24),
 
                     ElevatedButton(
@@ -219,12 +245,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           fontSize: 14,
                         ),
                       ),
-                      onPressed:
-                          isLoading ||
-                              (_step == 1 && !_step1Valid) ||
-                              (_step == 2 && !_step2Valid)
-                          ? null
-                          : _goNext,
+                      onPressed: isLoading || !_canSubmit ? null : _submit,
                       child: isLoading
                           ? const SizedBox(
                               width: 20,
@@ -234,7 +255,34 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                 color: AppColors.cream,
                               ),
                             )
-                          : Text(_step == 1 ? 'Tiếp theo →' : 'Tạo tài khoản'),
+                          : const Text('Tạo tài khoản'),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    Center(
+                      child: GestureDetector(
+                        onTap: isLoading ? null : _backToLogin,
+                        child: Text.rich(
+                          TextSpan(
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.ink3,
+                            ),
+                            children: [
+                              const TextSpan(text: 'Đã có tài khoản? '),
+                              TextSpan(
+                                text: 'Đăng nhập',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.oxblood,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -247,261 +295,160 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 }
 
-class _StepHeader extends StatelessWidget {
-  const _StepHeader({required this.step, required this.onBack});
+class _BackLink extends StatelessWidget {
+  const _BackLink({required this.onTap});
 
-  final int step;
-  final VoidCallback onBack;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        GestureDetector(
-          onTap: onBack,
-          child: Row(
-            children: [
-              const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 14,
-                color: AppColors.ink3,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Quay lại',
-                style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
-              ),
-            ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 14,
+            color: AppColors.ink3,
           ),
-        ),
+          const SizedBox(width: 4),
+          Text(
+            'Quay lại',
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PasswordStrength extends StatelessWidget {
+  const _PasswordStrength({required this.password});
+
+  final String password;
+
+  @override
+  Widget build(BuildContext context) {
+    final (strength, color, label) = switch (password.length) {
+      < 8 => (1, AppColors.error, 'Yếu'),
+      < 12 => (2, AppColors.gold, 'Trung bình'),
+      _ => (3, AppColors.green, 'Mạnh'),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Row(
-          children: List.generate(2, (i) {
-            final active = i < step;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.only(left: 5),
-              width: active ? 20 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: active ? AppColors.ink : AppColors.line,
-                borderRadius: BorderRadius.circular(AppRadius.full),
+          children: List.generate(3, (i) {
+            final filled = i < strength;
+            return Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
+                height: 3,
+                decoration: BoxDecoration(
+                  color: filled ? color : AppColors.line,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
               ),
             );
           }),
         ),
-      ],
-    );
-  }
-}
-
-class _Step1Fields extends StatelessWidget {
-  const _Step1Fields({
-    required this.nameCtrl,
-    required this.emailCtrl,
-    required this.phoneCtrl,
-    required this.enabled,
-    this.emailError,
-    this.phoneError,
-    this.onEmailChanged,
-    this.onPhoneChanged,
-  });
-
-  final TextEditingController nameCtrl;
-  final TextEditingController emailCtrl;
-  final TextEditingController phoneCtrl;
-  final bool enabled;
-  final String? emailError;
-  final String? phoneError;
-  final ValueChanged<String>? onEmailChanged;
-  final ValueChanged<String>? onPhoneChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AuthInput(
-          label: 'Họ và tên',
-          controller: nameCtrl,
-          hint: 'Nguyễn Văn A',
-          textInputAction: TextInputAction.next,
-          enabled: enabled,
-        ),
-        const SizedBox(height: 14),
-        AuthInput(
-          label: 'Số điện thoại',
-          controller: phoneCtrl,
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.next,
-          hint: '09x xxx xxxx',
-          errorText: phoneError,
-          onChanged: onPhoneChanged,
-          enabled: enabled,
-        ),
-        const SizedBox(height: 14),
-        AuthInput(
-          label: 'Email (tuỳ chọn)',
-          controller: emailCtrl,
-          keyboardType: TextInputType.emailAddress,
-          textInputAction: TextInputAction.done,
-          hint: 'ten@email.com',
-          errorText: emailError,
-          onChanged: onEmailChanged,
-          enabled: enabled,
-        ),
-      ],
-    );
-  }
-}
-
-class _Step2Fields extends StatelessWidget {
-  const _Step2Fields({
-    required this.passCtrl,
-    required this.confirmCtrl,
-    required this.agreed,
-    required this.enabled,
-    required this.passStrength,
-    required this.strengthColor,
-    required this.strengthLabel,
-    required this.onAgreedChanged,
-    this.confirmError,
-    this.onPassChanged,
-    this.onConfirmChanged,
-  });
-
-  final TextEditingController passCtrl;
-  final TextEditingController confirmCtrl;
-  final bool agreed;
-  final bool enabled;
-  final int passStrength;
-  final Color strengthColor;
-  final String strengthLabel;
-  final ValueChanged<bool> onAgreedChanged;
-  final String? confirmError;
-  final ValueChanged<String>? onPassChanged;
-  final ValueChanged<String>? onConfirmChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AuthInput(
-          label: 'Mật khẩu',
-          controller: passCtrl,
-          obscureText: true,
-          hint: 'Tối thiểu 8 ký tự',
-          textInputAction: TextInputAction.next,
-          enabled: enabled,
-          onChanged: onPassChanged,
-        ),
-
-        if (passCtrl.text.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: List.generate(3, (i) {
-              final filled = i < passStrength;
-              return Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: filled ? strengthColor : AppColors.line,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                ),
-              );
-            }),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: color,
           ),
-          const SizedBox(height: 4),
-          Text(
-            strengthLabel,
-            style: GoogleFonts.inter(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: strengthColor,
+        ),
+      ],
+    );
+  }
+}
+
+/// Ô đồng ý bắt buộc, kèm liên kết mở văn bản trên tutora.vn.
+class _ConsentRow extends StatelessWidget {
+  const _ConsentRow({
+    required this.checked,
+    required this.enabled,
+    required this.linkLabel,
+    required this.url,
+    required this.onChanged,
+    required this.onOpenLink,
+  });
+
+  final bool checked;
+  final bool enabled;
+  final String linkLabel;
+  final String url;
+  final ValueChanged<bool> onChanged;
+  final ValueChanged<String> onOpenLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = GoogleFonts.inter(
+      fontSize: 12.5,
+      color: AppColors.ink3,
+      height: 1.5,
+    );
+    return GestureDetector(
+      onTap: enabled ? () => onChanged(!checked) : null,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 18,
+            height: 18,
+            margin: const EdgeInsets.only(top: 1),
+            decoration: BoxDecoration(
+              color: checked ? AppColors.ink : AppColors.paper,
+              borderRadius: BorderRadius.circular(5),
+              border: checked
+                  ? null
+                  : Border.all(color: AppColors.line, width: 1.5),
+            ),
+            child: checked
+                ? const Icon(
+                    Icons.check_rounded,
+                    size: 12,
+                    color: AppColors.cream,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: textStyle,
+                children: [
+                  const TextSpan(text: 'Tôi đã đọc và đồng ý với '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    child: GestureDetector(
+                      onTap: () => onOpenLink(url),
+                      child: Text(
+                        linkLabel,
+                        style: textStyle.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.oxblood,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.oxblood,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const TextSpan(text: ' của Tutora.'),
+                ],
+              ),
             ),
           ),
         ],
-
-        const SizedBox(height: 14),
-
-        AuthInput(
-          label: 'Xác nhận mật khẩu',
-          controller: confirmCtrl,
-          obscureText: true,
-          hint: 'Nhập lại mật khẩu',
-          textInputAction: TextInputAction.done,
-          enabled: enabled,
-          errorText: confirmError,
-          onChanged: onConfirmChanged,
-        ),
-
-        const SizedBox(height: 16),
-
-        GestureDetector(
-          onTap: enabled ? () => onAgreedChanged(!agreed) : null,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 18,
-                height: 18,
-                margin: const EdgeInsets.only(top: 1),
-                decoration: BoxDecoration(
-                  color: agreed ? AppColors.ink : AppColors.paper,
-                  borderRadius: BorderRadius.circular(5),
-                  border: agreed
-                      ? null
-                      : Border.all(color: AppColors.line, width: 1.5),
-                ),
-                child: agreed
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 12,
-                        color: AppColors.cream,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.ink3,
-                      height: 1.5,
-                    ),
-                    children: [
-                      const TextSpan(text: 'Tôi đồng ý với '),
-                      TextSpan(
-                        text: 'Điều khoản sử dụng',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.oxblood,
-                        ),
-                      ),
-                      const TextSpan(text: ' và '),
-                      TextSpan(
-                        text: 'Chính sách bảo mật',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.oxblood,
-                        ),
-                      ),
-                      const TextSpan(text: ' của Tutora.'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
