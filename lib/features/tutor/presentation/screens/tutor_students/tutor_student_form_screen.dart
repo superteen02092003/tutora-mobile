@@ -380,7 +380,7 @@ class _TutorStudentFormScreenState
                 controlAffinity: ListTileControlAffinity.leading,
                 activeColor: TutorColors.success,
                 title: const Text(
-                  'Phụ huynh đã đọc và đồng ý nội dung ghi âm (v1): ghi âm buổi '
+                  'Phụ huynh đã đọc và đồng ý nội dung ghi âm: ghi âm buổi '
                   'học, AI tóm tắt, nhận báo cáo qua Zalo',
                   style: TextStyle(
                     fontSize: 13.5,
