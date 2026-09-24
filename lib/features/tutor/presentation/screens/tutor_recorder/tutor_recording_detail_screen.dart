@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
@@ -9,7 +8,6 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Tham số mở màn chi tiết một buổi đã ghi.
 class RecordingDetailArgs {
@@ -150,7 +148,6 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                             status: s,
                             name: name,
                             onEdit: _openEditor,
-                            onShare: _share,
                           )
                         : _MinutesTab(status: s),
                   ),
@@ -174,52 +171,6 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
       ),
     );
     if (mounted) unawaited(_load());
-  }
-
-  /// Soạn tin báo cáo cho phụ huynh từ các mục đã duyệt.
-  String _shareText(AppRecordingStatusDto s) {
-    final name = s.studentName.isNotEmpty
-        ? s.studentName
-        : widget.args.studentName;
-    final when = s.startedAt ?? s.scheduledStart;
-    final buf = StringBuffer('Báo cáo buổi học của $name');
-    if (when != null) buf.write(' — ngày ${_date(when)}');
-    for (final (title, body) in [
-      ('Nội dung buổi học', s.lessonContent),
-      ('Bài tập về nhà', s.homework),
-      ('Nhận xét', s.tutorNotes),
-    ]) {
-      final t = (body ?? '').trim();
-      if (t.isEmpty) continue;
-      buf.write('\n\n$title:\n$t');
-    }
-    return buf.toString();
-  }
-
-  /// Sao chép báo cáo rồi mở khung chat Zalo với SĐT phụ huynh (zalo.me/{sđt}) —
-  /// gia sư chỉ cần dán và gửi.
-  Future<void> _share() async {
-    final s = _s;
-    if (s == null) return;
-    await Clipboard.setData(ClipboardData(text: _shareText(s)));
-    var phone = (s.parentPhone ?? '').replaceAll(RegExp(r'\D'), '');
-    if (phone.startsWith('84') && phone.length >= 11) {
-      phone = '0${phone.substring(2)}';
-    }
-    final uri = Uri.parse(
-      phone.isNotEmpty ? 'https://zalo.me/$phone' : 'https://zalo.me',
-    );
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? 'Đã sao chép báo cáo — dán vào khung chat Zalo rồi gửi.'
-              : 'Không mở được Zalo. Báo cáo đã được sao chép.',
-        ),
-      ),
-    );
   }
 }
 
@@ -263,13 +214,11 @@ class _SummaryTab extends StatelessWidget {
     required this.status,
     required this.name,
     required this.onEdit,
-    required this.onShare,
   });
 
   final AppRecordingStatusDto status;
   final String name;
   final VoidCallback onEdit;
-  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -367,9 +316,15 @@ class _SummaryTab extends StatelessWidget {
         else if (s.isFailed && (s.lessonContent ?? '').isEmpty)
           _Note(s.errorMessage ?? 'AI chưa tạo được báo cáo từ bản ghi này.')
         else ...[
-          _Section(title: 'Nội dung đã dạy', body: s.lessonContent),
-          _Section(title: 'Bài tập về nhà', body: s.homework),
-          _Section(title: 'Ghi chú của gia sư', body: s.tutorNotes),
+          _Section(
+            title: 'Nội dung buổi học',
+            body: _pick(s.zaloContent, s.lessonContent),
+          ),
+          _Section(
+            title: 'Bài tập về nhà',
+            body: _pick(s.zaloHomework, s.homework),
+          ),
+          _Section(title: 'Nhận xét', body: _pick(s.zaloNotes, s.tutorNotes)),
         ],
         if (s.isAwaitingApproval || (s.isFailed && !s.isSent)) ...[
           const SizedBox(height: 8),
@@ -395,22 +350,6 @@ class _SummaryTab extends StatelessWidget {
         if (s.approvedAt != null || s.isSent) ...[
           const SizedBox(height: 8),
           _DeliveryState(status: s),
-          SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: onShare,
-              icon: const Icon(Icons.ios_share_rounded, size: 18),
-              label: const Text('Chia sẻ báo cáo'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(0, 48),
-                foregroundColor: TutorColors.primary,
-                side: const BorderSide(color: TutorColors.primaryBorder),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
         ],
       ],
     );
@@ -467,6 +406,10 @@ class _InfoCard extends StatelessWidget {
     ),
   );
 }
+
+/// Mục phụ huynh nhận: tin Zalo đã duyệt; buổi cũ chưa có thì dùng bản dài.
+String? _pick(String? zalo, String? long) =>
+    (zalo ?? '').trim().isNotEmpty ? zalo : long;
 
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.body});
@@ -529,7 +472,7 @@ class _Note extends StatelessWidget {
   );
 }
 
-/// Trạng thái gửi báo cáo qua Zalo, hiện ngay trên nút "Chia sẻ báo cáo".
+/// Trạng thái gửi báo cáo qua Zalo.
 class _DeliveryState extends StatelessWidget {
   const _DeliveryState({required this.status});
 
@@ -547,7 +490,7 @@ class _DeliveryState extends StatelessWidget {
       'failed' => (
         Icons.error_outline_rounded,
         '${(s.deliveryError ?? '').trim().isNotEmpty ? s.deliveryError!.trim() : 'Chưa gửi được qua Zalo.'}'
-            ' Bấm "Chia sẻ báo cáo" để tự gửi cho phụ huynh.',
+            ' Hãy kiểm tra lại số điện thoại phụ huynh.',
         TutorColors.warning,
       ),
       'pending' when s.deliveryChannel != 'booking' => (

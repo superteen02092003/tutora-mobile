@@ -69,6 +69,9 @@ class AppRecordingDatasource {
     required String lessonContent,
     String? homework,
     String? tutorNotes,
+    String? zaloContent,
+    String? zaloHomework,
+    String? zaloNotes,
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/recording/app/$recordingId/approve',
@@ -76,6 +79,9 @@ class AppRecordingDatasource {
         'lessonContent': lessonContent,
         'homework': homework,
         'tutorNotes': tutorNotes,
+        'zaloContent': ?zaloContent,
+        'zaloHomework': ?zaloHomework,
+        'zaloNotes': ?zaloNotes,
       },
     );
     return AppRecordingStatusDto.fromJson(
