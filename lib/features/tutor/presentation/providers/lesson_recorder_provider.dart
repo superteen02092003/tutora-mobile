@@ -100,6 +100,9 @@ class LessonRecordingNotifier extends StateNotifier<LessonRecordingState> {
 
   /// Bản debug cắt đoạn 30 giây thay vì 5 phút: test 2–3 phút là đã có vài đoạn,
   /// đủ để đi qua bước ghép ffmpeg trên server. Bản release luôn là 5 phút.
+  /// Đã có quyền micro chưa (không hiện hộp thoại xin quyền).
+  Future<bool> hasMicPermission() => _recorder.hasMicPermission();
+
   final LessonRecorder _recorder = LessonRecorder(
     segmentLength: kDebugMode ? const Duration(seconds: 30) : null,
   );

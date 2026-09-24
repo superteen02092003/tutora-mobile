@@ -1,3 +1,5 @@
+import 'package:tutora/features/tutor/data/models/consent_text.dart';
+
 /// "2026-09-21" ↔ DateTime (chỉ phần ngày). Backend dùng DateOnly.
 DateTime? parseDateOnly(Object? v) {
   if (v is! String || v.isEmpty) return null;
@@ -101,6 +103,7 @@ class RecorderStudentDto {
     this.parentLinkedAt,
     this.parentZaloName,
     this.inviteExpiresAt,
+    this.consentVersion,
   });
 
   factory RecorderStudentDto.fromJson(Map<String, dynamic> j) =>
@@ -112,6 +115,7 @@ class RecorderStudentDto {
         parentName: j['parentName'] as String?,
         parentPhone: j['parentPhone'] as String?,
         consentStatus: j['consentStatus'] as String? ?? 'unknown',
+        consentVersion: j['consentVersion'] as String?,
         note: j['note'] as String?,
         lessonCount: (j['lessonCount'] as num?)?.toInt() ?? 0,
         lastLessonAt: DateTime.tryParse(
@@ -156,6 +160,14 @@ class RecorderStudentDto {
   bool get hasConsent =>
       consentStatus == 'tutor_confirmed' || consentStatus == 'parent_confirmed';
   bool get isDeclined => consentStatus == 'declined';
+
+  /// Phiên bản nội dung đồng ý phụ huynh đã đọc (`v0` = xác nhận từ app cũ).
+  final String? consentVersion;
+
+  /// Gia sư đã xác nhận nhưng theo nội dung đồng ý cũ — cần phụ huynh đọc lại.
+  bool get needsReconsent =>
+      consentStatus == 'tutor_confirmed' &&
+      consentVersion != consentTextVersion;
 
   /// Liên kết Zalo của phụ huynh qua Mini App: none | invited | linked | unfollowed.
   final String parentLinkStatus;
@@ -212,6 +224,7 @@ class RecorderStudentInput {
     'parentName': _n(parentName),
     'parentPhone': _n(parentPhone),
     'parentConsent': parentConsent,
+    if (parentConsent) 'consentVersion': consentTextVersion,
     'note': _n(note),
     if (schedule != null) ...{
       'schedule': schedule!.map((e) => e.toJson()).toList(),

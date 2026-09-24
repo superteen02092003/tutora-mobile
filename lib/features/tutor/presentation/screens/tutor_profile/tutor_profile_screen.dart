@@ -6,9 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/constants/legal_links.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_change_password_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_delete_account_sheet.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_edit_personal_info_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/settings_section.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
@@ -27,6 +29,19 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _openLink(String url) => unawaited(_launchLink(url));
+
+  Future<void> _launchLink(String url) async {
+    final opened = await openExternalUrl(url);
+    if (!opened && mounted) {
+      AppToast.show(
+        context,
+        message: 'Không mở được liên kết.',
+        type: AppToastType.error,
+      );
+    }
   }
 
   @override
@@ -122,6 +137,29 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
                 ),
                 const SizedBox(height: 14),
 
+                // Pháp lý — Google Play yêu cầu link chính sách ngay trong app.
+                const SectionLabel('Pháp lý'),
+                SectionCard(
+                  children: [
+                    SettingRow(
+                      icon: Icons.description_outlined,
+                      label: 'Điều khoản sử dụng',
+                      onTap: () => _openLink(LegalLinks.terms),
+                    ),
+                    SettingRow(
+                      icon: Icons.privacy_tip_outlined,
+                      label: 'Chính sách quyền riêng tư',
+                      onTap: () => _openLink(LegalLinks.privacy),
+                    ),
+                    SettingRow(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Yêu cầu xoá dữ liệu',
+                      onTap: () => _openLink(LegalLinks.dataDeletion),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
                 SectionCard(
                   children: [
                     SettingRow(
@@ -130,6 +168,12 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
                       danger: true,
                       onTap: () =>
                           ref.read(authControllerProvider.notifier).logout(),
+                    ),
+                    SettingRow(
+                      icon: Icons.person_remove_outlined,
+                      label: 'Xoá tài khoản',
+                      danger: true,
+                      onTap: () => unawaited(showDeleteAccountSheet(context)),
                     ),
                   ],
                 ),

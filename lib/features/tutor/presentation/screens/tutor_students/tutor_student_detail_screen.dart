@@ -12,6 +12,7 @@ import 'package:tutora/features/tutor/presentation/providers/recorder_provider.d
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
 
 /// Hồ sơ một học sinh ngoài nền tảng: phụ huynh, đồng ý ghi âm, các buổi đã ghi.
@@ -267,27 +268,8 @@ Future<void> startStudentRecording(
   }
 
   var s = student;
-  if (!s.hasConsent) {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Phụ huynh đã đồng ý ghi âm?'),
-        content: Text(
-          'Bản ghi có giọng của ${s.fullName}. Chỉ ghi khi phụ huynh đã đồng ý cho '
-          'ghi âm buổi học và nhận báo cáo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Chưa'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Đã đồng ý'),
-          ),
-        ],
-      ),
-    );
+  if (!s.hasConsent || s.needsReconsent) {
+    final ok = await showConsentTextDialog(context, askConfirm: true);
     if (ok != true || !context.mounted) return;
     try {
       s = await ref

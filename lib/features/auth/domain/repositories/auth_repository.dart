@@ -7,6 +7,13 @@ abstract interface class AuthRepository {
     required String password,
   });
 
+  /// Đăng ký gia sư. Thành công trả về SĐT cần xác minh OTP.
+  Future<Result<String>> registerTutor({
+    required String fullName,
+    required String phone,
+    required String password,
+  });
+
   Future<Result<AuthToken>> verifyPhone({
     required String phone,
     required String otp,

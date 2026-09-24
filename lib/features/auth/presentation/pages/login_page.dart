@@ -14,13 +14,10 @@ import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
 import 'package:tutora/shared/services/push_token_service.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Thông báo khi tài khoản học sinh / phụ huynh đăng nhập vào app gia sư.
 const tutorOnlyMessage =
     'Ứng dụng này dành cho gia sư. Vui lòng dùng web tutora.vn.';
-
-final Uri _webUri = Uri.parse('https://tutora.vn');
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -44,17 +41,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     await ref
         .read(loginControllerProvider.notifier)
         .login(_identifierCtrl.text, _passCtrl.text);
-  }
-
-  Future<void> _openWeb() async {
-    final ok = await launchUrl(_webUri, mode: LaunchMode.externalApplication);
-    if (!ok && mounted) {
-      AppToast.show(
-        context,
-        message: 'Không mở được tutora.vn.',
-        type: AppToastType.error,
-      );
-    }
   }
 
   Future<void> _navigateByRole() async {
@@ -205,15 +191,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             color: AppColors.ink3,
                           ),
                           children: [
-                            const TextSpan(text: 'Chưa có tài khoản gia sư? '),
+                            const TextSpan(text: 'Chưa có tài khoản? '),
                             WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
                               child: GestureDetector(
                                 onTap: isLoading
                                     ? null
-                                    : () => unawaited(_openWeb()),
+                                    : () => context.push(AppRoutes.register),
                                 child: Text(
-                                  'Đăng ký trên tutora.vn',
+                                  'Đăng ký gia sư',
                                   style: GoogleFonts.inter(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,

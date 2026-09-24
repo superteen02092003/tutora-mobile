@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,7 @@ import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart'
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 
 /// Thêm / sửa học sinh ngoài nền tảng. Trả về học sinh đã lưu (hoặc null khi
 /// gia sư huỷ / ẩn học sinh).
@@ -40,17 +43,33 @@ class _TutorStudentFormScreenState
   );
   late final _note = TextEditingController(text: widget.student?.note);
   late int? _grade = widget.student?.grade;
-  late bool _consent = widget.student?.hasConsent ?? false;
+  late bool _consent =
+      (widget.student?.hasConsent ?? false) &&
+      !(widget.student?.needsReconsent ?? false);
   late final List<RecorderScheduleSlot> _slots = [
     ...?widget.student?.schedule,
   ];
 
-  /// Khoảng áp dụng lịch. Mặc định: từ hôm nay tới hết 3 tháng — để lịch lặp
-  /// không kéo dài vô hạn (và không sinh hàng chục buổi thừa).
+  /// Khoảng áp dụng lịch. Ngày kết thúc do gia sư tự chọn (không tự điền) và
+  /// tối đa [_maxMonths] tháng — để lịch lặp không sinh hàng chục buổi thừa.
   late DateTime _from = widget.student?.scheduleFrom ?? _today();
-  late DateTime _until =
-      widget.student?.scheduleUntil ??
-      DateTime(_from.year, _from.month + 3, _from.day);
+  late DateTime? _until = widget.student?.scheduleUntil;
+
+  static const int _maxMonths = 6;
+
+  static DateTime _addMonths(DateTime d, int months) =>
+      DateTime(d.year, d.month + months, d.day);
+
+  String get _rangeHint {
+    final until = _until;
+    if (until == null) {
+      return 'Chọn ngày kết thúc (tối đa $_maxMonths tháng). Hết ngày kết '
+          'thúc thì lịch dừng — gia hạn bằng cách sửa ngày.';
+    }
+    final n = countScheduledLessons(_slots, _from, until);
+    return 'Khoảng $n buổi. Hết ngày kết thúc thì lịch dừng — gia hạn bằng '
+        'cách sửa ngày.';
+  }
 
   static DateTime _today() {
     final n = DateTime.now();
@@ -61,21 +80,28 @@ class _TutorStudentFormScreenState
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   Future<void> _pickDate({required bool start}) async {
-    final first = start ? DateTime(2020) : _from;
+    final until = _until;
+    final lastEnd = _addMonths(_from, _maxMonths);
+    var initialEnd = until ?? _addMonths(_from, 1);
+    if (initialEnd.isAfter(lastEnd)) initialEnd = lastEnd;
+    if (initialEnd.isBefore(_from)) initialEnd = _from;
     final picked = await showDatePicker(
       context: context,
-      initialDate: start ? _from : _until,
-      firstDate: first,
-      lastDate: DateTime(_from.year + 1, _from.month, _from.day),
+      initialDate: start ? _from : initialEnd,
+      firstDate: start ? DateTime(2020) : _from,
+      lastDate: start
+          ? DateTime(_from.year + 1, _from.month, _from.day)
+          : lastEnd,
       helpText: start ? 'Ngày bắt đầu' : 'Ngày kết thúc',
     );
     if (picked == null) return;
     setState(() {
       if (start) {
-        final span = _until.difference(_from);
-        _from = picked;
         // Giữ nguyên độ dài khoá học khi dời ngày bắt đầu.
-        _until = picked.add(span.isNegative ? const Duration(days: 90) : span);
+        if (until != null && !until.isBefore(_from)) {
+          _until = picked.add(until.difference(_from));
+        }
+        _from = picked;
       } else {
         _until = picked;
       }
@@ -96,6 +122,23 @@ class _TutorStudentFormScreenState
 
   Future<void> _save() async {
     if (!(_form.currentState?.validate() ?? false)) return;
+    final until = _until;
+    if (_slots.isNotEmpty) {
+      if (until == null) {
+        _snack('Chọn ngày kết thúc cho lịch học.');
+        return;
+      }
+      if (until.isBefore(_from)) {
+        _snack('Ngày kết thúc phải sau ngày bắt đầu.');
+        return;
+      }
+      if (until.isAfter(_addMonths(_from, _maxMonths))) {
+        _snack(
+          'Lịch học tối đa $_maxMonths tháng — gia hạn sau bằng cách sửa ngày.',
+        );
+        return;
+      }
+    }
     setState(() => _saving = true);
     final input = RecorderStudentInput(
       fullName: _name.text.trim(),
@@ -107,7 +150,7 @@ class _TutorStudentFormScreenState
       note: _note.text,
       schedule: _slots,
       scheduleFrom: _slots.isEmpty ? null : _from,
-      scheduleUntil: _slots.isEmpty ? null : _until,
+      scheduleUntil: _slots.isEmpty ? null : until,
     );
     try {
       final ds = ref.read(recorderDatasourceProvider);
@@ -246,16 +289,27 @@ class _TutorStudentFormScreenState
                   Expanded(
                     child: _TimeBox(
                       label: 'Đến ngày',
-                      value: _d(_until),
+                      value: _until == null ? 'Chọn ngày' : _d(_until!),
                       onTap: () => _pickDate(start: false),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final m in const [1, 2, 3, 6])
+                    ActionChip(
+                      label: Text('$m tháng'),
+                      onPressed: () =>
+                          setState(() => _until = _addMonths(_from, m)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Text(
-                'Khoảng ${countScheduledLessons(_slots, _from, _until)} buổi. '
-                'Hết ngày kết thúc thì lịch dừng — gia hạn bằng cách sửa ngày.',
+                _rangeHint,
                 style: const TextStyle(
                   fontSize: 12,
                   color: TutorColors.ink4,
@@ -303,23 +357,36 @@ class _TutorStudentFormScreenState
                 controlAffinity: ListTileControlAffinity.leading,
                 activeColor: TutorColors.success,
                 title: const Text(
-                  'Phụ huynh đã đồng ý cho ghi âm buổi học và nhận báo cáo qua Zalo',
+                  'Phụ huynh đã đọc và đồng ý nội dung ghi âm (v1): ghi âm buổi '
+                  'học, AI tóm tắt, nhận báo cáo qua Zalo',
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
                     color: TutorColors.ink,
                   ),
                 ),
-                subtitle: const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Bản ghi có giọng của học sinh, nên cần phụ huynh đồng ý trước. '
-                    'Tutora sẽ gửi tin xác nhận cho phụ huynh.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: TutorColors.ink4,
-                      height: 1.35,
-                    ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bản ghi có giọng của học sinh, nên phải cho phụ huynh '
+                        'đọc nội dung đồng ý trước khi ghi. Chưa xác nhận thì '
+                        'không ghi âm được.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: TutorColors.ink4,
+                          height: 1.35,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            unawaited(showConsentTextDialog(context)),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        child: const Text('Xem nội dung đồng ý'),
+                      ),
+                    ],
                   ),
                 ),
               ),
