@@ -20,7 +20,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- HTTP thường (cleartext) chỉ bật ở bản debug: xem src/debug/AndroidManifest.xml. -->
+    <!-- Không sao lưu dữ liệu app (Google Drive của gia sư, chuyển sang máy mới):
+         đoạn ghi âm giọng học sinh chờ upload và token đăng nhập không được rời
+         máy. allowBackup="false" chỉ tắt sao lưu lên cloud; từ Android 12 phải
+         có thêm dataExtractionRules để tắt cả chuyển máy (device-to-device). -->
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:replace="android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
         android:usesCleartextTraffic="false"
         android:label="Tutora"
         android:icon="@mipmap/ic_launcher">

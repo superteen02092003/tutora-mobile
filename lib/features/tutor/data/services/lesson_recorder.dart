@@ -28,6 +28,27 @@ class _LessonRecorderTaskHandler extends TaskHandler {
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {}
 }
 
+/// Bản ghi trên máy không được sống lâu hơn hạn giữ audio trên server
+/// (chính sách privacy-app: xoá 90 ngày sau ngày ghi).
+const localRecordingMaxAge = Duration(days: 90);
+
+/// Có xoá thư mục bản ghi còn sót trên máy không.
+///
+/// [serverStatus] là trạng thái server trả về, `null` khi không hỏi được (mất
+/// mạng, chưa đăng nhập) — khi đó để lần mở app sau. [notFound]: server trả 404,
+/// buổi đã bị xoá (vd. gia sư xoá học sinh). Chỉ giữ buổi server còn đang chờ
+/// đoạn (`recording` / `uploading`).
+bool shouldDeleteLocalRecording({
+  required Duration age,
+  String? serverStatus,
+  bool notFound = false,
+}) {
+  if (age >= localRecordingMaxAge) return true;
+  if (notFound) return true;
+  if (serverStatus == null) return false;
+  return serverStatus != 'recording' && serverStatus != 'uploading';
+}
+
 /// Một đoạn ghi đã đóng lại và sẵn sàng upload.
 class RecordedSegment {
   const RecordedSegment({
@@ -144,6 +165,29 @@ class LessonRecorder {
           index: i,
           path: files[i].path,
           bytes: files[i].lengthSync(),
+        ),
+    ];
+  }
+
+  /// Xoá thư mục đoạn của một buổi. Gọi khi server đã nhận đủ bản ghi: bản trên
+  /// máy không còn dùng vào việc gì (gia sư không nghe lại), và giữ lại thì nó
+  /// nằm trên điện thoại mãi, quá hạn [localRecordingMaxAge] của chính sách.
+  static Future<void> deleteSegments(String key) async {
+    final dir = await segmentDir(key);
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  }
+
+  /// Các buổi còn thư mục đoạn trên máy, kèm lần sửa cuối của thư mục.
+  static Future<List<({String key, DateTime modified})>>
+  localRecordings() async {
+    final base = await getApplicationDocumentsDirectory();
+    final root = Directory('${base.path}/lesson_recordings');
+    if (!root.existsSync()) return const [];
+    return [
+      for (final d in root.listSync().whereType<Directory>())
+        (
+          key: d.path.split(Platform.pathSeparator).last,
+          modified: d.statSync().modified,
         ),
     ];
   }
