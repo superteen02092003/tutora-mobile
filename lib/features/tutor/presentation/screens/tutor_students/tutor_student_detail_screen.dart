@@ -293,7 +293,7 @@ Future<void> startStudentRecording(
               note: s.note,
             ),
           );
-      ref.invalidate(recorderStudentsProvider);
+      reloadRecorderStudentData(ref);
     } on Object {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

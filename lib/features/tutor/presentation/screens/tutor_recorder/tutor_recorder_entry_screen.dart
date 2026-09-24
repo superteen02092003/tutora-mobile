@@ -82,10 +82,9 @@ class _TutorRecorderEntryScreenState
         onBeforeStart: () => context.pop(),
       );
 
+  /// Form tự tải lại danh bạ sau khi lưu (reloadRecorderStudentData).
   Future<void> _addStudent() async {
-    final created = await TutorStudentFormScreen.open(context);
-    if (created == null || !mounted) return;
-    ref.invalidate(recorderStudentsProvider);
+    await TutorStudentFormScreen.open(context);
   }
 
   @override
