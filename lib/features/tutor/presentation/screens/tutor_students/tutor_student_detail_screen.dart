@@ -55,8 +55,15 @@ class TutorStudentDetailScreen extends ConsumerWidget {
         title: const Text('Học sinh'),
         actions: [
           TextButton(
-            onPressed: () =>
-                TutorStudentFormScreen.open(context, student: student),
+            onPressed: () async {
+              await TutorStudentFormScreen.open(context, student: student);
+              // Đã xoá học sinh ở form → màn hồ sơ không còn gì để xem.
+              final list = await ref.read(recorderStudentsProvider.future);
+              if (!list.any((x) => x.studentId == studentId) &&
+                  context.mounted) {
+                await Navigator.of(context).maybePop();
+              }
+            },
             child: const Text(
               'Sửa',
               style: TextStyle(color: TutorColors.primary),

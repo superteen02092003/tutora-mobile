@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
@@ -12,7 +13,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provid
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 
 /// Thêm / sửa học sinh ngoài nền tảng. Trả về học sinh đã lưu (hoặc null khi
-/// gia sư huỷ / ẩn học sinh).
+/// gia sư huỷ / xoá học sinh).
 class TutorStudentFormScreen extends ConsumerStatefulWidget {
   const TutorStudentFormScreen({this.student, super.key});
 
@@ -121,7 +122,17 @@ class _TutorStudentFormScreenState
   }
 
   Future<void> _save() async {
-    if (!(_form.currentState?.validate() ?? false)) return;
+    if (!(_form.currentState?.validate() ?? false)) {
+      _snack('Điền đủ các thông tin còn thiếu (ô báo đỏ).');
+      return;
+    }
+    // Bắt buộc có đồng ý của phụ huynh mới thêm được học sinh (server cũng chặn).
+    if (!_editing && !_consent) {
+      _snack(
+        'Cần xác nhận phụ huynh đã đọc và đồng ý nội dung ghi âm trước khi thêm học sinh.',
+      );
+      return;
+    }
     final until = _until;
     if (_slots.isNotEmpty) {
       if (until == null) {
@@ -141,11 +152,11 @@ class _TutorStudentFormScreenState
     }
     setState(() => _saving = true);
     final input = RecorderStudentInput(
-      fullName: _name.text.trim(),
+      fullName: collapseSpaces(_name.text),
       grade: _grade,
-      subject: _subject.text,
-      parentName: _parentName.text,
-      parentPhone: _parentPhone.text.replaceAll(RegExp(r'[\s.]'), ''),
+      subject: collapseSpaces(_subject.text),
+      parentName: collapseSpaces(_parentName.text),
+      parentPhone: normalizePhone(_parentPhone.text),
       parentConsent: _consent,
       note: _note.text,
       schedule: _slots,
@@ -170,13 +181,16 @@ class _TutorStudentFormScreenState
     }
   }
 
-  Future<void> _archive() async {
+  /// Xoá vĩnh viễn — theo yêu cầu xoá dữ liệu của phụ huynh (trang
+  /// tutora.vn/policies/data-deletion). Không khôi phục được.
+  Future<void> _deletePermanently() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Ẩn học sinh này?'),
+        title: const Text('Xoá vĩnh viễn học sinh này?'),
         content: const Text(
-          'Học sinh sẽ không còn trong danh sách. Các báo cáo đã gửi vẫn được giữ.',
+          'Toàn bộ bản ghi âm, bản chép lời, báo cáo, lịch học và xác nhận đồng '
+          'ý của học sinh sẽ bị xoá và không khôi phục được.',
         ),
         actions: [
           TextButton(
@@ -185,20 +199,28 @@ class _TutorStudentFormScreenState
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ẩn'),
+            style: TextButton.styleFrom(foregroundColor: TutorColors.primary),
+            child: const Text('Xoá vĩnh viễn'),
           ),
         ],
       ),
     );
     if (ok != true || !mounted) return;
+    setState(() => _saving = true);
     try {
       await ref
           .read(recorderDatasourceProvider)
-          .archiveStudent(widget.student!.studentId);
-      ref.invalidate(recorderStudentsProvider);
+          .deleteStudentPermanently(widget.student!.studentId);
+      ref
+        ..invalidate(recorderStudentsProvider)
+        ..invalidate(tutorAgendaLessonsProvider)
+        ..invalidate(recorderTodayLessonsProvider)
+        ..invalidate(recorderStudentLessonsProvider);
       if (mounted) Navigator.of(context).pop();
     } on Object catch (e) {
-      _snack(_message(e) ?? 'Chưa ẩn được học sinh.');
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _snack(_message(e) ?? 'Chưa xoá được học sinh. Thử lại sau.');
     }
   }
 
@@ -227,9 +249,9 @@ class _TutorStudentFormScreenState
         actions: [
           if (_editing)
             IconButton(
-              tooltip: 'Ẩn học sinh',
+              tooltip: 'Xoá học sinh',
               icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: _saving ? null : _archive,
+              onPressed: _saving ? null : _deletePermanently,
             ),
         ],
       ),
@@ -243,8 +265,7 @@ class _TutorStudentFormScreenState
               controller: _name,
               label: 'Họ tên học sinh',
               textCapitalization: TextCapitalization.words,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Nhập tên học sinh' : null,
+              validator: (v) => validatePersonName(v, field: 'họ tên học sinh'),
             ),
             const SizedBox(height: 12),
             Row(
@@ -259,12 +280,17 @@ class _TutorStudentFormScreenState
                         DropdownMenuItem(value: g, child: Text('Lớp $g')),
                     ],
                     onChanged: (v) => setState(() => _grade = v),
+                    validator: (v) => v == null ? 'Chọn lớp' : null,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: _Input(controller: _subject, label: 'Môn (vd. Toán)'),
+                  child: _Input(
+                    controller: _subject,
+                    label: 'Môn (vd. Toán)',
+                    validator: validateSubject,
+                  ),
                 ),
               ],
             ),
@@ -323,6 +349,7 @@ class _TutorStudentFormScreenState
               controller: _parentName,
               label: 'Tên phụ huynh (vd. Chị Hương)',
               textCapitalization: TextCapitalization.words,
+              validator: (v) => validatePersonName(v, field: 'tên phụ huynh'),
             ),
             const SizedBox(height: 12),
             _Input(
@@ -332,13 +359,9 @@ class _TutorStudentFormScreenState
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp('[0-9+ .]')),
               ],
-              validator: (v) {
-                final p = (v ?? '').replaceAll(RegExp(r'[\s.]'), '');
-                if (p.isEmpty) return null;
-                return RegExp(r'^(\+?84|0)\d{9,10}$').hasMatch(p)
-                    ? null
-                    : 'Số điện thoại chưa đúng';
-              },
+              // Bắt buộc: báo cáo được gửi tới số này qua Zalo.
+              validator: (v) =>
+                  validatePhone(v, field: 'số điện thoại phụ huynh'),
             ),
             const SizedBox(height: 14),
             Material(
@@ -397,6 +420,7 @@ class _TutorStudentFormScreenState
               controller: _note,
               label: 'Mục tiêu, lịch học… (không bắt buộc)',
               maxLines: 3,
+              validator: (v) => validateOptionalMaxLength(v, noteMaxLength),
             ),
           ],
         ),

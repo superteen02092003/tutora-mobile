@@ -9,6 +9,7 @@ import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/ai_feedback_sheet.dart';
 
 /// Tham số mở màn xem báo cáo.
 class ReportReviewArgs {
@@ -227,6 +228,11 @@ class _TutorReportReviewScreenState
                   ),
                   const SizedBox(height: 20),
                   body,
+                  // Nội dung do AI viết → cho gia sư báo sai (yêu cầu của Google Play).
+                  if (s != null && ((editable && !_manual) || s.isSent)) ...[
+                    const SizedBox(height: 12),
+                    AiFeedbackButton(recordingId: widget.args.recordingId),
+                  ],
                 ],
               ),
             ),

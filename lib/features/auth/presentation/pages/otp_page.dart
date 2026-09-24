@@ -9,6 +9,7 @@ import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/otp_controller.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
@@ -87,7 +88,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   bool get _canSubmit {
     if (!_otpFull) return false;
     if (_isForgot) {
-      return _newPassCtrl.text.length >= 8 &&
+      return _newPassCtrl.text.length >= passwordMinLength &&
           _newPassCtrl.text == _confirmPassCtrl.text;
     }
     return true;
@@ -377,7 +378,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                         enabled: !isLoading,
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
-                          hintText: 'Tối thiểu 8 ký tự',
+                          hintText: 'Tối thiểu $passwordMinLength ký tự',
                           hintStyle: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.ink3,

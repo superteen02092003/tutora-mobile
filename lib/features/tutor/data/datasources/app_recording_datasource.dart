@@ -159,6 +159,23 @@ class AppRecordingDatasource {
   Future<void> discard(String recordingId) async {
     await _dio.delete<void>('/recording/app/$recordingId');
   }
+
+  // POST /recording/app/{recordingId}/ai-feedback — báo nội dung AI sai
+  // (yêu cầu của Google Play với app có AI tạo nội dung).
+  // reason: wrong_content | wrong_student | inappropriate | other.
+  Future<void> reportAiFeedback(
+    String recordingId, {
+    required String reason,
+    String? note,
+  }) async {
+    await _dio.post<void>(
+      '/recording/app/$recordingId/ai-feedback',
+      data: {
+        'reason': reason,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+  }
 }
 
 final appRecordingDatasourceProvider = Provider<AppRecordingDatasource>(

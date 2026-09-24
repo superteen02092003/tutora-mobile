@@ -16,16 +16,20 @@ class AuthListener extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<AuthState>(authControllerProvider, (_, next) async {
       if (next is AuthLoggedOut) {
-        final rootContext =
-            ref.read(navigatorKeyProvider).currentContext ?? context;
-
+        final navigator = ref.read(navigatorKeyProvider).currentState;
+        final rootContext = navigator?.context ?? context;
         if (!rootContext.mounted) return;
-        AppToast.show(
-          rootContext,
-          message: 'Đã đăng xuất.',
-          type: AppToastType.success,
-        );
+        // Điều hướng TRƯỚC: context của Navigator nằm trên Overlay của chính
+        // nó, gọi toast bằng context này sẽ lỗi và chặn luôn lệnh go().
         rootContext.go(AppRoutes.login);
+        final overlayContext = navigator?.overlay?.context;
+        if (overlayContext != null && overlayContext.mounted) {
+          AppToast.show(
+            overlayContext,
+            message: 'Đã đăng xuất.',
+            type: AppToastType.success,
+          );
+        }
       } else if (next is AuthError) {
         AppToast.show(
           context,

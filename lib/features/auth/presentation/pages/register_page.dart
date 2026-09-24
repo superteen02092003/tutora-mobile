@@ -9,7 +9,7 @@ import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/constants/legal_links.dart';
 import 'package:tutora/core/router/app_routes.dart';
-import 'package:tutora/features/auth/domain/usecases/register_tutor_usecase.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/auth/presentation/controllers/register_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
@@ -33,6 +33,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _acceptedTerms = false;
   bool _acceptedPrivacy = false;
 
+  String? _nameError;
   String? _phoneError;
   String? _passError;
   String? _confirmError;
@@ -77,29 +78,32 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    final phone = _phoneCtrl.text.replaceAll(RegExp(r'\s'), '');
-    final phoneError = vnPhoneRegExp.hasMatch(phone)
-        ? null
-        : 'Số điện thoại không hợp lệ';
-    final passError = _passCtrl.text.length < 8
-        ? 'Mật khẩu phải có ít nhất 8 ký tự'
+    final phone = normalizePhone(_phoneCtrl.text);
+    final nameError = validatePersonName(_nameCtrl.text);
+    final phoneError = validatePhone(phone);
+    final passError = _passCtrl.text.length < passwordMinLength
+        ? 'Mật khẩu phải có ít nhất $passwordMinLength ký tự'
         : null;
     final confirmError = _passCtrl.text == _confirmCtrl.text
         ? null
         : 'Mật khẩu không khớp';
     setState(() {
+      _nameError = nameError;
       _phoneError = phoneError;
       _passError = passError;
       _confirmError = confirmError;
     });
-    if (phoneError != null || passError != null || confirmError != null) {
+    if (nameError != null ||
+        phoneError != null ||
+        passError != null ||
+        confirmError != null) {
       return;
     }
 
     await ref
         .read(registerControllerProvider.notifier)
         .register(
-          fullName: _nameCtrl.text,
+          fullName: collapseSpaces(_nameCtrl.text),
           phone: phone,
           password: _passCtrl.text,
         );
@@ -165,8 +169,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       controller: _nameCtrl,
                       hint: 'Nguyễn Văn A',
                       textInputAction: TextInputAction.next,
+                      errorText: _nameError,
                       enabled: !isLoading,
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() => _nameError = null),
                     ),
                     const SizedBox(height: 14),
 
@@ -186,7 +191,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       label: 'Mật khẩu',
                       controller: _passCtrl,
                       obscureText: true,
-                      hint: 'Tối thiểu 8 ký tự',
+                      hint: 'Tối thiểu $passwordMinLength ký tự',
                       textInputAction: TextInputAction.next,
                       errorText: _passError,
                       enabled: !isLoading,

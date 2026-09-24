@@ -11,6 +11,9 @@ class TutorFormField extends StatelessWidget {
     this.validator,
     this.maxLines = 1,
     this.keyboardType,
+    this.readOnly = false,
+    this.onTap,
+    this.suffixIcon,
   });
 
   final String label;
@@ -19,6 +22,11 @@ class TutorFormField extends StatelessWidget {
   final String? Function(String?)? validator;
   final int maxLines;
   final TextInputType? keyboardType;
+
+  /// Ô chỉ chọn (vd. ngày sinh qua lịch) — không gõ tay, mở picker qua [onTap].
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +47,13 @@ class TutorFormField extends StatelessWidget {
           validator: validator,
           maxLines: maxLines,
           keyboardType: keyboardType,
+          readOnly: readOnly,
+          onTap: onTap,
           style: GoogleFonts.inter(fontSize: 14, color: AppColors.ink),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.ink4),
+            suffixIcon: suffixIcon,
             filled: true,
             fillColor: AppColors.paper,
             contentPadding: const EdgeInsets.symmetric(

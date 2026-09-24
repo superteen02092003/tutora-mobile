@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/tutor/data/models/tutor_profile_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_form_widgets.dart';
@@ -105,7 +106,13 @@ class _TutorChangePasswordScreenState
                         if (v == null || v.isEmpty) {
                           return 'Không được để trống';
                         }
-                        if (v.length < 6) return 'Tối thiểu 6 ký tự';
+                        // Cùng quy định với web: tối thiểu 8 ký tự, khác mật khẩu cũ.
+                        if (v.length < passwordMinLength) {
+                          return 'Tối thiểu $passwordMinLength ký tự';
+                        }
+                        if (v == _oldCtrl.text) {
+                          return 'Mật khẩu mới không được trùng mật khẩu cũ';
+                        }
                         return null;
                       },
                     ),
