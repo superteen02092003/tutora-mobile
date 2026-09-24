@@ -84,6 +84,9 @@ class AppRecordingStatusDto {
     this.lessonContent,
     this.homework,
     this.tutorNotes,
+    this.zaloContent,
+    this.zaloHomework,
+    this.zaloNotes,
     this.errorMessage,
     this.studentId,
     this.studentName = '',
@@ -117,6 +120,9 @@ class AppRecordingStatusDto {
         lessonContent: j['lessonContent'] as String?,
         homework: j['homework'] as String?,
         tutorNotes: j['tutorNotes'] as String?,
+        zaloContent: j['zaloContent'] as String?,
+        zaloHomework: j['zaloHomework'] as String?,
+        zaloNotes: j['zaloNotes'] as String?,
         errorMessage: j['errorMessage'] as String?,
         studentId: j['studentId'] as String?,
         studentName: j['studentName'] as String? ?? '',
@@ -207,6 +213,12 @@ class AppRecordingStatusDto {
   final String? lessonContent;
   final String? homework;
   final String? tutorNotes;
+
+  /// Tin Zalo ngắn gửi phụ huynh (≤ 90 ký tự mỗi mục): bản gia sư đã duyệt,
+  /// chưa duyệt thì là bản nháp AI; null với buổi cũ.
+  final String? zaloContent;
+  final String? zaloHomework;
+  final String? zaloNotes;
   final String? errorMessage;
 
   bool get isAiDone => aiStatus == 'completed';

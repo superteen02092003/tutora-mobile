@@ -8,7 +8,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:tutora/core/constants/app_colors.dart';
 import 'package:tutora/core/constants/app_spacing.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/utils/input_validators.dart';
+import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/otp_controller.dart';
+import 'package:tutora/features/auth/presentation/pages/login_page.dart';
+import 'package:tutora/shared/services/push_token_service.dart';
 import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
@@ -83,7 +88,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   bool get _canSubmit {
     if (!_otpFull) return false;
     if (_isForgot) {
-      return _newPassCtrl.text.length >= 8 &&
+      return _newPassCtrl.text.length >= passwordMinLength &&
           _newPassCtrl.text == _confirmPassCtrl.text;
     }
     return true;
@@ -127,6 +132,33 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     }
   }
 
+  /// Xác minh SĐT xong backend trả JWT (repository đã lưu): gia sư vào thẳng
+  /// app; vai trò khác bị đăng xuất như ở trang đăng nhập.
+  Future<void> _enterApp() async {
+    final storage = ref.read(secureStorageProvider);
+    final token = await storage.getAccessToken();
+    if (!mounted) return;
+    final claims = token == null ? null : parseJwt(token);
+    if (claims == null) {
+      context.go(AppRoutes.login);
+      return;
+    }
+    if (claims.role != UserRole.tutor) {
+      await storage.clearTokens();
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: tutorOnlyMessage,
+        type: AppToastType.warning,
+        duration: const Duration(seconds: 6),
+      );
+      context.go(AppRoutes.login);
+      return;
+    }
+    unawaited(ref.read(pushTokenServiceProvider).registerToken());
+    context.go(AppRoutes.tutorHome);
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -155,7 +187,11 @@ class _OtpPageState extends ConsumerState<OtpPage> {
         );
         Future.delayed(const Duration(milliseconds: 800), () {
           if (!context.mounted) return;
-          context.go(AppRoutes.login);
+          if (_isForgot) {
+            context.go(AppRoutes.login);
+          } else {
+            unawaited(_enterApp());
+          }
         });
       } else if (state is OtpResent) {
         AppToast.show(
@@ -342,7 +378,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                         enabled: !isLoading,
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
-                          hintText: 'Tối thiểu 8 ký tự',
+                          hintText: 'Tối thiểu $passwordMinLength ký tự',
                           hintStyle: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.ink3,

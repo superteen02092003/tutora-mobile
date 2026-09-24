@@ -55,6 +55,32 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Result<String>> registerTutor({
+    required String fullName,
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      final response = await datasource.register(
+        RegisterRequest(
+          fullName: fullName,
+          phone: phone,
+          password: password,
+          role: 'Tutor',
+          // Màn đăng ký chỉ cho gửi khi đã tick cả hai ô đồng ý.
+          acceptedTerms: true,
+          acceptedPrivacy: true,
+        ),
+      );
+      return (data: response.phone ?? phone, failure: null);
+    } on AppException catch (e) {
+      return (data: null, failure: _mapOtpException(e));
+    } catch (_) {
+      return (data: null, failure: const ServerFailure());
+    }
+  }
+
+  @override
   Future<Result<AuthToken>> verifyPhone({
     required String phone,
     required String otp,

@@ -9,6 +9,7 @@ import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/pages/forgot_page.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
 import 'package:tutora/features/auth/presentation/pages/otp_page.dart';
+import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
@@ -25,6 +26,7 @@ import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart'
 const Set<String> _publicPaths = {
   AppRoutes.splash,
   AppRoutes.login,
+  AppRoutes.register,
   AppRoutes.forgot,
   AppRoutes.otp,
 };
@@ -68,6 +70,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, _) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
+        builder: (context, _) => const RegisterPage(),
       ),
       GoRoute(
         path: AppRoutes.forgot,

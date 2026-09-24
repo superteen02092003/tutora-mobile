@@ -101,6 +101,27 @@ class TutorProfileDatasource {
     await _dio.put<void>('/passwords/change', data: request.toJson());
   }
 
+  /// POST /api/users/me/delete-account — gia sư tự xoá tài khoản (xoá mềm:
+  /// khoá ngay, dữ liệu bị dọn vĩnh viễn sau 30 ngày).
+  ///
+  /// Trả `null` khi thành công, ngược lại là thông báo lỗi để hiển thị.
+  Future<String?> deleteAccount({required String password}) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/users/me/delete-account',
+        data: {'password': password},
+      );
+      return null;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+      return 'Không xoá được tài khoản. Vui lòng thử lại.';
+    }
+  }
+
   // GET /api/tutors/{id}/verification/progress
   Future<TutorVerificationProgressDto> getVerificationProgress() async {
     final userId = await _getUserId();

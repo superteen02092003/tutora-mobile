@@ -50,16 +50,53 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(lessonRecordingProvider);
       if (state.isRecording) return;
-      unawaited(
-        ref
-            .read(lessonRecordingProvider.notifier)
-            .start(
-              lessonId: widget.target.lessonId,
-              studentName: widget.target.studentName,
-              target: widget.target,
-            ),
-      );
+      unawaited(_begin());
     });
+  }
+
+  /// Giải thích vì sao cần micro TRƯỚC khi hệ thống hỏi quyền (Google Play
+  /// yêu cầu "prominent disclosure" cho dữ liệu nhạy cảm như âm thanh).
+  Future<void> _begin() async {
+    final notifier = ref.read(lessonRecordingProvider.notifier);
+    if (!await notifier.hasMicPermission()) {
+      if (!mounted) return;
+      final ok = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cho phép Tutora dùng micro'),
+          content: const Text(
+            'Tutora cần quyền micro để ghi âm buổi học. Ứng dụng chỉ ghi khi '
+            'bạn bấm ghi âm, và vẫn ghi khi màn hình tắt cho tới khi bạn kết '
+            'thúc buổi.\n\n'
+            'Bản ghi được tải lên kho lưu trữ riêng tư của Tutora, xử lý bằng '
+            'AI (Google Gemini) để soạn báo cáo gửi phụ huynh qua Zalo, và tự '
+            'động xoá sau 180 ngày.\n\n'
+            'Chỉ ghi âm khi phụ huynh đã đồng ý.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Để sau'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Tiếp tục'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (ok != true) {
+        unawaited(Navigator.of(context).maybePop());
+        return;
+      }
+    }
+    await notifier.start(
+      lessonId: widget.target.lessonId,
+      studentName: widget.target.studentName,
+      target: widget.target,
+    );
   }
 
   @override

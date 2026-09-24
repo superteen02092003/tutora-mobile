@@ -25,10 +25,14 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     state = AuthLoading();
-    await _pushTokenService.unregisterToken().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {},
-    );
+    try {
+      await _pushTokenService.unregisterToken().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {},
+      );
+    } on Object {
+      // Gỡ push token lỗi không được chặn việc đăng xuất.
+    }
     final result = await _logoutUseCase();
     if (result.failure != null) {
       state = AuthError(result.failure!.message);

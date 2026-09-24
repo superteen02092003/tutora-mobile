@@ -148,6 +148,10 @@ class LessonRecorder {
     ];
   }
 
+  /// Đã có quyền micro chưa — KHÔNG hiện hộp thoại xin quyền của hệ thống.
+  /// Dùng để hiện màn giải thích trước khi xin quyền (yêu cầu của Google Play).
+  Future<bool> hasMicPermission() => _recorder.hasPermission(request: false);
+
   Future<void> start(String key) async {
     if (_running) return;
 

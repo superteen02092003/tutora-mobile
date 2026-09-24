@@ -51,7 +51,9 @@ class RecorderDatasource {
     return RecorderStudentDto.fromJson(_map(_content(res)));
   }
 
-  Future<void> archiveStudent(String id) =>
+  /// Xoá VĨNH VIỄN học sinh và toàn bộ dữ liệu (ghi âm, báo cáo, đồng ý).
+  /// Không khôi phục được.
+  Future<void> deleteStudentPermanently(String id) =>
       _dio.delete<void>('/recorder/students/$id');
 
   /// Tạo link mời phụ huynh liên kết Zalo (link cũ còn hạn bị thu hồi).

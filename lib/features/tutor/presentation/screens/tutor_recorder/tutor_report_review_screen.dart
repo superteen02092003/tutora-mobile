@@ -9,6 +9,7 @@ import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/ai_feedback_sheet.dart';
 
 /// Tham số mở màn xem báo cáo.
 class ReportReviewArgs {
@@ -23,8 +24,35 @@ class ReportReviewArgs {
   final String subtitle;
 }
 
-/// Giới hạn phần BTVN — đi thẳng vào tin Zalo gửi phụ huynh (prototype Note).
-const _homeworkMax = 80;
+/// Giới hạn mỗi mục của tin Zalo gửi phụ huynh.
+const _zaloMax = 200;
+
+/// Giá trị đổ sẵn vào ô: tin Zalo AI viết; buổi cũ chưa có thì rút gọn bản dài.
+String _prefill(String? zalo, String? long) {
+  final z = (zalo ?? '').trim();
+  return z.isNotEmpty ? z : _shortForZalo(long);
+}
+
+/// Rút gọn bản dài thành một mục ≤ [_zaloMax] ký tự: bỏ ký hiệu markdown và
+/// gạch đầu dòng, gộp khoảng trắng, cắt ở cuối câu hoặc giữa hai từ.
+String _shortForZalo(String? text) {
+  final marker = RegExp(r'^(?:[-*•]|\d+\.)\s+');
+  final flat = (text ?? '')
+      .split('\n')
+      .map((l) => l.trim().replaceFirst(marker, ''))
+      .join(' ')
+      .replaceAll(RegExp(r'[#*`$]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  final chars = flat.characters;
+  if (chars.length <= _zaloMax) return flat;
+  final head = chars.take(_zaloMax).toString();
+  final end = head.lastIndexOf(RegExp('[.!?;]'));
+  if (end >= 100) return head.substring(0, end + 1);
+  final cut = chars.take(_zaloMax - 1).toString();
+  final space = cut.lastIndexOf(' ');
+  return '${(space > 0 ? cut.substring(0, space) : cut).trimRight()}…';
+}
 
 /// Màn "Nội dung buổi" (prototype Note): chờ AI → sửa → xem trước → gửi.
 class TutorReportReviewScreen extends ConsumerStatefulWidget {
@@ -45,6 +73,7 @@ class _TutorReportReviewScreenState
 
   final _content = TextEditingController();
   final _homework = TextEditingController();
+  final _notes = TextEditingController();
 
   /// Đã đổ bản nháp AI vào ô chưa — chỉ đổ một lần, không đè chữ gia sư đã sửa.
   bool _filled = false;
@@ -69,6 +98,7 @@ class _TutorReportReviewScreenState
     _poll?.cancel();
     _content.dispose();
     _homework.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -82,8 +112,9 @@ class _TutorReportReviewScreenState
         _status = s;
         _loadError = null;
         if (!_filled && (s.isAwaitingApproval || s.isSent)) {
-          _content.text = s.lessonContent ?? '';
-          _homework.text = s.homework ?? '';
+          _content.text = _prefill(s.zaloContent, s.lessonContent);
+          _homework.text = _prefill(s.zaloHomework, s.homework);
+          _notes.text = _prefill(s.zaloNotes, s.tutorNotes);
           _filled = true;
         }
       });
@@ -100,12 +131,14 @@ class _TutorReportReviewScreenState
 
   void _openPreview() {
     final content = _content.text.trim();
+    final homework = _homework.text.trim();
+    final notes = _notes.text.trim();
     if (content.isEmpty) {
       _snack('Hãy viết nội dung buổi học trước khi gửi.');
       return;
     }
-    if (_homework.text.trim().length > _homeworkMax) {
-      _snack('Bài tập về nhà tối đa $_homeworkMax ký tự.');
+    if ([content, homework, notes].any((v) => v.characters.length > _zaloMax)) {
+      _snack('Mỗi mục tối đa $_zaloMax ký tự.');
       return;
     }
     final s = _status!;
@@ -117,7 +150,8 @@ class _TutorReportReviewScreenState
             studentName: _name,
             subtitle: widget.args.subtitle,
             content: content,
-            homework: _homework.text.trim(),
+            homework: homework,
+            notes: notes,
           ),
         ),
       ),
@@ -171,6 +205,7 @@ class _TutorReportReviewScreenState
       body = _Editor(
         content: _content,
         homework: _homework,
+        notes: _notes,
         aiWritten: !_manual,
       );
     }
@@ -193,6 +228,11 @@ class _TutorReportReviewScreenState
                   ),
                   const SizedBox(height: 20),
                   body,
+                  // Nội dung do AI viết → cho gia sư báo sai (yêu cầu của Google Play).
+                  if (s != null && ((editable && !_manual) || s.isSent)) ...[
+                    const SizedBox(height: 12),
+                    AiFeedbackButton(recordingId: widget.args.recordingId),
+                  ],
                 ],
               ),
             ),
@@ -225,6 +265,7 @@ class _PreviewScreen extends ConsumerStatefulWidget {
     required this.subtitle,
     required this.content,
     required this.homework,
+    required this.notes,
   });
 
   final AppRecordingStatusDto status;
@@ -232,6 +273,7 @@ class _PreviewScreen extends ConsumerStatefulWidget {
   final String subtitle;
   final String content;
   final String homework;
+  final String notes;
 
   @override
   ConsumerState<_PreviewScreen> createState() => _PreviewScreenState();
@@ -253,7 +295,10 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
             widget.status.recordingId,
             lessonContent: widget.content,
             homework: widget.homework.isEmpty ? null : widget.homework,
-            tutorNotes: widget.status.tutorNotes,
+            tutorNotes: widget.notes.isEmpty ? null : widget.notes,
+            zaloContent: widget.content,
+            zaloHomework: widget.homework,
+            zaloNotes: widget.notes,
           );
       ref.invalidate(recorderPendingReviewsProvider);
       if (r.studentId != null) {
@@ -331,9 +376,17 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                                 widget.subtitle,
                               ].where((p) => p.isNotEmpty).join(' · '),
                             ),
-                            ('Nội dung', _shorten(widget.content, 90)),
-                            if (widget.homework.isNotEmpty)
-                              ('BTVN', widget.homework),
+                            ('Nội dung', widget.content),
+                            (
+                              'Bài tập',
+                              widget.homework.isEmpty
+                                  ? 'Không có'
+                                  : widget.homework,
+                            ),
+                            (
+                              'Ghi chú',
+                              widget.notes.isEmpty ? 'Không có' : widget.notes,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -351,7 +404,7 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Đây là những gì $parentName sẽ nhận trên Zalo. Bản đầy đủ nằm sau đường link.',
+                                'Đây là những gì $parentName sẽ nhận trên Zalo.',
                                 style: _t(
                                   12,
                                   FontWeight.w500,
@@ -401,14 +454,6 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
         ),
       ),
     );
-  }
-
-  static String _shorten(String s, int max) {
-    final firstSentence = s.split(RegExp(r'(?<=[.!?])\s')).first.trim();
-    final t = firstSentence.length <= max
-        ? firstSentence
-        : '${firstSentence.substring(0, max - 1).trimRight()}…';
-    return t;
   }
 }
 
@@ -557,26 +602,24 @@ class _Editor extends StatelessWidget {
   const _Editor({
     required this.content,
     required this.homework,
+    required this.notes,
     required this.aiWritten,
   });
 
   final TextEditingController content;
   final TextEditingController homework;
+  final TextEditingController notes;
   final bool aiWritten;
 
   @override
   Widget build(BuildContext context) {
+    final title = _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(
-                'Đã dạy gì',
-                style: _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1),
-              ),
-            ),
+            Expanded(child: Text('Nội dung buổi học', style: title)),
             if (aiWritten)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
@@ -603,25 +646,22 @@ class _Editor extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 10),
-        _Field(controller: content, minLines: 7, label: 'Nội dung đã dạy'),
-        const SizedBox(height: 20),
-        Text(
-          'Bài tập về nhà',
-          style: _t(15, FontWeight.w700, TutorColors.ink, ls: -0.1),
-        ),
-        const SizedBox(height: 10),
-        _Field(
-          controller: homework,
-          minLines: 2,
-          label: 'Bài tập về nhà',
-          maxLength: _homeworkMax,
-        ),
         const SizedBox(height: 6),
         Text(
-          'Tối đa $_homeworkMax ký tự — phần này vào thẳng tin Zalo gửi phụ huynh.',
+          'AI đã viết sẵn — bạn có thể sửa trước khi gửi. Phụ huynh nhận đúng '
+          'nội dung này qua Zalo, mỗi mục tối đa $_zaloMax ký tự.',
           style: _t(12, FontWeight.w500, TutorColors.ink4, h: 1.3),
         ),
+        const SizedBox(height: 10),
+        _Field(controller: content, minLines: 4, label: 'Nội dung buổi học'),
+        const SizedBox(height: 20),
+        Text('Bài tập về nhà', style: title),
+        const SizedBox(height: 10),
+        _Field(controller: homework, minLines: 2, label: 'Bài tập về nhà'),
+        const SizedBox(height: 20),
+        Text('Nhận xét', style: title),
+        const SizedBox(height: 10),
+        _Field(controller: notes, minLines: 2, label: 'Nhận xét'),
       ],
     );
   }
@@ -632,13 +672,11 @@ class _Field extends StatelessWidget {
     required this.controller,
     required this.minLines,
     required this.label,
-    this.maxLength,
   });
 
   final TextEditingController controller;
   final int minLines;
   final String label;
-  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +688,7 @@ class _Field extends StatelessWidget {
       controller: controller,
       minLines: minLines,
       maxLines: null,
-      maxLength: maxLength,
+      maxLength: _zaloMax,
       // Không cắt chữ AI viết dài hơn giới hạn — hiện bộ đếm đỏ để gia sư tự rút gọn.
       maxLengthEnforcement: MaxLengthEnforcement.none,
       keyboardType: TextInputType.multiline,
@@ -863,7 +901,7 @@ class _ZaloCard extends StatelessWidget {
                 const Divider(height: 1, color: TutorColors.line),
                 const SizedBox(height: 11),
                 Text(
-                  'Xem báo cáo đầy đủ →',
+                  'Xem thông tin Tutora',
                   style: _t(13, FontWeight.w600, TutorColors.primary),
                 ),
               ],
