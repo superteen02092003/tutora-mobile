@@ -71,7 +71,7 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
             'thúc buổi.\n\n'
             'Bản ghi được tải lên kho lưu trữ riêng tư của Tutora, xử lý bằng '
             'AI (Google Gemini) để soạn báo cáo gửi phụ huynh qua Zalo, và tự '
-            'động xoá sau 180 ngày.\n\n'
+            'động xoá sau 90 ngày.\n\n'
             'Chỉ ghi âm khi phụ huynh đã đồng ý.',
           ),
           actions: [
