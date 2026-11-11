@@ -20,6 +20,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_b
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorder_entry_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_tips_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recordings_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
@@ -146,6 +147,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.tutorBeforeLesson,
         builder: (context, state) =>
             TopiBeforeLessonScreen(args: state.extra! as BeforeLessonArgs),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorRecordingTips,
+        builder: (context, _) => const TutorRecordingTipsScreen(),
       ),
       GoRoute(
         path: AppRoutes.tutorProfile,

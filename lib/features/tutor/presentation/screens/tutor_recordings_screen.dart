@@ -268,6 +268,18 @@ class TutorRecordingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  14,
+                  TutorSurface.gutter,
+                  0,
+                ),
+                child: CanvasGhostLink(
+                  label: 'Mẹo ghi âm ›',
+                  onTap: () => context.push(AppRoutes.tutorRecordingTips),
+                ),
+              ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(
                   TutorSurface.gutter,

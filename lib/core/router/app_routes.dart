@@ -20,6 +20,7 @@ abstract final class AppRoutes {
   // Tab canvas 11/2026: Lộ trình (T3) và Ghi âm (T6).
   static const tutorPath = '/tutor/path';
   static const tutorRecordings = '/tutor/recordings';
+  static const tutorRecordingTips = '/tutor/recorder/tips';
   static const tutorProfile = '/tutor/profile';
 
   // Tutor sub-routes

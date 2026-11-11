@@ -343,11 +343,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
           ),
           child: Container(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-            decoration: BoxDecoration(
-              color: TutorColors.surface,
-              border: Border.all(color: TutorColors.line),
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: TutorSurface.card(),
             child: Column(
               children: [
                 Row(
@@ -763,11 +759,7 @@ class _DayGroup extends StatelessWidget {
             height: 56,
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: TutorColors.surface,
-              border: Border.all(color: TutorColors.line),
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: TutorSurface.card(),
             child: Text('Hôm nay bạn rảnh.', style: TutorType.rowSub()),
           ),
         for (var i = 0; i < lessons.length; i++) ...[
@@ -820,18 +812,14 @@ class _LessonRow extends StatelessWidget {
         : null;
     final ink = past ? TutorColors.ink3 : TutorColors.ink;
 
+    // Canvas T4: hàng kẻ mực, không thẻ trắng bo tròn.
     return Material(
-      color: past ? TutorColors.surfaceSunken : TutorColors.surface,
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: TutorColors.line),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
+      color: Colors.transparent,
       child: InkWell(
         onTap: () => _open(context, lesson),
         child: Container(
           height: 70,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(border: Border(top: TutorSurface.rule)),
           child: Row(
             children: [
               SizedBox(

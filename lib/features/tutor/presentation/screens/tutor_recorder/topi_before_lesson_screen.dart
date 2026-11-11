@@ -108,6 +108,10 @@ class TopiBeforeLessonScreen extends ConsumerWidget {
                       onPressed: () => context.push(AppRoutes.tutorRecorder),
                     ),
                     const SizedBox(height: 8),
+                    CanvasGhostLink(
+                      label: 'Mẹo ghi âm',
+                      onTap: () => context.push(AppRoutes.tutorRecordingTips),
+                    ),
                     Text(
                       'Chỉ ghi âm khi phụ huynh đã đồng ý.',
                       textAlign: TextAlign.center,
