@@ -13,6 +13,7 @@ import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_path_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
@@ -20,6 +21,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recordings_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
@@ -150,7 +152,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, _) => const TutorProfileScreen(),
       ),
 
-      // Tutor shell (2 tab + nút ghi âm ở giữa)
+      // Tutor shell — 4 tab theo canvas: Trang chủ · Lộ trình · Bài học · Ghi âm
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShellV2(navigationShell: shell),
         branches: [
@@ -165,8 +167,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.tutorPath,
+                builder: (context, _) => const TutorPathScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.tutorSchedule,
                 builder: (context, _) => const TutorScheduleScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.tutorRecordings,
+                builder: (context, _) => const TutorRecordingsScreen(),
               ),
             ],
           ),

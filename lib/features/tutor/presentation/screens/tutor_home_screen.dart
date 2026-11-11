@@ -8,6 +8,7 @@ import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
@@ -18,9 +19,9 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_class_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/notification_bell.dart';
-import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
 /// Trang chủ gia sư — bản tối giản theo prototype "Home":
 /// lời chào + avatar, "Hôm nay · N buổi" (buổi kế tiếp có nút ghi âm),
@@ -57,6 +58,8 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
     final first = _firstName(name);
     final data = dash.data;
     final loading = dash.isLoading && data == null;
+    final studentCount =
+        (ref.watch(recorderStudentsProvider).valueOrNull ?? const []).length;
     // Buổi hôm nay của học sinh ngoài nền tảng, chưa ghi âm xong.
     final offPlatformToday =
         (ref.watch(recorderTodayLessonsProvider).valueOrNull ?? const [])
@@ -78,25 +81,21 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
           color: TutorColors.primary,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
+              TutorSurface.gutter,
               20,
-              24,
-              20,
-              kTutorNavTotalHeight + 16,
+              TutorSurface.gutter,
+              32,
             ),
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      first.isEmpty ? 'Trang chủ' : 'Chào $first',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.5,
-                        color: TutorColors.ink,
-                      ),
+                    child: CanvasKicker(
+                      [
+                        if (first.isNotEmpty) 'Gia sư $first',
+                        '$studentCount học sinh',
+                      ].join(' · '),
+                      color: TutorColors.ink,
                     ),
                   ),
                   // Chuông thông báo: số chưa đọc hiện ngay trên icon.
@@ -119,9 +118,49 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 6),
+              Text('Tiến độ của bạn', style: TutorType.display()),
+              const SizedBox(height: 20),
               // Báo cáo AI chờ duyệt — gửi phụ huynh càng sớm càng tốt.
               const _PendingReviewsSection(),
+              const _ProgressSection(),
+              const SizedBox(height: 20),
+              CanvasOutlineCard(
+                onTap: () => context.go(AppRoutes.tutorPath),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const CanvasKicker(
+                            'Lộ trình của bạn · 3 chặng',
+                            color: TutorColors.warning,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Tới chuẩn TopTutor',
+                            style: TutorType.display(
+                              size: 22,
+                              weight: FontWeight.w700,
+                              color: TutorColors.ink,
+                              height: 1.2,
+                            ).copyWith(letterSpacing: -0.5),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Xem bạn đang ở đâu và bước tiếp theo',
+                            style: TutorType.rowSub().copyWith(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const CanvasChevron(),
+                  ],
+                ),
+              ),
+              const _FocusSection(),
+              const SizedBox(height: 28),
               if (loading)
                 const TutorSkeleton(height: 200, radius: 14)
               else
@@ -955,32 +994,16 @@ class _PendingReviewsSection extends ConsumerWidget {
     final items =
         ref.watch(recorderPendingReviewsProvider).valueOrNull ?? const [];
     if (items.isEmpty) return const SizedBox.shrink();
+    // Canvas T2: mỗi báo cáo chờ duyệt là một thẻ đồng "CẦN DUYỆT", trên cùng.
     return Padding(
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SectionTitle(title: 'Báo cáo cần xử lý · ${items.length}'),
-          Container(
-            decoration: _cardDeco(),
-            clipBehavior: Clip.antiAlias,
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0)
-                      const Divider(
-                        height: 1,
-                        color: TutorColors.line,
-                        indent: 16,
-                      ),
-                    _ReviewRow(lesson: items[i]),
-                  ],
-                ],
-              ),
-            ),
-          ),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            _ReviewRow(lesson: items[i]),
+          ],
         ],
       ),
     );
@@ -994,64 +1017,218 @@ class _ReviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (lesson.status) {
-      'awaiting_approval' => ('Chờ bạn duyệt', TutorColors.primary),
-      'failed' => ('AI lỗi · tự viết báo cáo', TutorColors.primary),
-      _ => ('AI đang viết báo cáo…', TutorColors.warning),
+    final label = switch (lesson.status) {
+      'awaiting_approval' => 'Cần duyệt',
+      'failed' => 'AI lỗi · tự viết báo cáo',
+      _ => 'AI đang viết báo cáo…',
     };
+    final ready = lesson.status == 'awaiting_approval';
     final d = lesson.when;
-    final date = d == null ? '' : ' · ${d.day}/${d.month}';
-    return InkWell(
-      onTap: () => GoRouter.of(context).push(
-        AppRoutes.tutorReportReview,
-        extra: ReportReviewArgs(
-          recordingId: lesson.lessonId,
-          studentName: lesson.studentName,
-          subtitle: [
-            if (lesson.subject != null && lesson.subject!.isNotEmpty)
-              lesson.subject!,
-            if (lesson.grade != null) 'Lớp ${lesson.grade}',
-          ].join(' · '),
-        ),
+    final date = d == null ? '' : ' · báo cáo ngày ${d.day}/${d.month}';
+    return Material(
+      color: ready ? TutorColors.accent : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(TutorSurface.radius),
+        side: ready ? BorderSide.none : TutorSurface.rule,
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${lesson.studentName}$date',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: TutorColors.ink,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => GoRouter.of(context).push(
+          AppRoutes.tutorReportReview,
+          extra: ReportReviewArgs(
+            recordingId: lesson.lessonId,
+            studentName: lesson.studentName,
+            subtitle: [
+              if (lesson.subject != null && lesson.subject!.isNotEmpty)
+                lesson.subject!,
+              if (lesson.grade != null) 'Lớp ${lesson.grade}',
+            ].join(' · '),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CanvasKicker(label, color: TutorColors.ink),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${lesson.studentName}$date',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: TutorColors.ink,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: color,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: TutorColors.ink4,
-            ),
-          ],
+              const CanvasChevron(),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+// ── Tiến độ học sinh (canvas T2) ─────────────────────────────────────────────
+
+/// Canvas: "Tiến độ học sinh · tháng N" — sao mới, kỹ năng thành thạo. Số này
+/// cần Topi chạy chính thức trên mọi buổi (backend #380 chưa merge); chưa có
+/// thì nói rõ, không đặt số giả.
+class _ProgressSection extends StatelessWidget {
+  const _ProgressSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final m = DateTime.now().month;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: CanvasKicker('Tiến độ học sinh · tháng $m'),
+          ),
+          CanvasRow(
+            lastRule: true,
+            child: Text(
+              'Số sao mới và kỹ năng đạt thành thạo sẽ hiện ở đây khi Topi chạy chính thức trên các buổi ghi âm.',
+              style: TutorType.rowSub().copyWith(fontSize: 14, height: 1.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Đang tập trung · từng học sinh (canvas T2) ──────────────────────────────
+
+/// Mỗi học sinh một thẻ: lỗ hổng đang tập trung trong kế hoạch Topi của buổi có
+/// báo cáo gần nhất. Thẻ đầu tối (một khối tối mỗi màn), các thẻ sau viền mực.
+/// Học sinh chưa có kế hoạch thì không hiện.
+class _FocusSection extends ConsumerWidget {
+  const _FocusSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(topiFlagsNowProvider).plan) return const SizedBox.shrink();
+    final students =
+        ref.watch(recorderStudentsProvider).valueOrNull ?? const [];
+    if (students.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: CanvasKicker('Đang tập trung · từng học sinh'),
+          ),
+          for (var i = 0; i < students.length; i++)
+            _FocusCard(student: students[i], dark: i == 0),
+        ],
+      ),
+    );
+  }
+}
+
+class _FocusCard extends ConsumerWidget {
+  const _FocusCard({required this.student, required this.dark});
+
+  final RecorderStudentDto student;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lessons =
+        ref
+            .watch(recorderStudentLessonsProvider(student.studentId))
+            .valueOrNull ??
+        const <RecorderLessonDto>[];
+    final now = DateTime.now();
+    final recorded = lessons.where((l) => l.status != 'scheduled').toList()
+      ..sort((a, b) => (b.when ?? now).compareTo(a.when ?? now));
+    final latest = latestReportedLesson(recorded);
+    if (latest == null) return const SizedBox.shrink();
+    final plan = ref
+        .watch(lessonTopiProvider(latest.lessonId))
+        .valueOrNull
+        ?.plan;
+    if (plan == null || plan.gaps.isEmpty) return const SizedBox.shrink();
+    final focus = plan.gaps.firstWhere(
+      (g) => g.role == 'focus',
+      orElse: () => plan.gaps.first,
+    );
+    final upcoming =
+        lessons
+            .where(
+              (l) => l.status == 'scheduled' && (l.when?.isAfter(now) ?? false),
+            )
+            .toList()
+          ..sort((a, b) => a.when!.compareTo(b.when!));
+    final next = upcoming.firstOrNull?.when;
+    final sub = [
+      if (focus.seenInLessons != null) 'Gặp trong ${focus.seenInLessons} buổi',
+      if (next != null) 'buổi tới ${next.day}/${next.month}',
+    ].join(' · ');
+    final who = [
+      student.fullName,
+      if (student.grade != null) 'Lớp ${student.grade}',
+    ].join(' · ');
+    void open() => TopiBeforeLessonScreen.open(
+      context,
+      BeforeLessonArgs(
+        lessonId: latest.lessonId,
+        studentName: student.fullName,
+        nextLessonAt: next,
+      ),
+    );
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CanvasKicker(who, color: dark ? TutorColors.accent : TutorColors.ink3),
+        const SizedBox(height: 2),
+        Text(
+          focus.title ?? focus.node ?? '',
+          style: dark
+              ? TutorType.display(
+                  size: 22,
+                  weight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.2,
+                ).copyWith(letterSpacing: -0.5)
+              : const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  color: TutorColors.ink,
+                ),
+        ),
+        if (sub.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            sub,
+            style: TextStyle(
+              fontSize: 14,
+              color: dark ? const Color(0xFFDCE8E0) : TutorColors.ink3,
+            ),
+          ),
+        ],
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: dark
+          ? CanvasDarkCard(onTap: open, child: body)
+          : CanvasOutlineCard(onTap: open, child: body),
     );
   }
 }
