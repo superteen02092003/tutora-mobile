@@ -25,4 +25,7 @@ abstract final class AppRoutes {
   static const tutorRecording = '/tutor/recorder/session';
   static const tutorReportReview = '/tutor/recorder/report';
   static const tutorRecordingDetail = '/tutor/recorder/detail';
+
+  // Topi v1 — chỉ mở được khi cờ `plan` bật.
+  static const tutorBeforeLesson = '/tutor/recorder/before';
 }

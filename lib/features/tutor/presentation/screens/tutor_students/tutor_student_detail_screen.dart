@@ -10,10 +10,12 @@ import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
 
 /// Hồ sơ một học sinh ngoài nền tảng: phụ huynh, đồng ý ghi âm, các buổi đã ghi.
 class TutorStudentDetailScreen extends ConsumerWidget {
@@ -205,7 +207,22 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                     list.where((l) => l.status != 'scheduled').toList()..sort(
                       (a, b) => (b.when ?? now).compareTo(a.when ?? now),
                     );
+                // Topi v1: buổi đã có báo cáo gần nhất — kế hoạch của nó dành
+                // cho buổi tới, kỹ năng của nó là ảnh chụp gần nhất. Các widget
+                // Topi tự ẩn khi cờ tắt.
+                final latestReported = latestReportedLesson(recorded);
                 return [
+                  // Gợi ý trước buổi luôn hiện khi đã có buổi có báo cáo — kể
+                  // cả khi chưa lên lịch buổi tới (lịch hết hạn, dạy bù…).
+                  if (latestReported != null)
+                    TopiBeforeLessonEntry(
+                      args: BeforeLessonArgs(
+                        lessonId: latestReported.lessonId,
+                        studentName: student.fullName,
+                        nextLessonAt: upcoming.firstOrNull?.when,
+                      ),
+                      padding: const EdgeInsets.only(bottom: 16),
+                    ),
                   if (upcoming.isNotEmpty) ...[
                     const _Section('SẮP TỚI'),
                     for (final l in upcoming.take(3)) ...[
@@ -218,6 +235,12 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                     ],
                     const SizedBox(height: 16),
                   ],
+                  if (latestReported != null)
+                    TopiSkillsSection(
+                      lessonId: latestReported.lessonId,
+                      title: 'Kỹ năng ở buổi gần nhất',
+                      padding: const EdgeInsets.only(bottom: 26),
+                    ),
                   const _Section('CÁC BUỔI ĐÃ GHI ÂM'),
                   if (recorded.isEmpty)
                     const Text(
