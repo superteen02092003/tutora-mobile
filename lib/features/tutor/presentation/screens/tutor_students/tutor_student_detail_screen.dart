@@ -210,25 +210,21 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                 // Topi v1: buổi đã có báo cáo gần nhất — kế hoạch của nó dành
                 // cho buổi tới, kỹ năng của nó là ảnh chụp gần nhất. Các widget
                 // Topi tự ẩn khi cờ tắt.
-                RecorderLessonDto? latestReported;
-                for (final l in recorded) {
-                  if (l.status == 'sent' || l.status == 'awaiting_approval') {
-                    latestReported = l;
-                    break;
-                  }
-                }
+                final latestReported = latestReportedLesson(recorded);
                 return [
+                  // Gợi ý trước buổi luôn hiện khi đã có buổi có báo cáo — kể
+                  // cả khi chưa lên lịch buổi tới (lịch hết hạn, dạy bù…).
+                  if (latestReported != null)
+                    TopiBeforeLessonEntry(
+                      args: BeforeLessonArgs(
+                        lessonId: latestReported.lessonId,
+                        studentName: student.fullName,
+                        nextLessonAt: upcoming.firstOrNull?.when,
+                      ),
+                      padding: const EdgeInsets.only(bottom: 16),
+                    ),
                   if (upcoming.isNotEmpty) ...[
                     const _Section('SẮP TỚI'),
-                    if (latestReported != null)
-                      TopiBeforeLessonEntry(
-                        args: BeforeLessonArgs(
-                          lessonId: latestReported.lessonId,
-                          studentName: student.fullName,
-                          nextLessonAt: upcoming.first.when,
-                        ),
-                        padding: const EdgeInsets.only(bottom: 10),
-                      ),
                     for (final l in upcoming.take(3)) ...[
                       _LessonTile(
                         lesson: l,

@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/topi_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_math_text.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
@@ -455,7 +458,7 @@ class _AskBlockState extends State<_AskBlock> {
                   ).copyWith(fontWeight: FontWeight.w700),
                 ),
                 TextSpan(
-                  text: a.say,
+                  text: topiAskText(a.say!),
                   style: TutorType.rowSub(color: TutorColors.ink2),
                 ),
               ],
@@ -468,7 +471,7 @@ class _AskBlockState extends State<_AskBlock> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: TutorSurface.well(),
             child: Text(
-              a.problem!,
+              topiMathText(a.problem!),
               style: TutorType.rowTitle().copyWith(fontSize: 15),
             ),
           ),
@@ -502,7 +505,7 @@ class _AskBlockState extends State<_AskBlock> {
             Padding(
               padding: const EdgeInsets.only(left: 22, bottom: 4),
               child: Text(
-                a.answer!,
+                topiMathText(a.answer!),
                 style: TutorType.rowTitle(
                   color: TopiLevelColors.standard,
                 ).copyWith(fontSize: 14),
@@ -514,9 +517,56 @@ class _AskBlockState extends State<_AskBlock> {
   }
 }
 
-/// Lối vào màn "Trước buổi học" — đặt ở chi tiết buổi đã ghi và ở buổi sắp
-/// tới trong hồ sơ học sinh. Không vẽ gì khi cờ `plan` tắt hoặc chưa có kế
-/// hoạch, nên các màn đó giữ nguyên như trước.
+/// Buổi đã có báo cáo gần nhất (đã gửi hoặc chờ duyệt) trong danh sách buổi
+/// đã ghi, xếp mới nhất trước. Kế hoạch Topi của buổi này dành cho buổi tới.
+RecorderLessonDto? latestReportedLesson(Iterable<RecorderLessonDto> recorded) {
+  for (final l in recorded) {
+    if (l.status == 'sent' || l.status == 'awaiting_approval') return l;
+  }
+  return null;
+}
+
+/// Lối vào "Trước buổi học" khi chỉ biết học sinh (thẻ buổi hôm nay ở trang
+/// chủ): tự tìm buổi có báo cáo gần nhất. Không vẽ gì khi chưa có.
+class TopiStudentBeforeLessonEntry extends ConsumerWidget {
+  const TopiStudentBeforeLessonEntry({
+    required this.studentId,
+    required this.studentName,
+    this.nextLessonAt,
+    this.padding = EdgeInsets.zero,
+    super.key,
+  });
+
+  final String studentId;
+  final String studentName;
+  final DateTime? nextLessonAt;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(topiFlagsNowProvider).plan) return const SizedBox.shrink();
+    final lessons =
+        ref.watch(recorderStudentLessonsProvider(studentId)).valueOrNull ??
+        const <RecorderLessonDto>[];
+    final now = DateTime.now();
+    final recorded = lessons.where((l) => l.status != 'scheduled').toList()
+      ..sort((a, b) => (b.when ?? now).compareTo(a.when ?? now));
+    final latest = latestReportedLesson(recorded);
+    if (latest == null) return const SizedBox.shrink();
+    return TopiBeforeLessonEntry(
+      args: BeforeLessonArgs(
+        lessonId: latest.lessonId,
+        studentName: studentName,
+        nextLessonAt: nextLessonAt,
+      ),
+      padding: padding,
+    );
+  }
+}
+
+/// Lối vào màn "Trước buổi học" — đặt ở chi tiết buổi đã ghi, hồ sơ học sinh
+/// và thẻ buổi hôm nay. Không vẽ gì khi cờ `plan` tắt hoặc chưa có kế hoạch,
+/// nên các màn đó giữ nguyên như trước.
 class TopiBeforeLessonEntry extends ConsumerWidget {
   const TopiBeforeLessonEntry({
     required this.args,

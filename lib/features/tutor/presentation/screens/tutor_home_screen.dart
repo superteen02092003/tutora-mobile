@@ -13,6 +13,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_pro
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_class_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
@@ -388,6 +389,17 @@ class _FeaturedCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          // Gợi ý Topi cho buổi này (từ buổi có báo cáo gần nhất), ngay trước
+          // nút ghi âm — lúc gia sư chuẩn bị vào dạy.
+          if (session.recorderStudentId != null)
+            TopiStudentBeforeLessonEntry(
+              studentId: session.recorderStudentId!,
+              studentName: session.studentName,
+              nextLessonAt: DateTime.tryParse(
+                session.scheduledStart,
+              )?.toLocal(),
+              padding: const EdgeInsets.only(bottom: 14),
+            ),
           SizedBox(
             height: 48,
             child: FilledButton.icon(
