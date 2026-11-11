@@ -15,6 +15,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dar
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorder_entry_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
@@ -138,6 +139,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.tutorReportReview,
         builder: (context, state) =>
             TutorReportReviewScreen(args: state.extra! as ReportReviewArgs),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorBeforeLesson,
+        builder: (context, state) =>
+            TopiBeforeLessonScreen(args: state.extra! as BeforeLessonArgs),
       ),
       GoRoute(
         path: AppRoutes.tutorProfile,
