@@ -7,7 +7,9 @@ import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
 
 /// Tham số mở màn chi tiết một buổi đã ghi.
 class RecordingDetailArgs {
@@ -351,6 +353,12 @@ class _SummaryTab extends StatelessWidget {
           const SizedBox(height: 8),
           _DeliveryState(status: s),
         ],
+        // Topi v1 — mỗi phần tự ẩn khi cờ tắt hoặc chưa có dữ liệu.
+        TopiBeforeLessonEntry(
+          args: BeforeLessonArgs(lessonId: s.recordingId, studentName: name),
+          padding: const EdgeInsets.only(top: 20),
+        ),
+        TopiSkillsSection(lessonId: s.recordingId),
       ],
     );
   }
