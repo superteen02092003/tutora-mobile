@@ -45,7 +45,7 @@ class TopiSkillsView extends StatelessWidget {
   final String title;
 
   /// Thứ tự hiển thị danh sách: mức cao trước.
-  static const _order = [
+  static const List<TopiLevel> _order = [
     TopiLevel.mastered,
     TopiLevel.standard,
     TopiLevel.improving,
