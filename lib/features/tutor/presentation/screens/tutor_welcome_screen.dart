@@ -11,14 +11,26 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provi
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
 /// T1 Chào mừng — lần mở đầu tiên sau khi đăng nhập (và "Xem lại" từ Cài đặt).
-/// Ba bước: ghi âm có đồng ý, duyệt báo cáo, sao khi kỹ năng lên mức.
+/// Bốn bước: thêm học sinh, ghi âm có đồng ý, duyệt báo cáo, sao khi kỹ năng
+/// lên mức. Mỗi bước kèm chỗ bấm trong app (Khánh, 2026-11-12: gia sư mới không
+/// biết tạo lớp và ghi âm ở đâu) — thêm so với canvas.
 class TutorWelcomeScreen extends ConsumerWidget {
   const TutorWelcomeScreen({super.key});
 
-  static const _steps = [
-    'Ghi âm mỗi buổi học, khi phụ huynh đã đồng ý.',
-    'Duyệt báo cáo TopTutor soạn sẵn. Bạn duyệt mọi tin nhắn trước khi gửi.',
-    'Một ngôi sao mỗi khi một kỹ năng toán của học sinh lên một mức.',
+  static const List<(String, String?)> _steps = [
+    (
+      'Thêm học sinh của bạn. Học sinh đặt qua TopTutor có sẵn.',
+      'Trang chủ › Lớp của bạn › + Thêm học sinh',
+    ),
+    (
+      'Ghi âm mỗi buổi học, khi phụ huynh đã đồng ý.',
+      'Tab Ghi âm › Ghi âm buổi học',
+    ),
+    (
+      'Duyệt báo cáo TopTutor soạn sẵn. Bạn duyệt mọi tin nhắn trước khi gửi.',
+      'Tab Ghi âm › bản ghi có thẻ Duyệt',
+    ),
+    ('Một ngôi sao mỗi khi một kỹ năng toán của học sinh lên một mức.', null),
   ];
 
   Future<void> _start(BuildContext context, WidgetRef ref) async {
@@ -49,7 +61,7 @@ class TutorWelcomeScreen extends ConsumerWidget {
                     title: 'Ghi âm.\nDuyệt.\nTiến bộ.',
                     titleSize: 52,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   Padding(
                     padding: TutorSurface.screenPadding,
                     child: Column(
@@ -73,14 +85,33 @@ class TutorWelcomeScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 Expanded(
-                                  child: Text(
-                                    _steps[i],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      height: 1.35,
-                                      fontWeight: FontWeight.w500,
-                                      color: TutorColors.ink,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _steps[i].$1,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          height: 1.35,
+                                          fontWeight: FontWeight.w500,
+                                          color: TutorColors.ink,
+                                        ),
+                                      ),
+                                      if (_steps[i].$2 != null) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _steps[i].$2!,
+                                          style:
+                                              TutorType.rowSub(
+                                                color: TutorColors.warning,
+                                              ).copyWith(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ],
