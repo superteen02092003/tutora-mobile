@@ -252,9 +252,12 @@ class _Row extends StatelessWidget {
               ),
             ),
           ),
-          if (value != null) ...[
+          if (value != null && value!.trim().isNotEmpty) ...[
             const SizedBox(width: 12),
-            Flexible(
+            // Không dùng Flexible: nó chia đôi hàng với nhãn và đẩy mũi tên
+            // vào giữa. Giá trị có bề rộng tối đa, nhãn lấy phần còn lại.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 150),
               child: Text(
                 value!,
                 textAlign: TextAlign.right,
@@ -418,13 +421,9 @@ class _Initials extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty)
-        .map((w) => w[0])
-        .take(2)
-        .join();
+    // Chữ đầu của tên gọi, như avatar ở Trang chủ ("Lê Quốc Khánh" → "K").
+    final given = _givenName(name);
+    final initials = given.isEmpty ? '' : given[0].toUpperCase();
     return Container(
       width: _Avatar._size,
       height: _Avatar._size,

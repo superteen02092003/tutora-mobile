@@ -649,15 +649,8 @@ class _MinutesHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: TutorColors.ink,
-      ),
-    ),
+    padding: const EdgeInsets.only(bottom: 10),
+    child: CanvasKicker(text, color: TutorColors.ink),
   );
 }
 
