@@ -255,6 +255,11 @@ class RecorderLessonDto {
     this.approvedAt,
     this.deliveryChannel,
     this.deliveryStatus,
+    this.attendance,
+    this.attendanceSource,
+    this.absenceReason,
+    this.movedFromStart,
+    this.cancelReason,
   });
 
   factory RecorderLessonDto.fromJson(Map<String, dynamic> j) {
@@ -276,6 +281,11 @@ class RecorderLessonDto {
       approvedAt: t('approvedAt'),
       deliveryChannel: j['deliveryChannel'] as String?,
       deliveryStatus: j['deliveryStatus'] as String?,
+      attendance: j['attendance'] as String?,
+      attendanceSource: j['attendanceSource'] as String?,
+      absenceReason: j['absenceReason'] as String?,
+      movedFromStart: t('movedFromStart'),
+      cancelReason: j['cancelReason'] as String?,
     );
   }
 
@@ -296,6 +306,33 @@ class RecorderLessonDto {
   final DateTime? approvedAt;
   final String? deliveryChannel;
   final String? deliveryStatus;
+
+  /// present | absent | null (chưa điểm danh).
+  final String? attendance;
+
+  /// recording (tự động, có bản ghi) | tutor (gia sư đánh dấu) | null.
+  final String? attendanceSource;
+
+  /// cancelled | pupil_absent | forgot | battery | app_problem | other | null.
+  final String? absenceReason;
+
+  /// Giờ cũ khi buổi này được tạo ra do dời buổi; null nếu không phải.
+  final DateTime? movedFromStart;
+
+  /// Lý do huỷ (cancelled | pupil_absent | other | moved) khi đã huỷ.
+  final String? cancelReason;
+
+  bool get isAbsent => attendance == 'absent';
+  bool get isPresent => attendance == 'present';
+
+  /// Có mặt tự động vì buổi có bản ghi (gia sư không đổi được).
+  bool get autoPresent => isPresent && attendanceSource == 'recording';
+
+  /// Buổi được tạo do dời từ giờ khác.
+  bool get isMoved => movedFromStart != null;
+
+  /// Buổi gốc đã bị dời sang giờ khác (hàng cũ, status `discarded`).
+  bool get wasMovedAway => cancelReason == 'moved';
 
   /// Ngày dùng để xếp lịch: giờ hẹn, hoặc giờ bắt đầu ghi nếu ghi ngay.
   DateTime? get when => scheduledStart ?? startedAt;

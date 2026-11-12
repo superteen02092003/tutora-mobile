@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
+import 'package:tutora/features/tutor/data/models/recorder_insights_models.dart';
 
 /// Gọi nhóm endpoint ghi âm buổi dạy tại nhà (`/api/recording/app/...`).
 ///
@@ -153,6 +154,18 @@ class AppRecordingDatasource {
     );
     final c = res.data?['content'] as Map<String, dynamic>? ?? const {};
     return c['url'] as String? ?? '';
+  }
+
+  // GET /recording/app/{lessonId}/insights — số liệu từ transcript.
+  // `available` = false cho tới khi có transcript + số liệu.
+  Future<LessonInsightsDto> getInsights(String lessonId) async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/recording/app/$lessonId/insights',
+    );
+    final c = res.data?['content'];
+    return c is Map<String, dynamic>
+        ? LessonInsightsDto.fromJson(c)
+        : LessonInsightsDto(lessonId: lessonId);
   }
 
   // DELETE /recording/app/{recordingId}
