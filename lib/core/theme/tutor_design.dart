@@ -18,27 +18,48 @@ abstract final class TutorType {
     letterSpacing: spacing,
   );
 
-  /// Tiêu đề màn hình (một dòng, đầu mỗi tab).
-  static TextStyle screenTitle({Color color = TutorColors.ink}) =>
-      _base(size: 26, weight: FontWeight.w700, color: color, spacing: -0.5);
+  /// Font tiêu đề/số của canvas: Bricolage Grotesque (có tiếng Việt), chữ khít.
+  static TextStyle display({
+    double size = 46,
+    FontWeight weight = FontWeight.w800,
+    Color color = TutorColors.ink2,
+    double height = 1.0,
+  }) => GoogleFonts.bricolageGrotesque(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: height,
+    letterSpacing: -0.045 * size,
+  );
 
-  /// Số liệu lớn — số dư, tổng tiền.
-  static TextStyle numeralLarge({Color color = TutorColors.ink}) => _base(
-    size: 30,
+  /// Nhãn nhỏ viết hoa giãn chữ của canvas ("BUỔI TỚI", "CẦN DUYỆT"). Tự viết hoa
+  /// chuỗi khi dùng: `Text(s.toUpperCase(), style: TutorType.kicker())`.
+  static TextStyle kicker({Color color = TutorColors.ink3}) => _base(
+    size: 12,
     weight: FontWeight.w700,
     color: color,
-    spacing: -0.8,
-    height: 1.1,
+    spacing: 1.7,
+    height: 1.3,
   );
+
+  /// Tiêu đề màn hình (đầu mỗi tab) — Bricolage đậm, xanh rêu đậm như canvas.
+  static TextStyle screenTitle({Color color = TutorColors.ink2}) =>
+      display(size: 34, color: color, height: 1.05);
+
+  /// Số liệu lớn — Bricolage mảnh như hàng số liệu trên canvas.
+  static TextStyle numeralLarge({Color color = TutorColors.ink}) => display(
+    size: 36,
+    weight: FontWeight.w300,
+    color: color,
+  ).copyWith(letterSpacing: -1.4);
 
   /// Số liệu trong thẻ nhỏ.
-  static TextStyle numeral({Color color = TutorColors.ink}) => _base(
-    size: 19,
+  static TextStyle numeral({Color color = TutorColors.ink}) => display(
+    size: 22,
     weight: FontWeight.w700,
     color: color,
-    spacing: -0.3,
     height: 1.15,
-  );
+  ).copyWith(letterSpacing: -0.5);
 
   /// Tiêu đề nhóm nội dung ("Hôm nay", "Cần xử lý").
   static TextStyle sectionTitle({Color color = TutorColors.ink}) =>
@@ -76,7 +97,7 @@ abstract final class TutorType {
 /// Phân tách khối bằng nền + viền mảnh, không đổ bóng.
 abstract final class TutorSurface {
   /// Padding ngang thống nhất cho mọi màn — mọi thứ thẳng một mép trái.
-  static const double gutter = 20;
+  static const double gutter = 24;
 
   /// Khoảng cách giữa hai nhóm nội dung.
   static const double sectionGap = 28;
@@ -84,19 +105,25 @@ abstract final class TutorSurface {
   /// Khoảng cách giữa các hàng trong cùng một nhóm.
   static const double rowGap = 10;
 
-  static const double radius = 14;
-  static const double radiusSmall = 10;
+  // Canvas: góc gần vuông (6 px), viền mực 1,5 px thay cho thẻ trắng bo tròn.
+  static const double radius = 6;
+  static const double radiusSmall = 6;
+  static const double ruleWidth = 1.5;
 
-  /// Thẻ trắng trên nền kem — bề mặt mặc định.
+  /// Thẻ mặc định của canvas: cùng nền giấy, viền mực 1,5 px, góc 6 px.
   static BoxDecoration card({Color? color, Color? border}) => BoxDecoration(
-    color: color ?? TutorColors.surface,
+    color: color ?? TutorColors.bg,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: border ?? TutorColors.line),
+    border: Border.all(color: border ?? TutorColors.ink, width: ruleWidth),
   );
+
+  /// Đường kẻ ngang phân hàng của canvas (mực 1,5 px).
+  static BorderSide get rule =>
+      const BorderSide(color: TutorColors.ink, width: ruleWidth);
 
   /// Thẻ nhấn mạnh (nền mực) — dùng đúng một lần mỗi màn.
   static BoxDecoration cardInk() => BoxDecoration(
-    color: TutorColors.ink,
+    color: TutorColors.ink2,
     borderRadius: BorderRadius.circular(radius),
   );
 

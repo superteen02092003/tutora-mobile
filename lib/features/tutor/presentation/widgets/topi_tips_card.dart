@@ -4,6 +4,7 @@ import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/topi_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
 /// T13 "Dành cho bạn": điều gia sư làm tốt, một điều thử lần tới, để học sinh
 /// nói nhiều hơn. Chỉ gia sư thấy — không bao giờ vào tin gửi phụ huynh.
@@ -47,25 +48,24 @@ class TopiTipsView extends StatelessWidget {
       if (tips.talkMore != null) ('Để học sinh nói nhiều hơn', tips.talkMore!),
     ];
 
-    return Container(
-      width: double.infinity,
-      padding: TutorSurface.cardPadding,
-      decoration: TutorSurface.card(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Dành cho bạn', style: TutorType.sectionTitle()),
-          const SizedBox(height: 2),
-          Text(
-            'Chỉ bạn thấy phần này, phụ huynh không nhận.',
-            style: TutorType.caption(),
+    // Canvas T13: nhãn nhỏ, mỗi gợi ý là một hàng kẻ có bóng đèn, trích dẫn
+    // nằm trong ô chìm.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const CanvasKicker('Dành cho bạn', color: TutorColors.ink),
+        const SizedBox(height: 4),
+        Text(
+          'Chỉ bạn thấy phần này, phụ huynh không nhận.',
+          style: TutorType.rowSub().copyWith(fontSize: 14),
+        ),
+        const SizedBox(height: 10),
+        for (var i = 0; i < rows.length; i++)
+          CanvasRow(
+            lastRule: i == rows.length - 1,
+            child: _TipRow(title: rows[i].$1, tip: rows[i].$2),
           ),
-          for (final (title, tip) in rows) ...[
-            const SizedBox(height: 14),
-            _TipRow(title: title, tip: tip),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }
@@ -80,16 +80,11 @@ class _TipRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Container(
-        width: 30,
-        height: 30,
-        decoration: const BoxDecoration(
-          color: TutorColors.accentBg,
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
+      const Padding(
+        padding: EdgeInsets.only(top: 2),
+        child: Icon(
           Icons.lightbulb_outline_rounded,
-          size: 17,
+          size: 20,
           color: TutorColors.warning,
         ),
       ),
@@ -98,17 +93,36 @@ class _TipRow extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: TutorType.rowTitle().copyWith(fontSize: 14)),
-            const SizedBox(height: 3),
-            Text(tip.text, style: TutorType.rowSub(color: TutorColors.ink2)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: TutorColors.ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              tip.text,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.45,
+                color: TutorColors.ink,
+              ),
+            ),
             if (tip.quote != null) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 decoration: TutorSurface.well(),
                 child: Text(
                   '“${tip.quote}”',
-                  style: TutorType.caption(color: TutorColors.ink3),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: TutorColors.ink3,
+                  ),
                 ),
               ),
             ],

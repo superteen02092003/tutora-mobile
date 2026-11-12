@@ -52,6 +52,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # As-built screenshots on a device: integration_test/as_built_screens_test.dart
+  integration_test:
+    sdk: flutter
   # --- Code generation (models only) ---
   build_runner: ^2.4.13
   freezed: ^2.5.7

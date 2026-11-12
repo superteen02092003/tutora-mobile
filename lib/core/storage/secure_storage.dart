@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 const _keyAccessToken = 'access_token';
 const _keyRefreshToken = 'refresh_token';
 const _keyLiveSessionDeviceId = 'live_session_device_id';
+const _keyWelcomeSeen = 'tutor_welcome_seen';
 
 final secureStorageProvider = Provider<SecureStorageService>(
   (_) => SecureStorageService(),
@@ -34,6 +35,13 @@ class SecureStorageService {
 
   Future<void> saveLiveSessionDeviceId(String value) =>
       _storage.write(key: _keyLiveSessionDeviceId, value: value);
+
+  /// Màn chào mừng T1 đã xem trên máy này chưa. Không xoá khi đăng xuất.
+  Future<bool> getWelcomeSeen() async =>
+      (await _storage.read(key: _keyWelcomeSeen)) == '1';
+
+  Future<void> setWelcomeSeen() =>
+      _storage.write(key: _keyWelcomeSeen, value: '1');
 
   Future<void> clearTokens() async {
     await Future.wait([

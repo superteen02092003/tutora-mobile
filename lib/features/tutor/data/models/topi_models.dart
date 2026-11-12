@@ -9,7 +9,8 @@ Map<String, dynamic>? _map(Object? v) =>
     v is Map ? v.cast<String, dynamic>() : null;
 
 List<Map<String, dynamic>> _list(Object? v) => v is List
-    ? v.whereType<Map<dynamic, dynamic>>()
+    ? v
+          .whereType<Map<dynamic, dynamic>>()
           .map((e) => e.cast<String, dynamic>())
           .toList()
     : const [];
@@ -80,7 +81,8 @@ enum TopiLevel {
   toDo('to_do'),
   improving('improving'),
   standard('standard'),
-  mastered('mastered');
+  mastered('mastered')
+  ;
 
   const TopiLevel(this.wire);
 

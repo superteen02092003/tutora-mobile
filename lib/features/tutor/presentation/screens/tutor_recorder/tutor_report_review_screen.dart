@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
@@ -484,10 +485,8 @@ class _TitleBar extends StatelessWidget {
           button: true,
           label: 'Quay lại',
           child: Material(
-            color: TutorColors.surface,
-            shape: const CircleBorder(
-              side: BorderSide(color: TutorColors.line),
-            ),
+            color: Colors.transparent,
+            shape: CircleBorder(side: TutorSurface.rule),
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: () => Navigator.of(context).maybePop(),
@@ -504,7 +503,12 @@ class _TitleBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Text(title, style: _t(26, FontWeight.w700, TutorColors.ink, ls: -0.5)),
+        Expanded(
+          child: Text(
+            title,
+            style: TutorType.display(size: 34, height: 1.05),
+          ),
+        ),
       ],
     );
   }
@@ -1027,27 +1031,32 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(TutorSurface.radius),
     );
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-      decoration: const BoxDecoration(
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        14,
+        TutorSurface.gutter,
+        16,
+      ),
+      decoration: BoxDecoration(
         color: TutorColors.bg,
-        border: Border(top: BorderSide(color: TutorColors.line)),
+        border: Border(top: TutorSurface.rule),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 52,
+            height: 56,
             child: outlined
                 ? OutlinedButton(
                     onPressed: onPrimary,
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 52),
                       shape: shape,
-                      side: const BorderSide(color: TutorColors.line),
+                      side: TutorSurface.rule,
                     ),
                     child: Text(
                       primary,
@@ -1058,15 +1067,13 @@ class _BottomBar extends StatelessWidget {
                     onPressed: onPrimary,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size(0, 52),
-                      backgroundColor: TutorColors.primary,
-                      disabledBackgroundColor: TutorColors.primary.withValues(
-                        alpha: 0.5,
-                      ),
+                      backgroundColor: TutorColors.accent,
+                      disabledBackgroundColor: TutorColors.surfaceSunken,
                       shape: shape,
                     ),
                     child: Text(
                       primary,
-                      style: _t(13.5, FontWeight.w600, TutorColors.surface),
+                      style: _t(17, FontWeight.w700, TutorColors.ink),
                     ),
                   ),
           ),

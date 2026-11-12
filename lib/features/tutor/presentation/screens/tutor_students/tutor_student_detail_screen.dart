@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
@@ -13,6 +14,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/record
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
@@ -49,216 +51,208 @@ class TutorStudentDetailScreen extends ConsumerWidget {
     }
     final student = s;
 
+    Future<void> edit() async {
+      await TutorStudentFormScreen.open(context, student: student);
+      // Đã xoá học sinh ở form → màn hồ sơ không còn gì để xem.
+      final list = await ref.read(recorderStudentsProvider.future);
+      if (!list.any((x) => x.studentId == studentId) && context.mounted) {
+        await Navigator.of(context).maybePop();
+      }
+    }
+
+    // Canvas T5: đầu màn chữ lớn, thông tin dạng hàng kẻ, nút ghi âm màu đồng.
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      appBar: AppBar(
-        backgroundColor: TutorColors.bg,
-        surfaceTintColor: Colors.transparent,
-        title: const Text('Học sinh'),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await TutorStudentFormScreen.open(context, student: student);
-              // Đã xoá học sinh ở form → màn hồ sơ không còn gì để xem.
-              final list = await ref.read(recorderStudentsProvider.future);
-              if (!list.any((x) => x.studentId == studentId) &&
-                  context.mounted) {
-                await Navigator.of(context).maybePop();
-              }
-            },
-            child: const Text(
-              'Sửa',
-              style: TextStyle(color: TutorColors.primary),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: TutorColors.primary,
-        onRefresh: () async {
-          ref
-            ..invalidate(recorderStudentsProvider)
-            ..invalidate(recorderStudentLessonsProvider(studentId));
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            Row(
-              children: [
-                _Circle(name: student.fullName, size: 54, fontSize: 19),
-                const SizedBox(width: 13),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.fullName,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: TutorColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        student.subtitle.isEmpty
-                            ? 'Ngoài nền tảng'
-                            : '${student.subtitle} · Ngoài nền tảng',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: TutorColors.ink3,
-                        ),
-                      ),
-                    ],
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: TutorColors.ink2,
+          onRefresh: () async {
+            ref
+              ..invalidate(recorderStudentsProvider)
+              ..invalidate(recorderStudentLessonsProvider(studentId));
+          },
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 32),
+            children: [
+              CanvasHeader(
+                onBack: () => Navigator.of(context).maybePop(),
+                right: student.subtitle.isEmpty
+                    ? 'Ngoài nền tảng'
+                    : student.subtitle,
+                trailing: TextButton(
+                  onPressed: edit,
+                  child: const Text(
+                    'Sửa',
+                    style: TextStyle(
+                      color: TutorColors.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _Card(
-              children: [
-                _Row(
-                  icon: Icons.person_outline_rounded,
-                  title: student.parentName?.isNotEmpty ?? false
-                      ? student.parentName!
-                      : 'Chưa có tên phụ huynh',
-                  sub: student.parentPhone?.isNotEmpty ?? false
-                      ? 'Phụ huynh · ${student.parentPhone}'
-                      : 'Chưa có SĐT — chưa gửi được báo cáo qua Zalo',
-                  warn: student.parentPhone?.isEmpty ?? true,
+                title: student.fullName,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  22,
+                  TutorSurface.gutter,
+                  0,
                 ),
-                const Divider(height: 1, color: TutorColors.line),
-                _Row(
-                  icon: student.hasConsent
-                      ? Icons.verified_outlined
-                      : Icons.mic_off_outlined,
-                  title: switch (student.consentStatus) {
-                    'parent_confirmed' => 'Phụ huynh đã xác nhận đồng ý',
-                    'tutor_confirmed' => 'Bạn đã xác nhận phụ huynh đồng ý',
-                    'declined' => 'Phụ huynh từ chối ghi âm',
-                    _ => 'Chưa có đồng ý ghi âm',
-                  },
-                  sub: student.hasConsent
-                      ? 'Được ghi âm buổi học và gửi báo cáo'
-                      : 'Cần phụ huynh đồng ý trước khi ghi âm',
-                  warn: !student.hasConsent,
-                ),
-                const Divider(height: 1, color: TutorColors.line),
-                _Row(
-                  icon: Icons.event_repeat_rounded,
-                  title: student.schedule.isEmpty
-                      ? 'Chưa có lịch học'
-                      : RecorderScheduleSlot.summary(student.schedule),
-                  sub: student.schedule.isEmpty
-                      ? 'Bấm Sửa để thêm lịch — buổi học sẽ hiện trong tab Lịch'
-                      : _range(student),
-                  warn: student.schedule.isEmpty,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: student.isDeclined
-                    ? null
-                    : () => startStudentRecording(context, ref, student),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                  backgroundColor: TutorColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                icon: const Icon(Icons.mic_none_rounded, size: 18),
-                label: const Text(
-                  'Ghi âm buổi học',
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    CanvasRow(
+                      child: _Row(
+                        icon: Icons.person_outline_rounded,
+                        title: student.parentName?.isNotEmpty ?? false
+                            ? student.parentName!
+                            : 'Chưa có tên phụ huynh',
+                        sub: student.parentPhone?.isNotEmpty ?? false
+                            ? 'Phụ huynh · ${student.parentPhone}'
+                            : 'Chưa có SĐT — chưa gửi được báo cáo qua Zalo',
+                        warn: student.parentPhone?.isEmpty ?? true,
+                      ),
+                    ),
+                    CanvasRow(
+                      child: _Row(
+                        icon: student.hasConsent
+                            ? Icons.verified_outlined
+                            : Icons.mic_off_outlined,
+                        title: switch (student.consentStatus) {
+                          'parent_confirmed' => 'Phụ huynh đã xác nhận đồng ý',
+                          'tutor_confirmed' =>
+                            'Bạn đã xác nhận phụ huynh đồng ý',
+                          'declined' => 'Phụ huynh từ chối ghi âm',
+                          _ => 'Chưa có đồng ý ghi âm',
+                        },
+                        sub: student.hasConsent
+                            ? 'Được ghi âm buổi học và gửi báo cáo'
+                            : 'Cần phụ huynh đồng ý trước khi ghi âm',
+                        warn: !student.hasConsent,
+                      ),
+                    ),
+                    CanvasRow(
+                      lastRule: true,
+                      child: _Row(
+                        icon: Icons.event_repeat_rounded,
+                        title: student.schedule.isEmpty
+                            ? 'Chưa có lịch học'
+                            : RecorderScheduleSlot.summary(student.schedule),
+                        sub: student.schedule.isEmpty
+                            ? 'Bấm Sửa để thêm lịch — buổi học sẽ hiện trong tab Bài học'
+                            : _range(student),
+                        warn: student.schedule.isEmpty,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    CanvasCta(
+                      label: 'Ghi âm buổi học',
+                      icon: const Icon(
+                        Icons.circle,
+                        size: 14,
+                        color: TutorColors.ink,
+                      ),
+                      onPressed: student.isDeclined
+                          ? null
+                          : () => startStudentRecording(context, ref, student),
+                    ),
+                    const SizedBox(height: 26),
+                    ...lessons.when<List<Widget>>(
+                      loading: () => [
+                        const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ],
+                      error: (_, _) => [
+                        const Text(
+                          'Không tải được danh sách buổi. Kéo xuống để thử lại.',
+                        ),
+                      ],
+                      data: (list) {
+                        final now = DateTime.now();
+                        // Sắp tới: 3 buổi đã lên lịch gần nhất, tăng dần theo giờ.
+                        final upcoming =
+                            list
+                                .where(
+                                  (l) =>
+                                      l.status == 'scheduled' &&
+                                      (l.scheduledEnd ?? l.when ?? now).isAfter(
+                                        now,
+                                      ),
+                                )
+                                .toList()
+                              ..sort((a, b) => a.when!.compareTo(b.when!));
+                        // Đã ghi: mới nhất trước.
+                        final recorded =
+                            list.where((l) => l.status != 'scheduled').toList()
+                              ..sort(
+                                (a, b) =>
+                                    (b.when ?? now).compareTo(a.when ?? now),
+                              );
+                        // Topi v1: buổi đã có báo cáo gần nhất — kế hoạch của nó dành
+                        // cho buổi tới, kỹ năng của nó là ảnh chụp gần nhất. Các widget
+                        // Topi tự ẩn khi cờ tắt.
+                        final latestReported = latestReportedLesson(recorded);
+                        return [
+                          // Gợi ý trước buổi luôn hiện khi đã có buổi có báo cáo — kể
+                          // cả khi chưa lên lịch buổi tới (lịch hết hạn, dạy bù…).
+                          if (latestReported != null)
+                            TopiBeforeLessonEntry(
+                              args: BeforeLessonArgs(
+                                lessonId: latestReported.lessonId,
+                                studentName: student.fullName,
+                                nextLessonAt: upcoming.firstOrNull?.when,
+                              ),
+                              padding: const EdgeInsets.only(bottom: 16),
+                            ),
+                          if (upcoming.isNotEmpty) ...[
+                            const _Section('SẮP TỚI'),
+                            for (final l in upcoming.take(3)) ...[
+                              _LessonTile(
+                                lesson: l,
+                                studentName: student.fullName,
+                                subtitle: student.subtitle,
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                            const SizedBox(height: 16),
+                          ],
+                          if (latestReported != null)
+                            TopiSkillsSection(
+                              lessonId: latestReported.lessonId,
+                              title: 'Kỹ năng ở buổi gần nhất',
+                              padding: const EdgeInsets.only(bottom: 26),
+                            ),
+                          const _Section('CÁC BUỔI ĐÃ GHI ÂM'),
+                          if (recorded.isEmpty)
+                            const Text(
+                              'Chưa có buổi nào. Bấm "Ghi âm buổi học" khi bắt đầu dạy.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: TutorColors.ink3,
+                              ),
+                            )
+                          else
+                            for (final l in recorded)
+                              RecordedLessonTile(
+                                lesson: l,
+                                studentName: student.fullName,
+                              ),
+                          if (recorded.isNotEmpty)
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border(top: TutorSurface.rule),
+                              ),
+                            ),
+                        ];
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 26),
-            ...lessons.when<List<Widget>>(
-              loading: () => [
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              ],
-              error: (_, _) => [
-                const Text(
-                  'Không tải được danh sách buổi. Kéo xuống để thử lại.',
-                ),
-              ],
-              data: (list) {
-                final now = DateTime.now();
-                // Sắp tới: 3 buổi đã lên lịch gần nhất, tăng dần theo giờ.
-                final upcoming =
-                    list
-                        .where(
-                          (l) =>
-                              l.status == 'scheduled' &&
-                              (l.scheduledEnd ?? l.when ?? now).isAfter(now),
-                        )
-                        .toList()
-                      ..sort((a, b) => a.when!.compareTo(b.when!));
-                // Đã ghi: mới nhất trước.
-                final recorded =
-                    list.where((l) => l.status != 'scheduled').toList()..sort(
-                      (a, b) => (b.when ?? now).compareTo(a.when ?? now),
-                    );
-                // Topi v1: buổi đã có báo cáo gần nhất — kế hoạch của nó dành
-                // cho buổi tới, kỹ năng của nó là ảnh chụp gần nhất. Các widget
-                // Topi tự ẩn khi cờ tắt.
-                final latestReported = latestReportedLesson(recorded);
-                return [
-                  // Gợi ý trước buổi luôn hiện khi đã có buổi có báo cáo — kể
-                  // cả khi chưa lên lịch buổi tới (lịch hết hạn, dạy bù…).
-                  if (latestReported != null)
-                    TopiBeforeLessonEntry(
-                      args: BeforeLessonArgs(
-                        lessonId: latestReported.lessonId,
-                        studentName: student.fullName,
-                        nextLessonAt: upcoming.firstOrNull?.when,
-                      ),
-                      padding: const EdgeInsets.only(bottom: 16),
-                    ),
-                  if (upcoming.isNotEmpty) ...[
-                    const _Section('SẮP TỚI'),
-                    for (final l in upcoming.take(3)) ...[
-                      _LessonTile(
-                        lesson: l,
-                        studentName: student.fullName,
-                        subtitle: student.subtitle,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                    const SizedBox(height: 16),
-                  ],
-                  if (latestReported != null)
-                    TopiSkillsSection(
-                      lessonId: latestReported.lessonId,
-                      title: 'Kỹ năng ở buổi gần nhất',
-                      padding: const EdgeInsets.only(bottom: 26),
-                    ),
-                  const _Section('CÁC BUỔI ĐÃ GHI ÂM'),
-                  if (recorded.isEmpty)
-                    const Text(
-                      'Chưa có buổi nào. Bấm "Ghi âm buổi học" khi bắt đầu dạy.',
-                      style: TextStyle(fontSize: 13, color: TutorColors.ink3),
-                    )
-                  else
-                    for (final l in recorded) ...[
-                      RecordedLessonTile(
-                        lesson: l,
-                        studentName: student.fullName,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                ];
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -454,23 +448,6 @@ class _LessonTile extends StatelessWidget {
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    decoration: BoxDecoration(
-      color: TutorColors.surface,
-      border: Border.all(color: TutorColors.line),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Column(children: children),
-  );
-}
-
 class _Row extends StatelessWidget {
   const _Row({
     required this.icon,
@@ -522,37 +499,6 @@ class _Row extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _Circle extends StatelessWidget {
-  const _Circle({required this.name, this.size = 42, this.fontSize = 15});
-
-  final String name;
-  final double size;
-  final double fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = name.trim();
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: TutorColors.surfaceSunken,
-        shape: BoxShape.circle,
-        border: Border.all(color: TutorColors.line),
-      ),
-      child: Text(
-        t.isEmpty ? '?' : t.split(' ').last.characters.first.toUpperCase(),
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w700,
-          color: TutorColors.ink,
-        ),
-      ),
-    );
-  }
 }
 
 class _Section extends StatelessWidget {
