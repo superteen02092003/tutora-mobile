@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print, avoid_redundant_argument_values, document_ignores, library_private_types_in_public_api, unnecessary_unawaited
+// ignore_for_file: avoid_print, avoid_redundant_argument_values, document_ignores, library_private_types_in_public_api
 // Test tooling, not app code: console output and terse helpers are intended.
 // As-built screenshots of the TopTutor tutor app.
 //
