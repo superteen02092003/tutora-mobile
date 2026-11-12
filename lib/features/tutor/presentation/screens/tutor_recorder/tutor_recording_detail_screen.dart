@@ -11,6 +11,7 @@ import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
 
 /// Tham số mở màn chi tiết một buổi đã ghi.
@@ -612,6 +613,11 @@ class _MinutesTab extends StatelessWidget {
         40,
       ),
       children: [
+        // Số liệu đo từ bản ghi (chỉ gia sư thấy) — tự ẩn khi chưa có.
+        LessonInsightsCard(
+          lessonId: status.recordingId,
+          padding: const EdgeInsets.only(bottom: 14),
+        ),
         if (empty)
           Container(
             padding: const EdgeInsets.all(16),

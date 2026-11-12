@@ -12,6 +12,7 @@ import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/ai_feedback_sheet.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_tips_card.dart';
 
 /// Tham số mở màn xem báo cáo.
@@ -271,6 +272,13 @@ class _TutorReportReviewScreenState
                     ],
                     // Topi T13 "Dành cho bạn" — tự ẩn khi cờ `tips` tắt.
                     TopiTipsCard(lessonId: widget.args.recordingId),
+                    // Số liệu đo từ bản ghi — cũng chỉ gia sư thấy; tự ẩn khi
+                    // chưa có.
+                    LessonInsightsCard(
+                      lessonId: widget.args.recordingId,
+                      kicker: 'Buổi học qua bản ghi · chỉ bạn thấy',
+                      padding: const EdgeInsets.only(top: 20),
+                    ),
                   ],
                 ),
               ),

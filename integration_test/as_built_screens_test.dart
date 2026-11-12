@@ -42,6 +42,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_session_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_journal_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 
 import 'as_built/fake_backend.dart';
@@ -785,6 +786,76 @@ void main() {
       await shot(tester, 'tab-lessons_with-booking-classes');
       await tapText(tester, 'Linh', index: 0);
       await shot(tester, 'agenda_tap-booking-lesson');
+    });
+
+    // ── V5.6 journal + reminder settings (appended) ─────────────────────────
+    await scene(tester, 'journal-minh-an', () async {
+      await launch(tester, go: AppRoutes.tutorHome);
+      unawaited(
+        TutorJournalScreen.open(navContext(tester), 'stu-minh-an', 'Minh An'),
+      );
+      await settle(tester, 1000);
+      await shot(tester, 'journal_minh-an');
+      await tapFinder(tester, find.byTooltip('Tháng trước'), 'prev month');
+      await settle(tester, 1000);
+      await shot(tester, 'journal_empty-month');
+    });
+    await scene(tester, 'settings-reminder', () async {
+      await launch(tester, go: AppRoutes.tutorProfile);
+      await tapText(tester, 'Nhắc trước buổi học');
+      await shot(tester, 'settings_reminder-sheet');
+    });
+
+    // ── V5.6 recording insights + "ghi âm tốt" (appended) ──────────────────
+    await scene(tester, 'recordings-missing-reason', () async {
+      await launch(tester, go: AppRoutes.tutorRecordings);
+      await shot(tester, 'recordings_good-week_missing');
+      await tapText(tester, 'Học sinh vắng');
+      await shot(tester, 'recordings_missing_reason-saved');
+    });
+    await scene(tester, 'detail-insights', () async {
+      await launch(tester, go: AppRoutes.tutorHome);
+      await pushRoute(
+        tester,
+        AppRoutes.tutorRecordingDetail,
+        extra: const RecordingDetailArgs(
+          recordingId: 'rec-ready',
+          studentName: 'Minh An',
+        ),
+      );
+      await tapText(tester, 'Tóm tắt buổi');
+      await shot(tester, 'lesson-detail_minutes_insights');
+    });
+
+    // ── V5.6 move / cancel a recorder lesson (appended) ────────────────────
+    await scene(tester, 'session-detail-move-cancel', () async {
+      await launch(tester, go: AppRoutes.tutorSchedule);
+      final t = DateTime.now().add(const Duration(days: 1));
+      final start = DateTime(t.year, t.month, t.day, 19);
+      final lesson = TutorLessonDto(
+        lessonId: 0,
+        bookingId: null,
+        studentName: 'Bao',
+        subjectName: 'Lớp 9',
+        scheduledStart: start.toUtc().toIso8601String(),
+        scheduledEnd: start
+            .add(const Duration(minutes: 90))
+            .toUtc()
+            .toIso8601String(),
+        status: 'scheduled',
+        recorderLessonId: 'les-bao-today',
+        recorderStudentId: 'stu-bao',
+        recorderStatus: 'scheduled',
+      );
+      unawaited(TutorSessionDetailScreen.open(navContext(tester), lesson));
+      await settle(tester, 1000);
+      await shot(tester, 'session-detail_offplatform');
+      await tapText(tester, 'Đổi lịch');
+      await shot(tester, 'session-detail_move-sheet');
+      await back(tester);
+      await tapText(tester, 'Huỷ buổi');
+      await shot(tester, 'session-detail_cancel-reason');
+      await back(tester);
     });
 
     // ── Summary for the README / the caller ─────────────────────────────────

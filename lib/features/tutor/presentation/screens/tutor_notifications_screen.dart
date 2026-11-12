@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/models/notification_models.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
+import 'package:tutora/shared/services/fcm_notification_handler.dart';
 
 /// Thông báo (design V5.6): nút tròn quay lại, tab gạch chân, hàng kẻ mảnh,
 /// ô biểu tượng lõm màu mực, chấm chưa đọc màu rêu.
@@ -37,6 +39,14 @@ class _TutorNotificationsScreenState
   void dispose() {
     _tabs.dispose();
     super.dispose();
+  }
+
+  /// Đánh dấu đã đọc; thông báo nhắc buổi học mở luồng ghi âm.
+  void _open(NotificationDto item) {
+    unawaited(ref.read(notificationProvider.notifier).markRead(item.id));
+    if (item.type == recorderLessonReminderType) {
+      openRecorderForReminder(GoRouter.of(context));
+    }
   }
 
   @override
@@ -124,18 +134,8 @@ class _TutorNotificationsScreenState
                     : TabBarView(
                         controller: _tabs,
                         children: [
-                          _NotiList(
-                            items: state.items,
-                            onTap: (id) => ref
-                                .read(notificationProvider.notifier)
-                                .markRead(id),
-                          ),
-                          _NotiList(
-                            items: state.unread,
-                            onTap: (id) => ref
-                                .read(notificationProvider.notifier)
-                                .markRead(id),
-                          ),
+                          _NotiList(items: state.items, onTap: _open),
+                          _NotiList(items: state.unread, onTap: _open),
                         ],
                       ),
               ),
@@ -151,7 +151,7 @@ class _NotiList extends StatelessWidget {
   const _NotiList({required this.items, required this.onTap});
 
   final List<NotificationDto> items;
-  final void Function(int id) onTap;
+  final void Function(NotificationDto item) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +182,7 @@ class _NotiList extends StatelessWidget {
       itemBuilder: (_, i) => _NotiTile(
         item: items[i],
         first: i == 0,
-        onTap: () => onTap(items[i].id),
+        onTap: () => onTap(items[i]),
       ),
     );
   }

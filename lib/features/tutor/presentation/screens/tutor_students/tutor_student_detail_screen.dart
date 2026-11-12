@@ -15,6 +15,7 @@ import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart'
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_journal_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
@@ -198,7 +199,17 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                                 ),
                               ),
                             ],
-                            const _SectionTitle('Từng buổi học'),
+                            _SectionTitle(
+                              'Từng buổi học',
+                              action: 'Nhật ký →',
+                              onAction: () => unawaited(
+                                TutorJournalScreen.open(
+                                  context,
+                                  studentId,
+                                  student.fullName,
+                                ),
+                              ),
+                            ),
                             Padding(
                               padding: gutter,
                               child: recorded.isEmpty
@@ -384,19 +395,43 @@ class _Identity extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+  const _SectionTitle(this.text, {this.action, this.onAction});
 
   final String text;
 
+  /// Liên kết chữ xám bên phải ("Nhật ký →").
+  final String? action;
+  final VoidCallback? onAction;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
+    padding: EdgeInsets.fromLTRB(
       TutorSurface.gutter,
       22,
-      TutorSurface.gutter,
+      action == null ? TutorSurface.gutter : TutorSurface.gutter - 10,
       6,
     ),
-    child: Text(text, style: TutorType.sectionTitle()),
+    child: action == null
+        ? Text(text, style: TutorType.sectionTitle())
+        : Row(
+            children: [
+              Expanded(child: Text(text, style: TutorType.sectionTitle())),
+              InkWell(
+                onTap: onAction,
+                borderRadius: BorderRadius.circular(22),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(action!, style: TutorType.rowSub()),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
   );
 }
 

@@ -9,6 +9,8 @@ import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:tutora/features/tutor/data/models/recorder_insights_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/recorder_insights_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_change_password_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_delete_account_sheet.dart';
@@ -21,8 +23,9 @@ import 'package:tutora/shared/widgets/app_toast.dart';
 /// Giữ đủ mục Google Play yêu cầu: điều khoản, quyền riêng tư, xoá dữ liệu,
 /// xoá tài khoản.
 ///
-/// Board có thêm "Nhắc trước buổi học · 30 phút" và "Kiểm tra âm thanh trước
-/// khi ghi" — chưa có cài đặt tương ứng nên không vẽ. Hàng "Thu nhập" để sau.
+/// "Nhắc trước buổi học" và "Thông báo khi báo cáo sẵn sàng" lưu lên server
+/// (`/recorder/settings`). Board có thêm "Kiểm tra âm thanh trước khi ghi" —
+/// chưa có cài đặt tương ứng nên không vẽ. Hàng "Thu nhập" để sau.
 class TutorProfileScreen extends ConsumerStatefulWidget {
   const TutorProfileScreen({super.key});
 
@@ -47,6 +50,83 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
   void _push(Widget screen) => Navigator.of(
     context,
   ).push(MaterialPageRoute<void>(builder: (_) => screen));
+
+  /// Giá trị đang lưu — hiện ngay trên màn, lỗi thì bỏ (về giá trị server).
+  RecorderSettingsDto? _pendingSettings;
+
+  Future<void> _saveSettings(RecorderSettingsDto next) async {
+    setState(() => _pendingSettings = next);
+    try {
+      await ref.read(recorderSettingsProvider.notifier).save(next);
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: 'Chưa lưu được cài đặt. Kiểm tra mạng rồi thử lại.',
+          type: AppToastType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _pendingSettings = null);
+    }
+  }
+
+  Future<void> _pickReminder(RecorderSettingsDto current) async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: TutorColors.paperTop,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(TutorSurface.radius),
+        ),
+      ),
+      builder: (_) =>
+          _ReminderSheet(selected: current.lessonReminderMinutes ?? 0),
+    );
+    if (picked == null || !mounted) return;
+    if (picked == (current.lessonReminderMinutes ?? 0)) return;
+    await _saveSettings(
+      picked == 0
+          ? current.copyWith(clearReminder: true)
+          : current.copyWith(lessonReminderMinutes: picked),
+    );
+  }
+
+  /// Hai hàng cài đặt server: nhắc trước buổi học và đẩy thông báo báo cáo.
+  List<Widget> _recorderSettingsRows() {
+    final async = ref.watch(recorderSettingsProvider);
+    final settings = _pendingSettings ?? async.valueOrNull;
+    if (settings == null) {
+      final failed = async.hasError;
+      return [
+        _Row(
+          label: 'Nhắc trước buổi học',
+          value: failed ? 'Không tải được · thử lại' : '…',
+          onTap: failed ? () => ref.invalidate(recorderSettingsProvider) : null,
+        ),
+      ];
+    }
+    final busy = _pendingSettings != null;
+    final minutes = settings.lessonReminderMinutes;
+    return [
+      _Row(
+        label: 'Nhắc trước buổi học',
+        value: minutes == null ? 'Tắt' : '$minutes phút',
+        onTap: busy ? null : () => unawaited(_pickReminder(settings)),
+      ),
+      _Row(
+        label: 'Thông báo khi báo cáo sẵn sàng',
+        trailing: _MossSwitch(
+          value: settings.reportReadyPush,
+          onChanged: busy
+              ? null
+              : (v) => unawaited(
+                  _saveSettings(settings.copyWith(reportReadyPush: v)),
+                ),
+        ),
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,32 +232,8 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
               const _ProfileRow(),
               _Group(
                 label: 'Thông báo',
-                children: [
-                  _Row(
-                    label: 'Báo cáo sẵn sàng để duyệt, nhắc buổi học',
-                    trailing: Switch(
-                      value: state.notifOn,
-                      onChanged: (v) {
-                        ref
-                            .read(tutorProfileProvider.notifier)
-                            .setNotif(value: v);
-                        AppToast.show(
-                          context,
-                          message: v ? 'Đã bật thông báo' : 'Đã tắt thông báo',
-                          type: AppToastType.success,
-                        );
-                      },
-                      activeThumbColor: Colors.white,
-                      activeTrackColor: TutorColors.primary,
-                      inactiveThumbColor: Colors.white,
-                      inactiveTrackColor: const Color(0x2E1F2A24),
-                      trackOutlineColor: const WidgetStatePropertyAll(
-                        Colors.transparent,
-                      ),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ],
+                // Hai dòng thật (lưu ở backend) thay công tắc cũ chỉ đổi biến cục bộ.
+                children: [..._recorderSettingsRows()],
               ),
               _Group(
                 label: 'Ghi âm',
@@ -385,6 +441,92 @@ class _Row extends StatelessWidget {
     if (onTap == null) return body;
     return InkWell(onTap: onTap, child: body);
   }
+}
+
+/// Công tắc màu rêu của màn Cài đặt.
+class _MossSwitch extends StatelessWidget {
+  const _MossSwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => Switch(
+    value: value,
+    onChanged: onChanged,
+    activeThumbColor: Colors.white,
+    activeTrackColor: TutorColors.primary,
+    inactiveThumbColor: Colors.white,
+    inactiveTrackColor: const Color(0x2E1F2A24),
+    trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  );
+}
+
+/// Bảng chọn "Nhắc trước buổi học": Tắt (0) hoặc số phút.
+class _ReminderSheet extends StatelessWidget {
+  const _ReminderSheet({required this.selected});
+
+  /// 0 = tắt.
+  final int selected;
+
+  static const _choices = [0, 10, 15, 30, 60, 120];
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        18,
+        TutorSurface.gutter,
+        12,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Nhắc trước buổi học', style: TutorType.sectionTitle()),
+          const SizedBox(height: 4),
+          Text(
+            'Gửi thông báo để bạn nhớ bấm ghi âm.',
+            style: TutorType.rowSub(),
+          ),
+          const SizedBox(height: 8),
+          for (final m in _choices)
+            InkWell(
+              onTap: () => Navigator.of(context).pop(m),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 48),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: m == _choices.first
+                        ? BorderSide.none
+                        : TutorSurface.rule,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        m == 0 ? 'Tắt' : '$m phút',
+                        style: TutorType.body(),
+                      ),
+                    ),
+                    if (m == selected)
+                      const Icon(
+                        Icons.check_rounded,
+                        size: 20,
+                        color: TutorColors.ink,
+                        semanticLabel: 'Đang chọn',
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Ảnh đại diện tròn + "Cài đặt" + "Gia sư …"; chạm ảnh để đổi (chỉ thư viện

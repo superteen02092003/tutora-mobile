@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/data/models/recorder_insights_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/recorder_insights_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -14,11 +16,12 @@ import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 /// T3 · Lộ trình gia sư (design V5.6, board V56-Path): ba chặng tới chuẩn
 /// TopTutor trên một đường thời gian dọc.
 ///
-/// Chặng 1 tính từ dữ liệu thật: buổi ghi âm 7 ngày qua và phụ huynh đã đồng ý
-/// ghi âm; hàng ghi âm mở danh sách bản ghi (không còn là tab). Chặng 2 (10
-/// hành vi dạy) và chặng 3 (kết quả học sinh giữ được) chờ kiểm chứng — chưa có
-/// số liệu nên ghi rõ "sau khi kiểm chứng"; board có "6/10 hành vi" và ô "Đang
-/// luyện" nhưng chưa có dữ liệu nên không vẽ.
+/// Chặng 1 tính từ dữ liệu thật: "ghi âm tốt" tuần trước (API tuần; lỗi thì
+/// buổi đã ghi 7 ngày qua) và phụ huynh đã đồng ý ghi âm; hàng ghi âm mở danh
+/// sách bản ghi (không còn là tab). Chặng 2 hiện "học sinh nói trung bình" của
+/// tuần này khi server có số; 10 hành vi dạy và chặng 3 (kết quả học sinh giữ
+/// được) chờ kiểm chứng — ghi rõ "sau khi kiểm chứng"; board có "6/10 hành vi"
+/// và ô "Đang luyện" nhưng chưa có dữ liệu nên không vẽ.
 class TutorPathScreen extends ConsumerWidget {
   const TutorPathScreen({super.key});
 
@@ -56,21 +59,49 @@ class TutorPathScreen extends ConsumerWidget {
     final stage1Done =
         students.isNotEmpty && consented == students.length && recorded > 0;
 
+    // "Ghi âm tốt" theo tuần (API B, mới nhất trước). Tuần trước = weeks[1];
+    // chỉ có một tuần thì dùng tuần đó. Chưa có / lỗi → đếm như cũ.
+    final weeks =
+        ref.watch(weeklyRecordingProvider).valueOrNull?.weeks ??
+        const <WeeklyRecordingWeek>[];
+    final scoreWeek = weeks.length > 1
+        ? weeks[1]
+        : (weeks.isEmpty ? null : weeks.first);
+    final talkShare = weeks.isEmpty ? null : weeks.first.avgStudentTalkShare;
+    void openRecordings() => unawaited(context.push(AppRoutes.tutorRecordings));
+
     final stage1Facts = [
-      _Fact(
-        label: 'Buổi đã ghi âm · 7 ngày qua',
-        value: lastWeek.isEmpty
-            ? 'chưa có buổi'
-            : '$recorded/${lastWeek.length}',
-        onTap: () => unawaited(context.push(AppRoutes.tutorRecordings)),
-      ),
+      if (scoreWeek != null)
+        _Fact(
+          label: weeks.length > 1
+              ? 'Ghi âm tốt · tuần trước'
+              : 'Ghi âm tốt · tuần này',
+          value: scoreWeek.lessonsDue == 0
+              ? 'chưa có buổi'
+              : '${scoreWeek.usable}/${scoreWeek.lessonsDue}',
+          onTap: openRecordings,
+        )
+      else
+        _Fact(
+          label: 'Buổi đã ghi âm · 7 ngày qua',
+          value: lastWeek.isEmpty
+              ? 'chưa có buổi'
+              : '$recorded/${lastWeek.length}',
+          onTap: openRecordings,
+        ),
       _Fact(
         label: 'Phụ huynh đồng ý',
         value: '$consented/${students.length} học sinh',
       ),
     ];
-    const stage2Facts = [
-      _Fact(label: 'Kết quả của bạn', value: 'sau khi kiểm chứng'),
+    final stage2Facts = [
+      // Số đo thật từ bản ghi tuần này; null thì không hiện.
+      if (talkShare != null)
+        _Fact(
+          label: 'Học sinh nói trung bình · tuần này',
+          value: '${(talkShare.clamp(0, 1) * 100).round()}%',
+        ),
+      const _Fact(label: 'Kết quả của bạn', value: 'sau khi kiểm chứng'),
     ];
 
     return Scaffold(
@@ -84,7 +115,8 @@ class TutorPathScreen extends ConsumerWidget {
             onRefresh: () async {
               ref
                 ..invalidate(recorderStudentsProvider)
-                ..invalidate(recorderAllLessonsProvider);
+                ..invalidate(recorderAllLessonsProvider)
+                ..invalidate(weeklyRecordingProvider);
             },
             child: ListView(
               padding: const EdgeInsets.only(bottom: 32),
@@ -155,12 +187,12 @@ class TutorPathScreen extends ConsumerWidget {
                           _StageRow(
                             marker: _StepMarker(2, off: !stage1Done),
                             child: stage1Done
-                                ? const _SageStage(
+                                ? _SageStage(
                                     title: 'Đạt chuẩn',
                                     body: _stage2Body,
                                     facts: stage2Facts,
                                   )
-                                : const _FlatStage(
+                                : _FlatStage(
                                     title: 'Đạt chuẩn',
                                     status: 'Tiếp theo',
                                     body: _stage2Body,

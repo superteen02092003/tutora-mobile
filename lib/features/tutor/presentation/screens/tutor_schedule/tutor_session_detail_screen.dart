@@ -7,10 +7,15 @@ import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_lesson_datasource.dart';
+import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/lesson_attendance.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/lesson_move_sheet.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 final AutoDisposeFutureProviderFamily<TutorSessionDetailDto, int>
 _sessionDetailProvider = FutureProvider.autoDispose
@@ -22,6 +27,9 @@ _sessionDetailProvider = FutureProvider.autoDispose
 ///
 /// Mở từ một dòng agenda trên tab Lịch. Phần lịch có sẵn (giờ, học sinh, môn,
 /// trạng thái) hiện ngay; học phí và khối lớp tải thêm từ chi tiết buổi.
+///
+/// "Đổi lịch" / "Huỷ buổi": buổi ngoài nền tảng (recorder) dời / huỷ ngay;
+/// buổi booking gửi đề xuất đổi lịch (phụ huynh đồng ý) và không huỷ lẻ được.
 class TutorSessionDetailScreen extends ConsumerWidget {
   const TutorSessionDetailScreen({required this.lesson, super.key});
 
@@ -58,9 +66,15 @@ class TutorSessionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref
-        .watch(_sessionDetailProvider(lesson.lessonId))
-        .valueOrNull;
+    // Buổi ngoài nền tảng không có chi tiết buổi booking (lessonId = 0).
+    final detail = lesson.isOffPlatform
+        ? null
+        : ref.watch(_sessionDetailProvider(lesson.lessonId)).valueOrNull;
+    final recorderById = lesson.isOffPlatform
+        ? ref.watch(agendaRecorderLessonsProvider).valueOrNull
+        : null;
+    final recorder = recorderById?[lesson.recorderLessonId];
+    final movedFrom = recorder?.movedFromStart;
     final start = lesson.startDt?.toLocal();
     final end = lesson.endDt?.toLocal();
     final now = DateTime.now();
@@ -181,21 +195,27 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                                       '${_two(start.day)}/${_two(start.month)} · '
                                       '${lesson.timeStart}'
                                       '${end == null ? '' : ' – ${lesson.timeEnd}'}',
-                            sub: lesson.linkLabel,
+                            sub: [
+                              ?lesson.linkLabel,
+                              if (movedFrom != null) movedFromLine(movedFrom),
+                            ].join(' · ').nullIfEmpty,
                           ),
                           const Divider(height: 1, color: TutorColors.line),
                           _InfoRow(
                             icon: Icons.location_on_outlined,
                             title: _place(lesson.teachingMode),
                           ),
-                          const Divider(height: 1, color: TutorColors.line),
-                          _InfoRow(
-                            icon: Icons.payments_outlined,
-                            title: detail?.price == null
-                                ? '—'
-                                : _money(detail!.price!),
-                            trailing: 'Giải ngân sau khi gửi báo cáo',
-                          ),
+                          // Học phí / giải ngân chỉ có ở buổi booking.
+                          if (!lesson.isOffPlatform) ...[
+                            const Divider(height: 1, color: TutorColors.line),
+                            _InfoRow(
+                              icon: Icons.payments_outlined,
+                              title: detail?.price == null
+                                  ? '—'
+                                  : _money(detail!.price!),
+                              trailing: 'Giải ngân sau khi gửi báo cáo',
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -328,6 +348,7 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                               AppRoutes.tutorRecording,
                               extra: RecordingTarget(
                                 lessonId: lesson.lessonId,
+                                recorderLessonId: lesson.recorderLessonId,
                                 studentName: lesson.studentName,
                                 subjectName: lesson.subjectName,
                                 timeStart: lesson.timeStart,
@@ -345,17 +366,25 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                         _ActionBtn(
                           icon: Icons.calendar_today_outlined,
                           label: 'Đổi lịch',
-                          onTap: () => _soon(context),
+                          onTap: () =>
+                              unawaited(_reschedule(context, ref, recorder)),
                         ),
                         _ActionBtn(
                           icon: Icons.person_outline_rounded,
                           label: 'Hồ sơ HS',
-                          onTap: () => _soon(context),
+                          onTap: lesson.recorderStudentId != null
+                              ? () => unawaited(
+                                  TutorStudentDetailScreen.open(
+                                    context,
+                                    lesson.recorderStudentId!,
+                                  ),
+                                )
+                              : () => _soon(context),
                         ),
                         _ActionBtn(
                           icon: Icons.close_rounded,
                           label: 'Huỷ buổi',
-                          onTap: () => _soon(context),
+                          onTap: () => unawaited(_cancel(context, ref)),
                         ),
                       ],
                     ),
@@ -375,6 +404,42 @@ class TutorSessionDetailScreen extends ConsumerWidget {
     return 'Tại nhà học sinh';
   }
 
+  Future<void> _reschedule(
+    BuildContext context,
+    WidgetRef ref,
+    RecorderLessonDto? recorder,
+  ) async {
+    final navigator = Navigator.of(context);
+    final done = lesson.isOffPlatform
+        ? await moveRecorderLesson(context, ref, lesson, recorder: recorder)
+        : await proposeBookedReschedule(context, ref, lesson);
+    // Buổi recorder đã dời: giờ trên màn này đã cũ → quay lại lịch.
+    if (done && lesson.isOffPlatform && navigator.mounted) navigator.pop();
+  }
+
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    if (!lesson.isOffPlatform) return explainBookedCancel(context);
+    final start = lesson.startDt;
+    if (lesson.recorderStatus != 'scheduled' ||
+        start == null ||
+        !start.isAfter(DateTime.now())) {
+      AppToast.show(
+        context,
+        message: 'Chỉ huỷ được buổi chưa diễn ra.',
+        type: AppToastType.warning,
+      );
+      return;
+    }
+    final navigator = Navigator.of(context);
+    final done = await cancelRecorderLesson(
+      context,
+      ref,
+      lessonId: lesson.recorderLessonId!,
+      studentName: lesson.studentName,
+    );
+    if (done && navigator.mounted) navigator.pop();
+  }
+
   static void _soon(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -383,6 +448,10 @@ class TutorSessionDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+extension on String {
+  String? get nullIfEmpty => isEmpty ? null : this;
 }
 
 class _Status {

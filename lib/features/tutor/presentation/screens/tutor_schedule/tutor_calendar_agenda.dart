@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/lesson_attendance.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_session_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -129,6 +131,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
   DateTime? _cacheToday;
   DateTime? _cachePicked;
   bool? _cacheLoading;
+  Map<String, RecorderLessonDto>? _cacheRecorder;
   Map<DateTime, List<TutorLessonDto>> _byDay = const {};
 
   /// Vị trí (trong nội dung cuộn) của tiêu đề từng ngày, tăng dần. Đo MỘT lần
@@ -325,6 +328,10 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
   Widget build(BuildContext context) {
     final async = ref.watch(tutorAgendaLessonsProvider);
     final lessons = async.valueOrNull ?? const <TutorLessonDto>[];
+    // Điểm danh / dời của buổi recorder (tải kèm; lỗi thì agenda vẫn hiện).
+    final recorder =
+        ref.watch(agendaRecorderLessonsProvider).valueOrNull ??
+        const <String, RecorderLessonDto>{};
 
     final loadingEmpty = async.isLoading && lessons.isEmpty;
     final rebuild =
@@ -332,10 +339,13 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
         _cacheToday != _today ||
         _cachePicked != _picked ||
         _cacheLoading != loadingEmpty ||
+        !identical(recorder, _cacheRecorder) ||
         _agendaCache == null;
     if (rebuild) {
       final byDay = <DateTime, List<TutorLessonDto>>{};
       for (final l in lessons) {
+        // Buổi recorder đã huỷ / đã dời đi (status `discarded`) không hiện.
+        if (l.recorderStatus == 'discarded') continue;
         final d = _dayOf(l);
         if (d == null) continue;
         (byDay[d] ??= []).add(l);
@@ -369,6 +379,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
                 today: _today,
                 lessons: byDay[d] ?? const [],
                 loading: loadingEmpty,
+                recorder: recorder,
               ),
             ),
             const SizedBox(height: 26),
@@ -379,6 +390,7 @@ class _TutorCalendarAgendaState extends ConsumerState<TutorCalendarAgenda> {
       _cacheToday = _today;
       _cachePicked = _picked;
       _cacheLoading = loadingEmpty;
+      _cacheRecorder = recorder;
       _offsetsDirty = true;
     }
     final byDay = _byDay;
@@ -636,6 +648,7 @@ class _DayGroup extends StatelessWidget {
     required this.today,
     required this.lessons,
     required this.loading,
+    this.recorder = const {},
     super.key,
   });
 
@@ -643,6 +656,9 @@ class _DayGroup extends StatelessWidget {
   final DateTime today;
   final List<TutorLessonDto> lessons;
   final bool loading;
+
+  /// Buổi recorder đầy đủ (điểm danh, dời) theo lessonId.
+  final Map<String, RecorderLessonDto> recorder;
 
   @override
   Widget build(BuildContext context) {
@@ -678,11 +694,21 @@ class _DayGroup extends StatelessWidget {
           _Timeline(
             children: [
               for (final l in lessons)
-                _TimelineItem(lesson: l, next: identical(l, next)),
+                _TimelineItem(
+                  lesson: l,
+                  next: identical(l, next),
+                  recorder: recorder[l.recorderLessonId],
+                ),
             ],
           ),
           const SizedBox(height: 14),
-          _DaySummary(isToday: isToday, lessons: lessons),
+          _DaySummary(
+            isToday: isToday,
+            lessons: lessons,
+            absent: lessons
+                .where((l) => recorder[l.recorderLessonId]?.isAbsent ?? false)
+                .length,
+          ),
         ],
       ],
     );
@@ -724,26 +750,45 @@ class _Timeline extends StatelessWidget {
   }
 }
 
-enum _Kind { done, next, live, needReport, other }
+enum _Kind { done, next, live, needReport, attendance, absent, other }
 
 class _TimelineItem extends StatelessWidget {
-  const _TimelineItem({required this.lesson, required this.next});
+  const _TimelineItem({
+    required this.lesson,
+    required this.next,
+    this.recorder,
+  });
 
   final TutorLessonDto lesson;
   final bool next;
+
+  /// Buổi recorder đầy đủ (null với buổi booking / khi chưa tải xong).
+  final RecorderLessonDto? recorder;
 
   _Kind get _kind {
     if (next) return _Kind.next;
     if (lesson.isLive) return _Kind.live;
     if (lesson.isFinished) return _Kind.done;
     if (lesson.isAwaitingReport) return _Kind.needReport;
+    // Buổi recorder đã qua mà chưa ghi âm: điểm danh.
+    final rec = recorder;
+    if (rec != null &&
+        lesson.recorderStatus == 'scheduled' &&
+        _isPast(lesson)) {
+      if (rec.isAbsent) return _Kind.absent;
+      if (rec.isPresent) return _Kind.done;
+      return _Kind.attendance;
+    }
     return _Kind.other;
   }
 
   @override
   Widget build(BuildContext context) {
     final kind = _kind;
-    final carded = kind == _Kind.next || kind == _Kind.needReport;
+    final carded =
+        kind == _Kind.next ||
+        kind == _Kind.needReport ||
+        kind == _Kind.attendance;
     final dotTop = carded ? 21.0 : 13.0;
     final upcoming = kind == _Kind.other && !_isPast(lesson);
 
@@ -792,7 +837,21 @@ class _TimelineItem extends StatelessWidget {
           child: switch (kind) {
             _Kind.next => _NextCard(lesson: lesson),
             _Kind.needReport => _ReportCard(lesson: lesson),
-            _ => _FlatRow(lesson: lesson, kind: kind),
+            _Kind.attendance => AttendanceCard(
+              lessonId: lesson.recorderLessonId!,
+              studentName: lesson.studentName,
+              subtitle: lesson.subjectName,
+              onTap: () => _open(context, lesson),
+              onMakeUp: lesson.recorderStudentId == null
+                  ? null
+                  : () => unawaited(
+                      TutorStudentDetailScreen.open(
+                        context,
+                        lesson.recorderStudentId!,
+                      ),
+                    ),
+            ),
+            _ => _FlatRow(lesson: lesson, kind: kind, recorder: recorder),
           },
         ),
       ],
@@ -814,10 +873,17 @@ String _sub(TutorLessonDto l) {
   return parts.join(' · ');
 }
 
-/// Buổi booking → chi tiết buổi. Buổi ngoài nền tảng → báo cáo (nếu đã ghi)
-/// hoặc hồ sơ học sinh (có nút ghi âm).
+/// Buổi booking và buổi ngoài nền tảng chưa diễn ra → chi tiết buổi (đổi
+/// lịch / huỷ). Buổi ngoài nền tảng khác → báo cáo (nếu đã ghi) hoặc hồ sơ
+/// học sinh (có nút ghi âm).
 void _open(BuildContext context, TutorLessonDto l) {
-  if (!l.isOffPlatform) {
+  final start = l.startDt;
+  final upcoming =
+      l.isOffPlatform &&
+      l.recorderStatus == 'scheduled' &&
+      start != null &&
+      start.isAfter(DateTime.now());
+  if (!l.isOffPlatform || upcoming) {
     unawaited(TutorSessionDetailScreen.open(context, l));
     return;
   }
@@ -839,17 +905,25 @@ void _open(BuildContext context, TutorLessonDto l) {
 
 /// Mức 0: dòng phẳng trên nền giấy (đã xong có dấu tick).
 class _FlatRow extends StatelessWidget {
-  const _FlatRow({required this.lesson, required this.kind});
+  const _FlatRow({required this.lesson, required this.kind, this.recorder});
 
   final TutorLessonDto lesson;
   final _Kind kind;
+  final RecorderLessonDto? recorder;
 
   @override
   Widget build(BuildContext context) {
-    final done = kind == _Kind.done;
-    final status = done
+    final rec = recorder;
+    final absent = kind == _Kind.absent;
+    final done = kind == _Kind.done || absent;
+    final attendance = rec == null ? null : attendanceLine(rec);
+    final status = attendance != null && done
+        ? attendance
+        : done
         ? (lesson.isCompleted ? 'Đã hoàn thành' : 'Chờ xác nhận')
         : null;
+    final moved = rec?.movedFromStart;
+    final auto = done && (rec?.autoPresent ?? false);
     final sub = [_sub(lesson), ?status].where((s) => s.isNotEmpty).join(' · ');
 
     return InkWell(
@@ -859,7 +933,13 @@ class _FlatRow extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(0, 6, 4, 6),
         child: Row(
           children: [
-            if (done) ...[const _Tick(), const SizedBox(width: 12)],
+            if (absent) ...[
+              const _Ring(),
+              const SizedBox(width: 12),
+            ] else if (done) ...[
+              const _Tick(),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,9 +959,19 @@ class _FlatRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TutorType.rowSub(),
                     ),
+                  if (moved != null && !done)
+                    Text(
+                      movedFromLine(moved),
+                      maxLines: 1,
+                      style: TutorType.caption(),
+                    ),
                 ],
               ),
             ),
+            if (auto) ...[
+              const SizedBox(width: 8),
+              const FromRecordingTag(),
+            ],
             if (kind == _Kind.live) ...[
               const SizedBox(width: 8),
               const CanvasTag('Đang dạy', filled: true),
@@ -1073,6 +1163,21 @@ class _IconWell extends StatelessWidget {
   );
 }
 
+/// Vòng rỗng: buổi vắng.
+class _Ring extends StatelessWidget {
+  const _Ring();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 20,
+    height: 20,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: const Color(0xFF8A8F89), width: 1.4),
+    ),
+  );
+}
+
 class _Tick extends StatelessWidget {
   const _Tick();
 
@@ -1088,12 +1193,19 @@ class _Tick extends StatelessWidget {
   );
 }
 
-/// "Hôm nay: 2 buổi · 3 giờ dạy · 1 cần báo cáo"
+/// "Hôm nay: 2 buổi · 3 giờ dạy · 1 cần báo cáo · 1 vắng"
 class _DaySummary extends StatelessWidget {
-  const _DaySummary({required this.isToday, required this.lessons});
+  const _DaySummary({
+    required this.isToday,
+    required this.lessons,
+    this.absent = 0,
+  });
 
   final bool isToday;
   final List<TutorLessonDto> lessons;
+
+  /// Số buổi vắng (đã điểm danh vắng).
+  final int absent;
 
   static String _duration(int minutes) {
     final h = minutes ~/ 60;
@@ -1110,6 +1222,7 @@ class _DaySummary extends StatelessWidget {
       '${lessons.length} buổi',
       if (minutes > 0) '${_duration(minutes)} dạy',
       if (reports > 0) '$reports cần báo cáo',
+      if (absent > 0) '$absent vắng',
     ].join(' · ');
     return Container(
       padding: const EdgeInsets.only(top: 12),

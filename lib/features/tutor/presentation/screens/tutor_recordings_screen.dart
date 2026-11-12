@@ -6,21 +6,24 @@ import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/data/models/recorder_insights_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/recorder_insights_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
 /// Bản ghi âm (design V5.6, board V56-Score): màn con mở từ Lộ trình, nút tròn
-/// quay lại, không có thanh tab riêng. Số buổi đã ghi trong 7 ngày qua, buổi
-/// lẽ ra có mà không có bản ghi, và các bản ghi gần đây.
+/// quay lại, không có thanh tab riêng. "Buổi ghi âm tốt" của tuần này
+/// (`weeklyRecordingProvider`, phase1-api mục B), các buổi không có bản ghi
+/// kèm chip "Chuyện gì đã xảy ra?" (lưu lý do qua điểm danh, mục C), và các
+/// bản ghi gần đây.
 ///
 /// Khác board có chủ đích: nút "Ghi âm buổi học" ở đầu màn (mở lại màn "Đang
-/// ghi" nếu đang có buổi ghi dở). Board đếm "ghi âm tốt" và có chip "Chuyện gì
-/// đã xảy ra?" — chưa có dữ liệu chất lượng bản ghi và chưa có API lưu lý do,
-/// nên màn đếm buổi đã ghi và hàng "không có bản ghi" chỉ mở hồ sơ học sinh.
+/// ghi" nếu đang có buổi ghi dở). Khi API tuần lỗi, màn quay về cách cũ: đếm
+/// buổi đã ghi trong 7 ngày qua và hàng "không có bản ghi" mở hồ sơ học sinh.
 class TutorRecordingsScreen extends ConsumerWidget {
   const TutorRecordingsScreen({super.key});
 
@@ -74,6 +77,24 @@ class TutorRecordingsScreen extends ConsumerWidget {
           ..sort((a, b) => b.when!.compareTo(a.when!));
     final shown = recent.length < 20 ? recent.length : 20;
 
+    // "Ghi âm tốt" theo tuần (API B). Lỗi → số buổi đã ghi 7 ngày qua như cũ.
+    final weeklyAsync = ref.watch(weeklyRecordingProvider);
+    final weekly = weeklyAsync.valueOrNull;
+    final week = weekly?.currentWeek;
+    final weeklyLoading = weekly == null && !weeklyAsync.hasError;
+    final weekStart = week?.weekStart;
+    final subtitle = week != null && weekStart != null
+        ? 'Tuần này · ${_d(weekStart)} đến '
+              '${_d(weekStart.add(const Duration(days: 6)))}'
+        : '7 ngày qua · ${_d(weekAgo)} đến ${_d(now)}';
+    final missing = [...?weekly?.missing]
+      ..sort((a, b) {
+        final x = a.scheduledStart;
+        final y = b.scheduledStart;
+        if (x == null || y == null) return x == null ? 1 : -1;
+        return y.compareTo(x);
+      });
+
     return Scaffold(
       backgroundColor: TutorColors.bg,
       body: DecoratedBox(
@@ -82,7 +103,9 @@ class TutorRecordingsScreen extends ConsumerWidget {
           bottom: false,
           child: RefreshIndicator(
             color: TutorColors.primary,
-            onRefresh: () async => ref.invalidate(recorderAllLessonsProvider),
+            onRefresh: () async => ref
+              ..invalidate(recorderAllLessonsProvider)
+              ..invalidate(weeklyRecordingProvider),
             child: ListView(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).padding.bottom + 32,
@@ -109,10 +132,7 @@ class TutorRecordingsScreen extends ConsumerWidget {
                               style: TutorType.display(size: 24),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              '7 ngày qua · ${_d(weekAgo)} đến ${_d(now)}',
-                              style: TutorType.rowSub(),
-                            ),
+                            Text(subtitle, style: TutorType.rowSub()),
                           ],
                         ),
                       ),
@@ -146,7 +166,8 @@ class TutorRecordingsScreen extends ConsumerWidget {
                     onPressed: () => _record(context, ref),
                   ),
                 ),
-                // Thẻ số buổi đã ghi.
+                // Thẻ "Buổi ghi âm tốt" (API tuần); API lỗi → số buổi đã ghi
+                // 7 ngày qua như trước.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     TutorSurface.gutter,
@@ -154,46 +175,43 @@ class TutorRecordingsScreen extends ConsumerWidget {
                     TutorSurface.gutter,
                     0,
                   ),
-                  child: CanvasOutlineCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Buổi đã ghi âm', style: TutorType.caption()),
-                        const SizedBox(height: 6),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(text: '$recorded'),
-                              TextSpan(
-                                text: ' / ${lastWeek.length}',
-                                style: TutorType.display(
-                                  size: 20,
-                                  weight: FontWeight.w500,
-                                  color: const Color(0xFF8A8F89),
-                                ),
-                              ),
-                            ],
-                          ),
-                          style: TutorType.display(
-                            size: 40,
-                            weight: FontWeight.w600,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _SegmentBar(done: recorded, total: lastWeek.length),
-                        const SizedBox(height: 10),
-                        Text(
-                          lastWeek.isEmpty
+                  child: week != null
+                      ? _CountCard(
+                          label: 'Buổi ghi âm tốt',
+                          done: week.usable,
+                          total: week.lessonsDue,
+                          note: week.lessonsDue == 0
+                              ? 'Chưa có buổi nào trong tuần này.'
+                              : 'Ghi âm tốt là nền tảng, không cộng điểm.',
+                        )
+                      : weeklyLoading
+                      // Đang tải: chỉ nhãn + thanh trống, không đoán số.
+                      ? const _CountCard(label: 'Buổi ghi âm tốt')
+                      : _CountCard(
+                          label: 'Buổi đã ghi âm',
+                          done: recorded,
+                          total: lastWeek.length,
+                          note: lastWeek.isEmpty
                               ? 'Chưa có buổi nào trong 7 ngày qua.'
                               : 'Ghi âm đều là nền tảng, không cộng điểm. Thế nào là "ghi tốt" vẫn đang được thống nhất.',
-                          style: TutorType.rowSub(),
                         ),
-                      ],
-                    ),
-                  ),
                 ),
-                if (missed.isNotEmpty)
+                // Buổi không có bản ghi (API tuần): mỗi buổi một thẻ sage có
+                // chip lý do.
+                if (weekly != null)
+                  for (final m in missing)
+                    Padding(
+                      key: ValueKey('missing-${m.lessonId}'),
+                      padding: const EdgeInsets.fromLTRB(
+                        TutorSurface.gutter,
+                        12,
+                        TutorSurface.gutter,
+                        0,
+                      ),
+                      child: _MissingCard(missing: m),
+                    ),
+                // API tuần lỗi → thẻ cũ (chạm mở hồ sơ học sinh).
+                if (weeklyAsync.hasError && weekly == null && missed.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       TutorSurface.gutter,
@@ -304,6 +322,209 @@ class TutorRecordingsScreen extends ConsumerWidget {
   }
 }
 
+/// Thẻ đếm "đạt / tổng", thanh chia ô, một dòng ghi chú. Không có [total]
+/// (đang tải) thì chỉ hiện nhãn và thanh trống — không đoán số.
+class _CountCard extends StatelessWidget {
+  const _CountCard({required this.label, this.done, this.total, this.note});
+
+  final String label;
+  final int? done;
+  final int? total;
+  final String? note;
+
+  @override
+  Widget build(BuildContext context) => CanvasOutlineCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TutorType.caption()),
+        const SizedBox(height: 6),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: done == null ? '–' : '$done'),
+              if (total != null)
+                TextSpan(
+                  text: ' / $total',
+                  style: TutorType.display(
+                    size: 20,
+                    weight: FontWeight.w500,
+                    color: const Color(0xFF8A8F89),
+                  ),
+                ),
+            ],
+          ),
+          style: TutorType.display(
+            size: 40,
+            weight: FontWeight.w600,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _SegmentBar(done: done ?? 0, total: total ?? 0),
+        if (note != null) ...[
+          const SizedBox(height: 10),
+          Text(note!, style: TutorType.rowSub()),
+        ],
+      ],
+    ),
+  );
+}
+
+/// Chữ của các lý do (`RecorderAbsenceReason`).
+const Map<String, String> _reasonLabels = {
+  RecorderAbsenceReason.cancelled: 'Buổi bị huỷ',
+  RecorderAbsenceReason.pupilAbsent: 'Học sinh vắng',
+  RecorderAbsenceReason.forgot: 'Tôi quên',
+  RecorderAbsenceReason.battery: 'Hết pin',
+  RecorderAbsenceReason.appProblem: 'Lỗi ứng dụng',
+  RecorderAbsenceReason.other: 'Lý do khác',
+};
+
+/// Chip hiện trên thẻ (board V56-Score; không có "Lý do khác").
+const List<String> _reasonChips = [
+  RecorderAbsenceReason.cancelled,
+  RecorderAbsenceReason.pupilAbsent,
+  RecorderAbsenceReason.forgot,
+  RecorderAbsenceReason.battery,
+  RecorderAbsenceReason.appProblem,
+];
+
+/// Thẻ sage "Không có bản ghi · T7 7/11 · Bảo, 17:30 / Chuyện gì đã xảy ra?"
+/// kèm chip lý do. Chạm chip → điểm danh vắng với lý do đó rồi hiện "Đã ghi:
+/// …". Buổi đã có lý do thì chỉ hiện lý do.
+class _MissingCard extends ConsumerStatefulWidget {
+  const _MissingCard({required this.missing});
+
+  final MissingRecording missing;
+
+  @override
+  ConsumerState<_MissingCard> createState() => _MissingCardState();
+}
+
+class _MissingCardState extends ConsumerState<_MissingCard> {
+  String? _chosen;
+  String? _saving;
+
+  Future<void> _pick(String reason) async {
+    if (_saving != null) return;
+    setState(() => _saving = reason);
+    try {
+      await ref
+          .read(recorderLessonActionsProvider)
+          .setAttendance(
+            widget.missing.lessonId,
+            RecorderAttendance.absent,
+            reason: reason,
+          );
+      if (mounted) setState(() => _chosen = reason);
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chưa lưu được lý do. Thử lại nhé.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = null);
+    }
+  }
+
+  String get _title {
+    final m = widget.missing;
+    final w = m.scheduledStart;
+    if (w == null) return 'Không có bản ghi · ${m.studentName}';
+    const wd = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    final hh = w.hour.toString().padLeft(2, '0');
+    final mm = w.minute.toString().padLeft(2, '0');
+    return 'Không có bản ghi · ${wd[w.weekday - 1]} ${w.day}/${w.month} · '
+        '${m.studentName}, $hh:$mm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reason = _chosen ?? widget.missing.absenceReason;
+    return DecoratedBox(
+      decoration: TutorSurface.sage(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_title, style: TutorType.caption(color: TutorColors.ink)),
+            const SizedBox(height: 6),
+            if (reason != null)
+              Text(
+                'Đã ghi: ${_reasonLabels[reason] ?? reason}',
+                style: TutorType.body(),
+              )
+            else ...[
+              Text('Chuyện gì đã xảy ra?', style: TutorType.body()),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final r in _reasonChips)
+                    _ReasonChip(
+                      label: _reasonLabels[r]!,
+                      busy: _saving == r,
+                      onTap: _saving == null ? () => unawaited(_pick(r)) : null,
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Chip lý do: nền sáng trên thẻ sage, cao tối thiểu 36.
+class _ReasonChip extends StatelessWidget {
+  const _ReasonChip({required this.label, required this.busy, this.onTap});
+
+  final String label;
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    excludeSemantics: true,
+    child: Material(
+      color: const Color(0xFFF8F7F4),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (busy) ...[
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.6,
+                    color: TutorColors.ink,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(label, style: TutorType.caption(color: TutorColors.ink)),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// Thanh chia ô: mỗi buổi một ô, ô đã ghi tô mực. Nhiều buổi quá thì dùng một
 /// thanh liền.
 class _SegmentBar extends StatelessWidget {
@@ -346,7 +567,8 @@ class _SegmentBar extends StatelessWidget {
   }
 }
 
-/// Thẻ sage "Không có bản ghi": mỗi buổi thiếu một hàng, chạm mở hồ sơ học sinh.
+/// Thẻ sage "Không có bản ghi" khi API tuần lỗi: mỗi buổi thiếu một hàng, chạm
+/// mở hồ sơ học sinh.
 class _MissedCard extends StatelessWidget {
   const _MissedCard({required this.missed, required this.label});
 
