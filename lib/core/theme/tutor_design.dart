@@ -47,14 +47,19 @@ abstract final class TutorType {
       display(size: 34, color: color, height: 1.05);
 
   /// Số liệu lớn — Bricolage mảnh như hàng số liệu trên canvas.
-  static TextStyle numeralLarge({Color color = TutorColors.ink}) =>
-      display(size: 36, weight: FontWeight.w300, color: color)
-          .copyWith(letterSpacing: -1.4);
+  static TextStyle numeralLarge({Color color = TutorColors.ink}) => display(
+    size: 36,
+    weight: FontWeight.w300,
+    color: color,
+  ).copyWith(letterSpacing: -1.4);
 
   /// Số liệu trong thẻ nhỏ.
-  static TextStyle numeral({Color color = TutorColors.ink}) =>
-      display(size: 22, weight: FontWeight.w700, color: color, height: 1.15)
-          .copyWith(letterSpacing: -0.5);
+  static TextStyle numeral({Color color = TutorColors.ink}) => display(
+    size: 22,
+    weight: FontWeight.w700,
+    color: color,
+    height: 1.15,
+  ).copyWith(letterSpacing: -0.5);
 
   /// Tiêu đề nhóm nội dung ("Hôm nay", "Cần xử lý").
   static TextStyle sectionTitle({Color color = TutorColors.ink}) =>

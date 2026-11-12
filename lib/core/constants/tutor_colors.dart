@@ -26,7 +26,9 @@ abstract final class TutorColors {
   static const Color surfaceSunken = Color(0xFFEDEAE0);
 
   static const Color ink = Color(0xFF1B352D); // mực xanh rêu — chữ chính
-  static const Color ink2 = Color(0xFF24443A); // xanh rêu đậm — tiêu đề, khối nhấn tối
+  static const Color ink2 = Color(
+    0xFF24443A,
+  ); // xanh rêu đậm — tiêu đề, khối nhấn tối
   static const Color ink3 = Color(0xFF566860);
   static const Color ink4 = Color(0xFF66766D);
 
