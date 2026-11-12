@@ -37,7 +37,7 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
   static const int _bars = 20;
 
   /// Lịch sử biên độ để vẽ sóng chạy từ phải sang trái.
-  final List<double> _levels = List.filled(_bars, 0);
+  final List<double> _levels = List.filled(_bars, 0, growable: true);
 
   /// Cập nhật dòng "còn khoảng X phút theo lịch" mỗi 30 giây.
   Timer? _clockTick;
