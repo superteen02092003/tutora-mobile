@@ -281,7 +281,6 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                           ),
                           border: Border.all(
                             color: white.withValues(alpha: 0.35),
-                            width: TutorSurface.ruleWidth,
                           ),
                         ),
                         child: const Icon(
@@ -333,7 +332,6 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                     border: Border(
                       top: BorderSide(
                         color: white.withValues(alpha: 0.35),
-                        width: TutorSurface.ruleWidth,
                       ),
                     ),
                   ),
@@ -403,7 +401,6 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                     foregroundColor: white,
                     side: BorderSide(
                       color: white.withValues(alpha: 0.5),
-                      width: TutorSurface.ruleWidth,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(TutorSurface.radius),
@@ -494,7 +491,6 @@ class _VoiceRow extends StatelessWidget {
       border: Border(
         top: BorderSide(
           color: TutorColors.surface.withValues(alpha: 0.35),
-          width: TutorSurface.ruleWidth,
         ),
       ),
     ),
@@ -640,7 +636,6 @@ class _SlideToEndState extends State<_SlideToEnd> {
               borderRadius: BorderRadius.circular(TutorSurface.radius),
               border: Border.all(
                 color: TutorColors.surface.withValues(alpha: 0.35),
-                width: TutorSurface.ruleWidth,
               ),
             ),
             child: Stack(

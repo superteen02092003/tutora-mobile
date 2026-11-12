@@ -189,7 +189,6 @@ class _Stage extends StatelessWidget {
               style: TutorType.display(
                 size: 44,
                 weight: FontWeight.w300,
-                color: TutorColors.ink,
               ),
             ),
           ),
@@ -207,8 +206,6 @@ class _Stage extends StatelessWidget {
                         title,
                         style: TutorType.display(
                           size: 22,
-                          weight: FontWeight.w700,
-                          color: TutorColors.ink,
                           height: 1.2,
                         ).copyWith(letterSpacing: -0.5),
                       ),

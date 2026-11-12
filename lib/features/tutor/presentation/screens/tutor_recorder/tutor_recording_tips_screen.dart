@@ -108,7 +108,6 @@ class TutorRecordingTipsScreen extends StatelessWidget {
                               style: TutorType.display(
                                 size: 30,
                                 weight: FontWeight.w300,
-                                color: TutorColors.ink,
                               ),
                             ),
                           ),

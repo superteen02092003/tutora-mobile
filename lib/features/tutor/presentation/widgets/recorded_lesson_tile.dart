@@ -53,7 +53,6 @@ class RecordedLessonTile extends StatelessWidget {
               style: TutorType.display(
                 size: 22,
                 weight: FontWeight.w600,
-                color: TutorColors.ink,
               ).copyWith(letterSpacing: -0.5),
             ),
           ),

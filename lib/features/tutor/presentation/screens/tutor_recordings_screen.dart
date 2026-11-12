@@ -126,7 +126,6 @@ class TutorRecordingsScreen extends ConsumerWidget {
                         style: TutorType.display(
                           size: 110,
                           weight: FontWeight.w300,
-                          color: TutorColors.ink,
                           height: 0.9,
                         ).copyWith(letterSpacing: -6),
                       ),
@@ -243,7 +242,6 @@ class TutorRecordingsScreen extends ConsumerWidget {
                                   style: TutorType.display(
                                     size: 22,
                                     weight: FontWeight.w600,
-                                    color: TutorColors.ink,
                                   ).copyWith(letterSpacing: -0.5),
                                 ),
                               ),

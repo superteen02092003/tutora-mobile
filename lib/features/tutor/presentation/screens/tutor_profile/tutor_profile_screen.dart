@@ -363,7 +363,7 @@ class _ProfileRow extends ConsumerWidget {
               children: [
                 Text(
                   user?.fullName ?? '',
-                  style: TutorType.display(size: 22, weight: FontWeight.w700),
+                  style: TutorType.display(size: 22),
                 ),
                 if (subjects.isNotEmpty) ...[
                   const SizedBox(height: 4),

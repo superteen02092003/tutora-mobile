@@ -80,7 +80,6 @@ class TutorWelcomeScreen extends ConsumerWidget {
                                     style: TutorType.display(
                                       size: 30,
                                       weight: FontWeight.w300,
-                                      color: TutorColors.ink,
                                     ),
                                   ),
                                 ),

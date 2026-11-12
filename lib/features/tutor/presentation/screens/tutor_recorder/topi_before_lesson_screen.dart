@@ -311,7 +311,6 @@ class _GapCard extends StatelessWidget {
               title,
               style: TutorType.display(
                 size: 22,
-                weight: FontWeight.w700,
                 color: Colors.white,
                 height: 1.2,
               ).copyWith(letterSpacing: -0.5),
@@ -433,7 +432,6 @@ class _StepCard extends StatelessWidget {
             style: TutorType.display(
               size: 30,
               weight: FontWeight.w300,
-              color: TutorColors.ink,
             ).copyWith(letterSpacing: -1),
           ),
         ),
@@ -640,7 +638,6 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
                     focus?.title ?? focus?.node ?? 'Kế hoạch 15 phút đầu buổi',
                     style: TutorType.display(
                       size: 22,
-                      weight: FontWeight.w700,
                       color: Colors.white,
                       height: 1.2,
                     ).copyWith(letterSpacing: -0.5),

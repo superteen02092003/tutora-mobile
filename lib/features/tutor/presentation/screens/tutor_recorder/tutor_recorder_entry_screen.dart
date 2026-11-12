@@ -282,7 +282,7 @@ class _ConfirmOne extends StatelessWidget {
                 onPressed: onPickOther,
                 child: Text(
                   'Chọn buổi khác',
-                  style: TutorType.action(color: TutorColors.primary),
+                  style: TutorType.action(),
                 ),
               ),
             ),
@@ -802,7 +802,7 @@ class _AddStudentRow extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 'Thêm học sinh ngoài TopTutor',
-                style: TutorType.action(color: TutorColors.primary),
+                style: TutorType.action(),
               ),
             ],
           ),
