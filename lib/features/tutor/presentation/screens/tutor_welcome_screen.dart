@@ -24,11 +24,8 @@ class TutorWelcomeScreen extends ConsumerWidget {
   Future<void> _start(BuildContext context, WidgetRef ref) async {
     await ref.read(secureStorageProvider).setWelcomeSeen();
     if (!context.mounted) return;
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(AppRoutes.tutorHome);
-    }
+    // Luôn về Trang chủ, kể cả khi mở lại từ Cài đặt (pop sẽ quay về hồ sơ).
+    context.go(AppRoutes.tutorHome);
   }
 
   @override
