@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/tutor/data/datasources/recorder_datasource.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 
 /// Thêm / sửa học sinh ngoài nền tảng. Trả về học sinh đã lưu (hoặc null khi
@@ -110,6 +112,9 @@ class _TutorStudentFormScreenState
 
   bool _saving = false;
 
+  /// Sau lần bấm lưu đầu tiên, ô báo đỏ tự hết lỗi ngay khi gõ lại.
+  bool _triedSave = false;
+
   bool get _editing => widget.student != null;
 
   @override
@@ -121,6 +126,7 @@ class _TutorStudentFormScreenState
   }
 
   Future<void> _save() async {
+    if (!_triedSave) setState(() => _triedSave = true);
     if (!(_form.currentState?.validate() ?? false)) {
       _snack('Điền đủ các thông tin còn thiếu (ô báo đỏ).');
       return;
@@ -182,6 +188,11 @@ class _TutorStudentFormScreenState
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: TutorColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(TutorSurface.radius),
+        ),
         title: const Text('Xoá vĩnh viễn học sinh này?'),
         content: const Text(
           'Toàn bộ bản ghi âm, bản chép lời, báo cáo, lịch học và xác nhận đồng '
@@ -194,7 +205,7 @@ class _TutorStudentFormScreenState
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: TutorColors.primary),
+            style: TextButton.styleFrom(foregroundColor: TutorColors.danger),
             child: const Text('Xoá vĩnh viễn'),
           ),
         ],
@@ -233,213 +244,234 @@ class _TutorStudentFormScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      appBar: AppBar(
-        backgroundColor: TutorColors.bg,
-        surfaceTintColor: Colors.transparent,
-        title: Text(_editing ? 'Sửa học sinh' : 'Thêm học sinh'),
-        actions: [
-          if (_editing)
-            IconButton(
-              tooltip: 'Xoá học sinh',
-              icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: _saving ? null : _deletePermanently,
-            ),
-        ],
-      ),
-      body: Form(
-        key: _form,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          children: [
-            const _Label('HỌC SINH'),
-            _Input(
-              controller: _name,
-              label: 'Họ tên học sinh',
-              textCapitalization: TextCapitalization.words,
-              validator: (v) => validatePersonName(v, field: 'họ tên học sinh'),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _grade,
-                    isExpanded: true,
-                    decoration: _decoration('Lớp'),
-                    items: [
-                      for (var g = 1; g <= 12; g++)
-                        DropdownMenuItem(value: g, child: Text('Lớp $g')),
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Form(
+                  key: _form,
+                  autovalidateMode: _triedSave
+                      ? AutovalidateMode.onUserInteraction
+                      : AutovalidateMode.disabled,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      TutorSurface.gutter,
+                      16,
+                      TutorSurface.gutter,
+                      24,
+                    ),
+                    children: [
+                      Row(
+                        children: [
+                          CanvasBackButton(
+                            onTap: () => Navigator.of(context).maybePop(),
+                          ),
+                          const Spacer(),
+                          if (_editing)
+                            CanvasCircleButton(
+                              tooltip: 'Xoá học sinh',
+                              onTap: _saving ? null : _deletePermanently,
+                              child: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                                color: TutorColors.ink,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _editing ? 'Sửa học sinh' : 'Thêm học sinh',
+                        style: TutorType.display(
+                          size: 26,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const _Label('Học sinh'),
+                      _Input(
+                        controller: _name,
+                        label: 'Họ tên học sinh',
+                        textCapitalization: TextCapitalization.words,
+                        validator: (v) =>
+                            validatePersonName(v, field: 'họ tên học sinh'),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              initialValue: _grade,
+                              isExpanded: true,
+                              decoration: _decoration('Lớp'),
+                              borderRadius: BorderRadius.circular(16),
+                              dropdownColor: TutorColors.surface,
+                              style: TutorType.body(),
+                              icon: const Icon(
+                                Icons.expand_more_rounded,
+                                color: TutorColors.ink3,
+                              ),
+                              items: [
+                                for (var g = 1; g <= 12; g++)
+                                  DropdownMenuItem(
+                                    value: g,
+                                    child: Text('Lớp $g'),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() => _grade = v),
+                              validator: (v) => v == null ? 'Chọn lớp' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: _Input(
+                              controller: _subject,
+                              label: 'Môn (vd. Toán)',
+                              validator: validateSubject,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      const _Label('Lịch học hằng tuần'),
+                      _ScheduleEditor(
+                        slots: _slots,
+                        onChanged: () => setState(() {}),
+                      ),
+                      if (_slots.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _TimeBox(
+                                label: 'Từ ngày',
+                                value: _d(_from),
+                                onTap: () => _pickDate(start: true),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _TimeBox(
+                                label: 'Đến ngày',
+                                value: _until == null
+                                    ? 'Chọn ngày'
+                                    : _d(_until!),
+                                onTap: () => _pickDate(start: false),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final m in const [1, 2, 3, 6])
+                              ActionChip(
+                                label: Text('$m tháng'),
+                                labelStyle: TutorType.action().copyWith(
+                                  fontSize: 13,
+                                ),
+                                backgroundColor: const Color(0xFFEAEAE4),
+                                side: BorderSide.none,
+                                shape: const StadiumBorder(),
+                                onPressed: () => setState(
+                                  () => _until = _addMonths(_from, m),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(_rangeHint, style: TutorType.caption()),
+                      ],
+                      const SizedBox(height: 22),
+                      const _Label('Phụ huynh · nhận báo cáo qua Zalo'),
+                      _Input(
+                        controller: _parentName,
+                        label: 'Tên phụ huynh (vd. Chị Hương)',
+                        textCapitalization: TextCapitalization.words,
+                        validator: (v) =>
+                            validatePersonName(v, field: 'tên phụ huynh'),
+                      ),
+                      const SizedBox(height: 10),
+                      _Input(
+                        controller: _parentPhone,
+                        label: 'SĐT phụ huynh (có dùng Zalo)',
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp('[0-9+ .]')),
+                        ],
+                        // Bắt buộc: báo cáo được gửi tới số này qua Zalo.
+                        validator: (v) =>
+                            validatePhone(v, field: 'số điện thoại phụ huynh'),
+                      ),
+                      const SizedBox(height: 14),
+                      _ConsentCard(
+                        value: _consent,
+                        onChanged: (v) => setState(() => _consent = v ?? false),
+                        onShowText: () =>
+                            unawaited(showConsentTextDialog(context)),
+                      ),
+                      const SizedBox(height: 22),
+                      const _Label('Ghi chú'),
+                      _Input(
+                        controller: _note,
+                        label: 'Mục tiêu, lịch học… (không bắt buộc)',
+                        maxLines: 3,
+                        validator: (v) =>
+                            validateOptionalMaxLength(v, noteMaxLength),
+                      ),
                     ],
-                    onChanged: (v) => setState(() => _grade = v),
-                    validator: (v) => v == null ? 'Chọn lớp' : null,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: _Input(
-                    controller: _subject,
-                    label: 'Môn (vd. Toán)',
-                    validator: validateSubject,
-                  ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  8,
+                  TutorSurface.gutter,
+                  14,
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const _Label('LỊCH HỌC HẰNG TUẦN'),
-            _ScheduleEditor(
-              slots: _slots,
-              onChanged: () => setState(() {}),
-            ),
-            if (_slots.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _TimeBox(
-                      label: 'Từ ngày',
-                      value: _d(_from),
-                      onTap: () => _pickDate(start: true),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!_editing) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.lock_outline_rounded,
+                            size: 16,
+                            color: TutorColors.ink3,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Phụ huynh cần đồng ý ghi âm trước buổi đầu.',
+                              style: TutorType.caption(
+                                color: TutorColors.ink3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    CanvasCta(
+                      label: _saving
+                          ? 'Đang lưu…'
+                          : (_editing ? 'Lưu thay đổi' : 'Thêm học sinh'),
+                      onPressed: _saving ? null : _save,
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _TimeBox(
-                      label: 'Đến ngày',
-                      value: _until == null ? 'Chọn ngày' : _d(_until!),
-                      onTap: () => _pickDate(start: false),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final m in const [1, 2, 3, 6])
-                    ActionChip(
-                      label: Text('$m tháng'),
-                      onPressed: () =>
-                          setState(() => _until = _addMonths(_from, m)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _rangeHint,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: TutorColors.ink4,
-                  height: 1.35,
+                  ],
                 ),
               ),
             ],
-            const SizedBox(height: 24),
-            const _Label('PHỤ HUYNH · NHẬN BÁO CÁO QUA ZALO'),
-            _Input(
-              controller: _parentName,
-              label: 'Tên phụ huynh (vd. Chị Hương)',
-              textCapitalization: TextCapitalization.words,
-              validator: (v) => validatePersonName(v, field: 'tên phụ huynh'),
-            ),
-            const SizedBox(height: 12),
-            _Input(
-              controller: _parentPhone,
-              label: 'SĐT phụ huynh (có dùng Zalo)',
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp('[0-9+ .]')),
-              ],
-              // Bắt buộc: báo cáo được gửi tới số này qua Zalo.
-              validator: (v) =>
-                  validatePhone(v, field: 'số điện thoại phụ huynh'),
-            ),
-            const SizedBox(height: 14),
-            Material(
-              color: _consent ? TutorColors.successBg : TutorColors.surface,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  color: _consent
-                      ? TutorColors.successBorder
-                      : TutorColors.line,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: CheckboxListTile(
-                value: _consent,
-                onChanged: (v) => setState(() => _consent = v ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                activeColor: TutorColors.success,
-                title: const Text(
-                  'Phụ huynh đã đọc và đồng ý nội dung ghi âm: ghi âm buổi '
-                  'học, AI tóm tắt, nhận báo cáo qua Zalo',
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: TutorColors.ink,
-                  ),
-                ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bản ghi có giọng của học sinh, nên phải cho phụ huynh '
-                        'đọc nội dung đồng ý trước khi ghi. Chưa xác nhận thì '
-                        'không ghi âm được.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: TutorColors.ink4,
-                          height: 1.35,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            unawaited(showConsentTextDialog(context)),
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                        child: const Text('Xem nội dung đồng ý'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const _Label('GHI CHÚ'),
-            _Input(
-              controller: _note,
-              label: 'Mục tiêu, lịch học… (không bắt buộc)',
-              maxLines: 3,
-              validator: (v) => validateOptionalMaxLength(v, noteMaxLength),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          child: SizedBox(
-            height: 52,
-            child: FilledButton(
-              onPressed: _saving ? null : _save,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 52),
-                backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Text(
-                _saving
-                    ? 'Đang lưu…'
-                    : (_editing ? 'Lưu thay đổi' : 'Thêm học sinh'),
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
           ),
         ),
       ),
@@ -447,20 +479,27 @@ class _TutorStudentFormScreenState
   }
 }
 
+/// Nền ô nhập sáng (canvas `#FBFAF7`) có viền mực 8%.
+const Color _wellFill = Color(0xFFFBFAF7);
+const Color _wellLine = Color(0x141F2A24);
+
 InputDecoration _decoration(String label) {
-  final border = OutlineInputBorder(
-    borderRadius: BorderRadius.circular(12),
-    borderSide: const BorderSide(color: TutorColors.line),
+  OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+    borderRadius: BorderRadius.circular(14),
+    borderSide: BorderSide(color: c, width: w),
   );
   return InputDecoration(
     labelText: label,
+    labelStyle: TutorType.body(color: TutorColors.ink3).copyWith(fontSize: 14),
+    floatingLabelStyle: TutorType.caption(color: TutorColors.ink3),
     filled: true,
-    fillColor: TutorColors.surface,
-    border: border,
-    enabledBorder: border,
-    focusedBorder: border.copyWith(
-      borderSide: const BorderSide(color: TutorColors.ink, width: 1.2),
-    ),
+    fillColor: _wellFill,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    border: border(_wellLine),
+    enabledBorder: border(_wellLine),
+    focusedBorder: border(TutorColors.ink, 1.3),
+    errorBorder: border(TutorColors.danger),
+    focusedErrorBorder: border(TutorColors.danger, 1.3),
   );
 }
 
@@ -491,10 +530,13 @@ class _Input extends StatelessWidget {
     inputFormatters: inputFormatters,
     textCapitalization: textCapitalization,
     maxLines: maxLines,
+    style: TutorType.body(),
+    cursorColor: TutorColors.ink,
     decoration: _decoration(label),
   );
 }
 
+/// Nhãn nhỏ đầu nhóm — chữ thường, không giãn (V5.6).
 class _Label extends StatelessWidget {
   const _Label(this.text);
 
@@ -502,14 +544,70 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
-        color: TutorColors.ink4,
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(text, style: TutorType.caption(color: TutorColors.ink3)),
+  );
+}
+
+/// Ô xác nhận đồng ý ghi âm: thẻ sáng, sang sage khi đã tick.
+class _ConsentCard extends StatelessWidget {
+  const _ConsentCard({
+    required this.value,
+    required this.onChanged,
+    required this.onShowText,
+  });
+
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+  final VoidCallback onShowText;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: value ? TutorColors.sage : TutorColors.surface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(TutorSurface.radius),
+      side: value ? BorderSide.none : const BorderSide(color: TutorColors.line),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: CheckboxListTile(
+      value: value,
+      onChanged: onChanged,
+      controlAffinity: ListTileControlAffinity.leading,
+      activeColor: TutorColors.ink,
+      checkColor: Colors.white,
+      side: const BorderSide(color: Color(0xFFA3A8A2), width: 1.6),
+      checkboxShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(8, 6, 14, 2),
+      title: Text(
+        'Phụ huynh đã đọc và đồng ý nội dung ghi âm: ghi âm buổi '
+        'học, AI tóm tắt, nhận báo cáo qua Zalo',
+        style: TutorType.rowTitle().copyWith(fontSize: 14),
+      ),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bản ghi có giọng của học sinh, nên phải cho phụ huynh '
+              'đọc nội dung đồng ý trước khi ghi. Chưa xác nhận thì '
+              'không ghi âm được.',
+              style: TutorType.caption(color: TutorColors.ink3),
+            ),
+            TextButton.icon(
+              onPressed: onShowText,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                foregroundColor: TutorColors.ink,
+                textStyle: TutorType.action().copyWith(fontSize: 13),
+              ),
+              icon: const Icon(Icons.lock_outline_rounded, size: 15),
+              label: const Text('Xem nội dung đồng ý'),
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -526,9 +624,9 @@ class _ScheduleEditor extends StatelessWidget {
     final added = await showModalBottomSheet<List<RecorderScheduleSlot>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: TutorColors.bg,
+      backgroundColor: TutorColors.paperTop,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => const _SlotSheet(),
     );
@@ -549,78 +647,96 @@ class _ScheduleEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: TutorColors.surface,
-        border: Border.all(color: TutorColors.line),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: TutorSurface.card(),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (slots.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 14, 16, 4),
+            Padding(
+              padding: const EdgeInsets.only(top: 14, bottom: 4),
               child: Text(
                 'Chưa có lịch. Thêm các buổi cố định trong tuần để lịch dạy tự hiện trong tab Lịch.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: TutorColors.ink3,
-                  height: 1.35,
-                ),
+                style: TutorType.rowSub(),
               ),
             ),
-          for (final slot in [...slots])
-            ListTile(
-              dense: true,
-              leading: Container(
-                width: 36,
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: TutorColors.surfaceSunken,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  slot.dayLabel,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: TutorColors.ink,
-                  ),
-                ),
-              ),
-              title: Text(
-                '${slot.start} – ${slot.end}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: TutorColors.ink,
-                ),
-              ),
-              trailing: IconButton(
-                tooltip: 'Xoá',
-                icon: const Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: TutorColors.ink4,
-                ),
-                onPressed: () {
-                  slots.remove(slot);
-                  onChanged();
-                },
+          for (final (i, slot) in [...slots].indexed)
+            _SlotRow(
+              slot: slot,
+              first: i == 0,
+              onRemove: () {
+                slots.remove(slot);
+                onChanged();
+              },
+            ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: slots.isEmpty ? BorderSide.none : TutorSurface.rule,
               ),
             ),
-          TextButton.icon(
-            onPressed: () => _add(context),
-            style: TextButton.styleFrom(
-              minimumSize: const Size(0, 44),
-              foregroundColor: TutorColors.primary,
+            child: TextButton.icon(
+              onPressed: () => _add(context),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 46),
+                foregroundColor: TutorColors.ink,
+                textStyle: TutorType.action(),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Thêm buổi trong tuần'),
             ),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Thêm buổi trong tuần'),
           ),
         ],
       ),
     );
   }
+}
+
+class _SlotRow extends StatelessWidget {
+  const _SlotRow({
+    required this.slot,
+    required this.first,
+    required this.onRemove,
+  });
+
+  final RecorderScheduleSlot slot;
+  final bool first;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    decoration: BoxDecoration(
+      border: Border(top: first ? BorderSide.none : TutorSurface.rule),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 38,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: TutorSurface.well(),
+          child: Text(
+            slot.dayLabel,
+            style: TutorType.action().copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text('${slot.start} – ${slot.end}', style: TutorType.body()),
+        ),
+        IconButton(
+          tooltip: 'Xoá',
+          icon: const Icon(
+            Icons.close_rounded,
+            size: 18,
+            color: TutorColors.ink4,
+          ),
+          onPressed: onRemove,
+        ),
+      ],
+    ),
+  );
 }
 
 /// Chọn các thứ trong tuần + giờ bắt đầu/kết thúc → nhiều khung giờ cùng lúc.
@@ -673,23 +789,16 @@ class _SlotSheetState extends State<_SlotSheet> {
         (_end.hour * 60 + _end.minute) > (_start.hour * 60 + _start.minute);
     return Padding(
       padding: EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
         20,
-        16,
-        20,
+        TutorSurface.gutter,
         16 + MediaQuery.of(context).padding.bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Thêm buổi trong tuần',
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              color: TutorColors.ink,
-            ),
-          ),
+          Text('Thêm buổi trong tuần', style: TutorType.sectionTitle()),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -701,11 +810,11 @@ class _SlotSheetState extends State<_SlotSheet> {
                   selected: _days.contains(d),
                   showCheckmark: false,
                   selectedColor: TutorColors.ink,
-                  labelStyle: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: _days.contains(d)
-                        ? TutorColors.surface
-                        : TutorColors.ink,
+                  backgroundColor: const Color(0xFFEAEAE4),
+                  side: BorderSide.none,
+                  shape: const StadiumBorder(),
+                  labelStyle: TutorType.action(
+                    color: _days.contains(d) ? Colors.white : TutorColors.ink,
                   ),
                   onSelected: (on) =>
                       setState(() => on ? _days.add(d) : _days.remove(d)),
@@ -722,7 +831,7 @@ class _SlotSheetState extends State<_SlotSheet> {
                   onTap: () => _pick(true),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: _TimeBox(
                   label: 'Kết thúc',
@@ -733,28 +842,18 @@ class _SlotSheetState extends State<_SlotSheet> {
             ],
           ),
           const SizedBox(height: 18),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: valid
-                  ? () => Navigator.pop(context, [
-                      for (final d in (_days.toList()..sort()))
-                        RecorderScheduleSlot(
-                          dayOfWeek: d,
-                          start: _fmt(_start),
-                          end: _fmt(_end),
-                        ),
-                    ])
-                  : null,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 48),
-                backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text('Thêm vào lịch'),
-            ),
+          CanvasCta(
+            label: 'Thêm vào lịch',
+            onPressed: valid
+                ? () => Navigator.pop(context, [
+                    for (final d in (_days.toList()..sort()))
+                      RecorderScheduleSlot(
+                        dayOfWeek: d,
+                        start: _fmt(_start),
+                        end: _fmt(_end),
+                      ),
+                  ])
+                : null,
           ),
         ],
       ),
@@ -762,6 +861,7 @@ class _SlotSheetState extends State<_SlotSheet> {
   }
 }
 
+/// Ô chọn ngày / giờ trên nền sáng.
 class _TimeBox extends StatelessWidget {
   const _TimeBox({
     required this.label,
@@ -775,32 +875,22 @@ class _TimeBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: TutorColors.surface,
+    color: _wellFill,
     shape: RoundedRectangleBorder(
-      side: const BorderSide(color: TutorColors.line),
-      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: _wellLine),
+      borderRadius: BorderRadius.circular(14),
     ),
     child: InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: TutorColors.ink4),
-            ),
+            Text(label, style: TutorType.caption(color: TutorColors.ink3)),
             const SizedBox(height: 2),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w700,
-                color: TutorColors.ink,
-              ),
-            ),
+            Text(value, style: TutorType.numeral()),
           ],
         ),
       ),

@@ -1005,22 +1005,31 @@ class _AllClassesPage extends ConsumerWidget {
     final active = _teachable(items);
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      appBar: AppBar(
-        backgroundColor: TutorColors.bg,
-        surfaceTintColor: Colors.transparent,
-        title: const Text('Lớp của bạn'),
-      ),
-      body: RefreshIndicator(
-        color: TutorColors.primary,
-        onRefresh: () => ref.refresh(tutorClassesProvider.future),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            if (active.isNotEmpty)
-              _ClassList(items: active)
-            else
-              const _EmptyCard(text: 'Chưa có lớp nào đang dạy.'),
-          ],
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            color: TutorColors.primary,
+            onRefresh: () => ref.refresh(tutorClassesProvider.future),
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 32),
+              children: [
+                CanvasHeader(
+                  title: 'Lớp trên TopTutor',
+                  lead: '${active.length} lớp đang dạy',
+                  onBack: () => Navigator.of(context).maybePop(),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: TutorSurface.screenPadding,
+                  child: active.isNotEmpty
+                      ? _ClassList(items: active)
+                      : const _EmptyCard(text: 'Chưa có lớp nào đang dạy.'),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

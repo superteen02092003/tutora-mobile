@@ -10,27 +10,17 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
-/// T1 Chào mừng — lần mở đầu tiên sau khi đăng nhập (và "Xem lại" từ Cài đặt).
-/// Bốn bước: thêm học sinh, ghi âm có đồng ý, duyệt báo cáo, sao khi kỹ năng
-/// lên mức. Mỗi bước kèm chỗ bấm trong app (Khánh, 2026-11-12: gia sư mới không
-/// biết tạo lớp và ghi âm ở đâu) — thêm so với canvas.
+/// T1 Chào mừng (design V5.6, board V56-Welcome) — lần mở đầu tiên sau khi
+/// đăng nhập (và "Xem lại" từ Cài đặt). Không logo. Ba bước: thêm học sinh,
+/// ghi âm có đồng ý, duyệt báo cáo; mỗi bước kèm chỗ bấm trong app (Khánh,
+/// 2026-11-12: gia sư mới không biết tạo lớp và ghi âm ở đâu).
 class TutorWelcomeScreen extends ConsumerWidget {
   const TutorWelcomeScreen({super.key});
 
-  static const List<(String, String?)> _steps = [
-    (
-      'Thêm học sinh của bạn. Học sinh đặt qua TopTutor có sẵn.',
-      'Trang chủ › Lớp của bạn › + Thêm học sinh',
-    ),
-    (
-      'Ghi âm mỗi buổi học, khi phụ huynh đã đồng ý.',
-      'Tab Ghi âm › Ghi âm buổi học',
-    ),
-    (
-      'Duyệt báo cáo TopTutor soạn sẵn. Bạn duyệt mọi tin nhắn trước khi gửi.',
-      'Tab Ghi âm › bản ghi có thẻ Duyệt',
-    ),
-    ('Một ngôi sao mỗi khi một kỹ năng toán của học sinh lên một mức.', null),
+  static const List<(String, String)> _steps = [
+    ('Thêm học sinh', 'Trang chủ · Học sinh của bạn · +'),
+    ('Ghi âm từng buổi, khi phụ huynh đồng ý', 'Bài học · Bắt đầu ghi âm'),
+    ('Duyệt báo cáo trước khi gửi', 'Trang chủ · Duyệt ngay'),
   ];
 
   Future<void> _start(BuildContext context, WidgetRef ref) async {
@@ -48,105 +38,165 @@ class TutorWelcomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: ListView(
-                children: [
-                  CanvasHeader(
-                    left: given.isEmpty ? 'Chào mừng' : 'Chào mừng, $given',
-                    right: 'Lần đầu',
-                    title: 'Ghi âm.\nDuyệt.\nTiến bộ.',
-                    titleSize: 52,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    72,
+                    TutorSurface.gutter,
+                    16,
                   ),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: TutorSurface.screenPadding,
-                    child: Column(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(left: 2, bottom: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: CanvasHand('Rất vui được gặp bạn', swash: false),
+                      ),
+                    ),
+                    Text(
+                      given.isEmpty ? 'Chào mừng' : 'Chào mừng,',
+                      style: TutorType.display(
+                        size: 17,
+                        weight: FontWeight.w400,
+                      ),
+                    ),
+                    if (given.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(given, style: TutorType.name()),
+                    ],
+                    const SizedBox(height: 8),
+                    Text('Ghi âm. Duyệt. Tiến bộ.', style: TutorType.rowSub()),
+                    const SizedBox(height: 34),
+                    Stack(
                       children: [
-                        for (var i = 0; i < _steps.length; i++)
-                          CanvasRow(
-                            lastRule: i == _steps.length - 1,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                SizedBox(
-                                  width: 48,
-                                  child: Text(
-                                    '${i + 1}',
-                                    style: TutorType.display(
-                                      size: 30,
-                                      weight: FontWeight.w300,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _steps[i].$1,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          height: 1.35,
-                                          fontWeight: FontWeight.w500,
-                                          color: TutorColors.ink,
-                                        ),
-                                      ),
-                                      if (_steps[i].$2 != null) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          _steps[i].$2!,
-                                          style:
-                                              TutorType.rowSub(
-                                                color: TutorColors.warning,
-                                              ).copyWith(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                        // Đường thời gian dọc nối các bước.
+                        const Positioned(
+                          left: 11.5,
+                          top: 24,
+                          bottom: 24,
+                          child: SizedBox(
+                            width: 1,
+                            child: ColoredBox(color: Color(0x241F2A24)),
                           ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < _steps.length; i++)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _StepDot(number: i + 1, on: i == 0),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _steps[i].$1,
+                                            style: TutorType.body(),
+                                          ),
+                                          Text(
+                                            _steps[i].$2,
+                                            style: TutorType.rowSub(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                TutorSurface.gutter,
-                16,
-                TutorSurface.gutter,
-                20,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  12,
+                  TutorSurface.gutter,
+                  20,
+                ),
+                child: Column(
+                  children: [
+                    CanvasCta(
+                      label: 'Bắt đầu',
+                      onPressed: () => unawaited(_start(context, ref)),
+                    ),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () =>
+                          unawaited(context.push(AppRoutes.tutorRecordingTips)),
+                      borderRadius: BorderRadius.circular(22),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 44),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.lightbulb_outline_rounded,
+                              size: 16,
+                              color: TutorColors.ink,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Ghi âm hoạt động thế nào',
+                              style: TutorType.rowSub(color: TutorColors.ink),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                children: [
-                  CanvasCta(
-                    label: 'Bắt đầu',
-                    onPressed: () => unawaited(_start(context, ref)),
-                  ),
-                  const SizedBox(height: 8),
-                  CanvasGhostLink(
-                    label: 'Ghi âm hoạt động thế nào',
-                    onTap: () =>
-                        unawaited(context.push(AppRoutes.tutorRecordingTips)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Số bước trong vòng tròn 24: đặc (bước đầu) hoặc viền.
+class _StepDot extends StatelessWidget {
+  const _StepDot({required this.number, required this.on});
+
+  final int number;
+  final bool on;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 24,
+    height: 24,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: on ? TutorColors.ink : const Color(0xFFF0EFEA),
+      border: on
+          ? null
+          : Border.all(color: const Color(0xFFA3A8A2), width: 1.4),
+    ),
+    child: Text(
+      '$number',
+      style: TutorType.caption(
+        color: on ? Colors.white : TutorColors.ink,
+      ).copyWith(height: 1),
+    ),
+  );
 }

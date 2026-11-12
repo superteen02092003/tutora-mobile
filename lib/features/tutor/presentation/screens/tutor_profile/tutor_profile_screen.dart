@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tutora/core/constants/legal_links.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
@@ -17,9 +16,13 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_e
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
-/// T8 Cài đặt ("You") theo canvas: nhãn nhỏ, tiêu đề "Bạn", các nhóm hàng kẻ mực.
+/// T8 Cài đặt (design V5.6, board V56-Settings): nút tròn quay lại, ảnh đại
+/// diện tròn + "Cài đặt", các nhóm hàng trong thẻ bo 20, công tắc màu rêu.
 /// Giữ đủ mục Google Play yêu cầu: điều khoản, quyền riêng tư, xoá dữ liệu,
 /// xoá tài khoản.
+///
+/// Board có thêm "Nhắc trước buổi học · 30 phút" và "Kiểm tra âm thanh trước
+/// khi ghi" — chưa có cài đặt tương ứng nên không vẽ. Hàng "Thu nhập" để sau.
 class TutorProfileScreen extends ConsumerStatefulWidget {
   const TutorProfileScreen({super.key});
 
@@ -53,131 +56,208 @@ class _TutorProfileScreenState extends ConsumerState<TutorProfileScreen> {
     if (state.isLoading && state.user == null) {
       return const Scaffold(
         backgroundColor: TutorColors.bg,
-        body: Center(child: CircularProgressIndicator()),
+        body: DecoratedBox(
+          decoration: TutorSurface.paper,
+          child: Center(
+            child: CircularProgressIndicator(color: TutorColors.primary),
+          ),
+        ),
       );
     }
 
     if (state.user == null) {
       return Scaffold(
         backgroundColor: TutorColors.bg,
-        body: Center(
-          child: TextButton.icon(
-            onPressed: () => ref.read(tutorProfileProvider.notifier).load(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Thử lại'),
+        body: DecoratedBox(
+          decoration: TutorSurface.paper,
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    20,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: CanvasBackButton(
+                      onTap: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: TutorSurface.screenPadding,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Không tải được cài đặt',
+                            style: TutorType.body(),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: 160,
+                            child: CanvasCta(
+                              label: 'Thử lại',
+                              secondary: true,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              onPressed: () => ref
+                                  .read(tutorProfileProvider.notifier)
+                                  .load(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     final user = state.user!;
-    final given = _givenName(user.fullName);
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: EdgeInsets.only(bottom: bottomPad + 40),
-          children: [
-            CanvasHeader(
-              title: 'Bạn',
-              onBack: () => Navigator.of(context).maybePop(),
-              right: given.isEmpty ? 'Cài đặt' : 'Gia sư $given',
-            ),
-            const SizedBox(height: 20),
-            const _ProfileRow(),
-            _Group(
-              label: 'Thông báo',
-              children: [
-                _Row(
-                  label: 'Báo cáo sẵn sàng để duyệt, nhắc buổi học',
-                  trailing: Switch(
-                    value: state.notifOn,
-                    onChanged: (v) {
-                      ref
-                          .read(tutorProfileProvider.notifier)
-                          .setNotif(value: v);
-                      AppToast.show(
-                        context,
-                        message: v ? 'Đã bật thông báo' : 'Đã tắt thông báo',
-                        type: AppToastType.success,
-                      );
-                    },
-                    activeThumbColor: TutorColors.bg,
-                    activeTrackColor: TutorColors.ink,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: EdgeInsets.only(bottom: bottomPad + 40),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  20,
+                  TutorSurface.gutter,
+                  0,
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: CanvasBackButton(
+                    onTap: () => Navigator.of(context).maybePop(),
                   ),
                 ),
-              ],
-            ),
-            _Group(
-              label: 'Ghi âm',
-              children: [
-                _Row(
-                  label: 'Mẹo ghi âm',
-                  onTap: () =>
-                      unawaited(context.push(AppRoutes.tutorRecordingTips)),
-                ),
-              ],
-            ),
-            _Group(
-              label: 'Quyền riêng tư',
-              children: [
-                const _Row(
-                  label: 'Đồng ý của phụ huynh',
-                  value: 'Theo từng học sinh',
-                ),
-                _Row(
-                  label: 'Bản ghi âm được dùng thế nào',
-                  value: 'Đọc',
-                  onTap: () => _openLink(LegalLinks.privacy),
-                ),
-                _Row(
-                  label: 'Điều khoản sử dụng',
-                  onTap: () => _openLink(LegalLinks.terms),
-                ),
-                _Row(
-                  label: 'Yêu cầu xoá dữ liệu',
-                  onTap: () => _openLink(LegalLinks.dataDeletion),
-                ),
-              ],
-            ),
-            _Group(
-              label: 'Tài khoản',
-              children: [
-                _Row(
-                  label: 'Thông tin cá nhân',
-                  value: user.email,
-                  onTap: () => _push(const TutorEditPersonalInfoScreen()),
-                ),
-                _Row(
-                  label: 'Đổi mật khẩu',
-                  onTap: () => _push(const TutorChangePasswordScreen()),
-                ),
-                _Row(
-                  label: 'Đăng xuất',
-                  danger: true,
-                  onTap: () =>
-                      ref.read(authControllerProvider.notifier).logout(),
-                ),
-                _Row(
-                  label: 'Xoá tài khoản',
-                  danger: true,
-                  last: true,
-                  onTap: () => unawaited(showDeleteAccountSheet(context)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: TutorSurface.screenPadding,
-              child: CanvasGhostLink(
-                label: 'Xem lại màn chào mừng ›',
-                onTap: () => unawaited(context.push(AppRoutes.tutorWelcome)),
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              const _ProfileRow(),
+              _Group(
+                label: 'Thông báo',
+                children: [
+                  _Row(
+                    label: 'Báo cáo sẵn sàng để duyệt, nhắc buổi học',
+                    trailing: Switch(
+                      value: state.notifOn,
+                      onChanged: (v) {
+                        ref
+                            .read(tutorProfileProvider.notifier)
+                            .setNotif(value: v);
+                        AppToast.show(
+                          context,
+                          message: v ? 'Đã bật thông báo' : 'Đã tắt thông báo',
+                          type: AppToastType.success,
+                        );
+                      },
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: TutorColors.primary,
+                      inactiveThumbColor: Colors.white,
+                      inactiveTrackColor: const Color(0x2E1F2A24),
+                      trackOutlineColor: const WidgetStatePropertyAll(
+                        Colors.transparent,
+                      ),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              _Group(
+                label: 'Ghi âm',
+                children: [
+                  _Row(
+                    label: 'Mẹo ghi âm',
+                    leading: Icons.lightbulb_outline_rounded,
+                    onTap: () =>
+                        unawaited(context.push(AppRoutes.tutorRecordingTips)),
+                  ),
+                ],
+              ),
+              _Group(
+                label: 'Quyền riêng tư',
+                children: [
+                  const _Row(
+                    label: 'Phụ huynh đồng ý',
+                    value: 'Theo từng học sinh',
+                  ),
+                  _Row(
+                    label: 'Bản ghi được dùng thế nào',
+                    onTap: () => _openLink(LegalLinks.privacy),
+                  ),
+                  _Row(
+                    label: 'Điều khoản sử dụng',
+                    onTap: () => _openLink(LegalLinks.terms),
+                  ),
+                  _Row(
+                    label: 'Yêu cầu xoá dữ liệu',
+                    onTap: () => _openLink(LegalLinks.dataDeletion),
+                  ),
+                ],
+              ),
+              _Group(
+                label: 'Tài khoản',
+                children: [
+                  _Row(
+                    label: 'Thông tin cá nhân',
+                    value: user.email,
+                    onTap: () => _push(const TutorEditPersonalInfoScreen()),
+                  ),
+                  _Row(
+                    label: 'Đổi mật khẩu',
+                    onTap: () => _push(const TutorChangePasswordScreen()),
+                  ),
+                  _Row(
+                    label: 'Đăng xuất',
+                    danger: true,
+                    onTap: () =>
+                        ref.read(authControllerProvider.notifier).logout(),
+                  ),
+                  _Row(
+                    label: 'Xoá tài khoản',
+                    danger: true,
+                    onTap: () => unawaited(showDeleteAccountSheet(context)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: TutorSurface.screenPadding,
+                child: CanvasGhostLink(
+                  label: 'Xem lại màn chào mừng ›',
+                  onTap: () => unawaited(context.push(AppRoutes.tutorWelcome)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Padding(
+                padding: EdgeInsets.only(right: 30),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: CanvasHand(
+                    'Mọi thứ trong tầm tay',
+                    size: 17,
+                    swash: false,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -190,6 +270,7 @@ String _givenName(String? full) {
   return parts.isEmpty ? '' : parts.last;
 }
 
+/// Nhóm cài đặt: nhãn nhỏ thường + thẻ bo 20, các hàng cách nhau đường kẻ mảnh.
 class _Group extends StatelessWidget {
   const _Group({required this.label, required this.children});
 
@@ -200,86 +281,114 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(
       TutorSurface.gutter,
-      TutorSurface.sectionGap,
+      18,
       TutorSurface.gutter,
       0,
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CanvasKicker(label),
-        const SizedBox(height: 8),
-        ...children,
+        Text(label, style: TutorType.caption(color: TutorColors.ink3)),
+        const SizedBox(height: 6),
+        DecoratedBox(
+          decoration: TutorSurface.card(),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(TutorSurface.radius),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: TutorColors.line,
+                      ),
+                    ),
+                  children[i],
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     ),
   );
 }
 
-/// Hàng cài đặt: chữ 16 đậm vừa, giá trị xám bên phải hoặc mũi tên.
+/// Hàng cài đặt: chữ 15, giá trị xám bên phải hoặc mũi tên.
 class _Row extends StatelessWidget {
   const _Row({
     required this.label,
     this.value,
     this.trailing,
+    this.leading,
     this.onTap,
     this.danger = false,
-    this.last = false,
   });
 
   final String label;
   final String? value;
   final Widget? trailing;
+  final IconData? leading;
   final VoidCallback? onTap;
   final bool danger;
-  final bool last;
 
   @override
-  Widget build(BuildContext context) => CanvasRow(
-    onTap: onTap,
-    lastRule: last,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 28),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.35,
-                fontWeight: FontWeight.w500,
-                color: danger ? TutorColors.danger : TutorColors.ink,
-              ),
-            ),
-          ),
-          if (value != null && value!.trim().isNotEmpty) ...[
-            const SizedBox(width: 12),
-            // Không dùng Flexible: nó chia đôi hàng với nhãn và đẩy mũi tên
-            // vào giữa. Giá trị có bề rộng tối đa, nhãn lấy phần còn lại.
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 150),
+  Widget build(BuildContext context) {
+    final body = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 50),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            if (leading != null) ...[
+              Icon(leading, size: 18, color: TutorColors.ink),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
               child: Text(
-                value!,
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TutorType.rowSub().copyWith(fontSize: 14),
+                label,
+                style: TutorType.body(
+                  color: danger ? TutorColors.danger : TutorColors.ink,
+                ),
               ),
             ),
+            if (value != null && value!.trim().isNotEmpty) ...[
+              const SizedBox(width: 12),
+              // Không dùng Flexible: nó chia đôi hàng với nhãn và đẩy mũi tên
+              // vào giữa. Giá trị có bề rộng tối đa, nhãn lấy phần còn lại.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 150),
+                child: Text(
+                  value!,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TutorType.rowSub(),
+                ),
+              ),
+            ],
+            if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+            if (trailing == null && onTap != null && !danger) ...[
+              const SizedBox(width: 6),
+              const CanvasChevron(),
+            ],
           ],
-          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-          if (trailing == null && onTap != null && !danger) ...[
-            const SizedBox(width: 8),
-            const CanvasChevron(),
-          ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
+    if (onTap == null) return body;
+    return InkWell(onTap: onTap, child: body);
+  }
 }
 
-/// Ảnh đại diện + tên + môn; chạm ảnh để đổi (chỉ thư viện ảnh, không cần
-/// quyền CAMERA).
+/// Ảnh đại diện tròn + "Cài đặt" + "Gia sư …"; chạm ảnh để đổi (chỉ thư viện
+/// ảnh, không cần quyền CAMERA).
 class _ProfileRow extends ConsumerWidget {
   const _ProfileRow();
 
@@ -308,6 +417,7 @@ class _ProfileRow extends ConsumerWidget {
     final state = ref.watch(tutorProfileProvider);
     final user = state.user;
     final uploading = state.isUploadingAvatar;
+    final given = _givenName(user?.fullName);
     final subjects =
         state.progress?.basicInfo.subjects
             .map((s) => s.subjectName)
@@ -332,12 +442,9 @@ class _ProfileRow extends ConsumerWidget {
                     avatarUrl: user?.avatarUrl,
                   ),
                   if (uploading)
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          TutorSurface.radius,
-                        ),
-                        child: const ColoredBox(
+                    const Positioned.fill(
+                      child: ClipOval(
+                        child: ColoredBox(
                           color: Color(0x73000000),
                           child: Center(
                             child: SizedBox(
@@ -361,20 +468,17 @@ class _ProfileRow extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  user?.fullName ?? '',
-                  style: TutorType.display(size: 22),
-                ),
-                if (subjects.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    subjects,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TutorType.rowSub(),
-                  ),
-                ],
+                Text('Cài đặt', style: TutorType.display(size: 24)),
                 const SizedBox(height: 2),
+                Text(
+                  [
+                    if (given.isNotEmpty) 'Gia sư $given',
+                    if (subjects.isNotEmpty) subjects,
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TutorType.rowSub(),
+                ),
                 Text(
                   uploading ? 'Đang tải ảnh…' : 'Chạm ảnh để đổi',
                   style: TutorType.caption(),
@@ -391,7 +495,7 @@ class _ProfileRow extends ConsumerWidget {
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.name, this.avatarUrl});
 
-  static const double _size = 56;
+  static const double _size = 52;
   final String name;
   final String? avatarUrl;
 
@@ -399,8 +503,7 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final fallback = _Initials(name: name);
     if (avatarUrl == null || avatarUrl!.isEmpty) return fallback;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(TutorSurface.radius),
+    return ClipOval(
       child: Image.network(
         avatarUrl!,
         width: _size,
@@ -427,15 +530,14 @@ class _Initials extends StatelessWidget {
     return Container(
       width: _Avatar._size,
       height: _Avatar._size,
-      decoration: TutorSurface.card(color: TutorColors.accentBg),
+      decoration: const BoxDecoration(
+        color: TutorColors.primary,
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: Text(
         initials,
-        style: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: TutorColors.ink,
-        ),
+        style: TutorType.body(color: Colors.white).copyWith(fontSize: 18),
       ),
     );
   }

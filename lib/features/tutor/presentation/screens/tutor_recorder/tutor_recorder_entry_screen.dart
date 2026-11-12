@@ -14,6 +14,7 @@ import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_pro
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
 /// Sheet chọn buổi trước khi ghi (prototype: "2 · Auto-detect · 1 buổi" và
@@ -147,7 +148,7 @@ class _TutorRecorderEntryScreenState
           Positioned.fill(
             child: GestureDetector(
               onTap: () => context.pop(),
-              child: ColoredBox(color: TutorColors.ink.withValues(alpha: 0.34)),
+              child: ColoredBox(color: TutorColors.ink.withValues(alpha: 0.28)),
             ),
           ),
           Align(
@@ -159,8 +160,15 @@ class _TutorRecorderEntryScreenState
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
-                  color: TutorColors.bg,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  color: TutorColors.surface,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x1F1F2A24),
+                      blurRadius: 30,
+                      offset: Offset(0, -8),
+                    ),
+                  ],
                 ),
                 padding: EdgeInsets.only(bottom: media.padding.bottom),
                 child: Column(
@@ -168,11 +176,11 @@ class _TutorRecorderEntryScreenState
                   children: [
                     const SizedBox(height: 10),
                     Container(
-                      width: 38,
+                      width: 36,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: TutorColors.line,
-                        borderRadius: BorderRadius.circular(999),
+                        color: TutorColors.ink.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                     Flexible(child: body),
@@ -185,6 +193,94 @@ class _TutorRecorderEntryScreenState
       ),
     );
   }
+}
+
+// ── Mảnh dùng chung trong sheet (V5.6, giống sheet "Sửa buổi học") ──────────
+
+/// Nền hàng/ô trong sheet: sáng hơn mặt sheet một chút.
+const Color _rowBg = Color(0xFFFBFAF7);
+
+/// Đầu sheet: tiêu đề Bricolage + "Huỷ" bên phải (đóng sheet như chạm nền).
+class _SheetTitle extends StatelessWidget {
+  const _SheetTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(child: Text(title, style: TutorType.display(size: 20))),
+      InkWell(
+        onTap: () => context.pop(),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          child: Text('Huỷ', style: TutorType.rowSub()),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Nút "Ghi âm" dạng viên thuốc trong hàng: chọn → mực đậm, chưa chọn → sage.
+class _RecordPill extends StatelessWidget {
+  const _RecordPill({required this.selected, required this.onPressed});
+
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 40,
+    child: FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 40),
+        backgroundColor: selected ? TutorColors.primary : TutorColors.sage,
+        foregroundColor: selected ? Colors.white : TutorColors.ink,
+        disabledBackgroundColor: TutorColors.surfaceSunken,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        shape: const StadiumBorder(),
+      ),
+      child: Text(
+        'Ghi âm',
+        style: TutorType.action(
+          color: onPressed == null
+              ? TutorColors.ink4
+              : selected
+              ? Colors.white
+              : TutorColors.ink,
+        ),
+      ),
+    ),
+  );
+}
+
+/// Hàng chọn được: nền sáng; đang chọn → nền sage (như ô radio của sheet).
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.selected,
+    required this.onTap,
+    required this.child,
+  });
+
+  final bool selected;
+  final VoidCallback? onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: selected ? TutorColors.sage : _rowBg,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: child,
+      ),
+    ),
+  );
 }
 
 // ── 1 buổi: xác nhận ───────────────────────────────────────────────────────
@@ -218,79 +314,98 @@ class _ConfirmOne extends StatelessWidget {
     ].join(' · ');
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        14,
+        TutorSurface.gutter,
+        24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Ghi âm buổi học', style: TutorType.screenTitle()),
-          const SizedBox(height: 20),
+          const _SheetTitle('Ghi âm buổi học'),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _StatusChip(
+              live: live,
+              label: live ? 'Buổi đang diễn ra' : 'Buổi hôm nay',
+            ),
+          ),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
             decoration: BoxDecoration(
-              color: TutorColors.surface,
-              border: Border.all(color: TutorColors.line),
-              borderRadius: BorderRadius.circular(14),
+              color: _rowBg,
+              borderRadius: BorderRadius.circular(TutorSurface.radius),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: live ? TutorColors.success : TutorColors.warning,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      live ? 'Buổi đang diễn ra' : 'Buổi hôm nay',
-                      style: TutorType.caption(
-                        color: live ? TutorColors.success : TutorColors.warning,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(session.studentName, style: TutorType.numeralLarge()),
-                const SizedBox(height: 5),
+                Text(session.studentName, style: TutorType.display(size: 24)),
+                const SizedBox(height: 4),
                 if (session.subjectName.isNotEmpty) ...[
                   Text(session.subjectName, style: TutorType.rowTitle()),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 2),
                 ],
                 Text(timeLine, style: TutorType.rowSub()),
-                const SizedBox(height: 14),
-                const Divider(height: 1, thickness: 1, color: TutorColors.line),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 const _RecipientBox(),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          _PrimaryButton(
+          CanvasCta(
             label: 'Bắt đầu ghi âm',
-            icon: Icons.mic_none_rounded,
+            icon: const Icon(Icons.mic_none_rounded, size: 18),
             onPressed: onStart,
           ),
           if (canPickOther) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 44,
-              child: TextButton(
-                onPressed: onPickOther,
-                child: Text(
-                  'Chọn buổi khác',
-                  style: TutorType.action(),
-                ),
-              ),
-            ),
+            const SizedBox(height: 6),
+            CanvasGhostLink(label: 'Chọn buổi khác', onTap: onPickOther),
           ],
         ],
       ),
     );
   }
+}
+
+/// Chip trạng thái buổi: chấm mực trên nền sage khi đang diễn ra.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.live, required this.label});
+
+  final bool live;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 22,
+    padding: const EdgeInsets.symmetric(horizontal: 9),
+    decoration: BoxDecoration(
+      color: live ? TutorColors.sage : TutorColors.surfaceSunken,
+      borderRadius: BorderRadius.circular(11),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: live ? TutorColors.ink : TutorColors.ink4,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TutorType.caption(
+            color: TutorColors.ink,
+          ).copyWith(fontSize: 11.5, height: 1),
+        ),
+      ],
+    ),
+  );
 }
 
 /// "Báo cáo sẽ gửi cho" — server là nơi quyết định người nhận, nên ở đây chỉ
@@ -302,41 +417,18 @@ class _RecipientBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: TutorColors.surfaceSunken,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: BoxDecoration(border: Border(top: TutorSurface.rule)),
+      child: Row(
         children: [
-          Text('Báo cáo sẽ gửi cho', style: TutorType.caption()),
-          const SizedBox(height: 7),
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: TutorColors.surface,
-                  border: Border.all(color: TutorColors.line),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.person_outline_rounded,
-                  size: 16,
-                  color: TutorColors.ink,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  'Phụ huynh của học sinh',
-                  style: TutorType.rowTitle(),
-                ),
-              ),
-            ],
+          Text('Báo cáo sẽ gửi cho', style: TutorType.rowSub()),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Phụ huynh của học sinh',
+              textAlign: TextAlign.right,
+              style: TutorType.rowSub(color: TutorColors.ink),
+            ),
           ),
         ],
       ),
@@ -395,23 +487,28 @@ class _PickSessionState extends State<_PickSession> {
   Widget build(BuildContext context) {
     return ListView(
       shrinkWrap: true,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        14,
+        TutorSurface.gutter,
+        24,
+      ),
       children: [
-        Text('Chọn buổi học', style: TutorType.screenTitle()),
-        const SizedBox(height: 5),
+        const _SheetTitle('Chọn buổi học'),
+        const SizedBox(height: 4),
         Text(
           sessions.isEmpty || debugUpcoming
               ? 'Hôm nay không có buổi nào theo lịch. Chọn học sinh bạn đang dạy — báo cáo gửi cho phụ huynh của học sinh đó.'
               : 'Có ${sessions.length} buổi hôm nay. Báo cáo gửi theo buổi bạn chọn.',
           style: TutorType.rowSub(),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         if (debugUpcoming) ...[
-          const _GroupLabel('SẮP TỚI · CHỈ HIỆN Ở BẢN DEBUG'),
-          const SizedBox(height: 10),
+          const _GroupLabel('Sắp tới · chỉ hiện ở bản debug'),
+          const SizedBox(height: 6),
         ] else if (sessions.isNotEmpty && students.isNotEmpty) ...[
-          const _GroupLabel('HÔM NAY'),
-          const SizedBox(height: 10),
+          const _GroupLabel('Hôm nay'),
+          const SizedBox(height: 6),
         ],
         for (final s in sessions) ...[
           _SessionRow(
@@ -421,12 +518,12 @@ class _PickSessionState extends State<_PickSession> {
             onSelect: () => setState(() => _selected = s),
             onStart: () => widget.onStart(s),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
         ],
         if (students.isNotEmpty || onAddStudent != null) ...[
-          if (sessions.isNotEmpty) const SizedBox(height: 10),
-          const _GroupLabel('HỌC SINH CỦA TÔI'),
-          const SizedBox(height: 10),
+          if (sessions.isNotEmpty) const SizedBox(height: 8),
+          const _GroupLabel('Học sinh của tôi'),
+          const SizedBox(height: 6),
           for (final st in students) ...[
             _StudentRow(
               student: st,
@@ -434,7 +531,7 @@ class _PickSessionState extends State<_PickSession> {
               onSelect: () => setState(() => _selected = st),
               onStart: () => widget.onStartStudent?.call(st),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
           ],
           if (onAddStudent != null) _AddStudentRow(onTap: onAddStudent!),
         ],
@@ -457,7 +554,7 @@ class _SessionRow extends StatelessWidget {
   /// Buổi gần giờ hiện tại nhất — chỉ để gắn nhãn "Gần nhất".
   final bool closest;
 
-  /// Buổi đang được chọn (viền đỏ đô + nút Ghi âm tô đậm). Chạm cả thẻ để chọn.
+  /// Buổi đang được chọn (nền sage + nút Ghi âm tô đậm). Chạm cả thẻ để chọn.
   final bool selected;
   final VoidCallback onSelect;
   final VoidCallback onStart;
@@ -469,99 +566,40 @@ class _SessionRow extends StatelessWidget {
       _when(session),
     ].where((p) => p.isNotEmpty).join(' · ');
 
-    return Material(
-      color: TutorColors.surface,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: selected ? TutorColors.primary : TutorColors.line,
-          width: selected ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onSelect,
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return _ChoiceTile(
+      selected: selected,
+      onTap: onSelect,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            session.studentName,
-                            style: TutorType.rowTitle(),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (closest) ...[
-                          const SizedBox(width: 7),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: TutorColors.primaryBg,
-                              border: Border.all(
-                                color: TutorColors.primaryBorder,
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              'Gần nhất',
-                              style: TutorType.caption(
-                                color: TutorColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    Flexible(
+                      child: Text(
+                        session.studentName,
+                        style: TutorType.body(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(sub, style: TutorType.rowSub()),
-                    const SizedBox(height: 3),
-                    Text('Báo cáo → Phụ huynh', style: TutorType.caption()),
+                    if (closest) ...[
+                      const SizedBox(width: 7),
+                      CanvasTag('Gần nhất', filled: selected),
+                    ],
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                height: 44,
-                child: selected
-                    ? FilledButton(
-                        onPressed: onStart,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: TutorColors.primary,
-                          foregroundColor: TutorColors.surface,
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          'Ghi âm',
-                          style: TutorType.action(color: TutorColors.surface),
-                        ),
-                      )
-                    : OutlinedButton(
-                        onPressed: onStart,
-                        style: OutlinedButton.styleFrom(
-                          // Theme app đặt minimumSize rộng vô hạn cho OutlinedButton.
-                          minimumSize: const Size(0, 36),
-                          backgroundColor: TutorColors.surface,
-                          side: const BorderSide(color: TutorColors.line),
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text('Ghi âm', style: TutorType.action()),
-                      ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(sub, style: TutorType.rowSub()),
+                const SizedBox(height: 2),
+                Text('Báo cáo → Phụ huynh', style: TutorType.caption()),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          _RecordPill(selected: selected, onPressed: onStart),
+        ],
       ),
     );
   }
@@ -587,12 +625,17 @@ class _Loading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 24),
+      padding: EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        20,
+        TutorSurface.gutter,
+        24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TutorSkeleton(height: 92, radius: 14),
-          SizedBox(height: 10),
+          SizedBox(height: 6),
           TutorSkeleton(height: 92, radius: 14),
         ],
       ),
@@ -608,19 +651,34 @@ class _NoSessionToday extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        14,
+        TutorSurface.gutter,
+        28,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(
-            Icons.event_busy_rounded,
-            size: 34,
-            color: TutorColors.ink4,
+          const _SheetTitle('Ghi âm buổi học'),
+          const SizedBox(height: 18),
+          Center(
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: TutorSurface.well(),
+              child: const Icon(
+                Icons.event_busy_rounded,
+                size: 20,
+                color: TutorColors.ink,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             'Hôm nay không có buổi nào trên TopTutor',
-            style: TutorType.rowTitle(),
+            style: TutorType.body(),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
@@ -630,21 +688,11 @@ class _NoSessionToday extends StatelessWidget {
             style: TutorType.rowSub(),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 44,
-            child: FilledButton.icon(
-              onPressed: onAddStudent,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 44),
-                backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-              label: const Text('Thêm học sinh'),
-            ),
+          const SizedBox(height: 18),
+          CanvasCta(
+            label: 'Thêm học sinh',
+            icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+            onPressed: onAddStudent,
           ),
         ],
       ),
@@ -658,13 +706,8 @@ class _GroupLabel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TutorType.caption().copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.8,
-    ),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: TutorType.caption(color: TutorColors.ink3));
 }
 
 /// Một học sinh ngoài nền tảng trong sheet chọn buổi.
@@ -678,7 +721,7 @@ class _StudentRow extends StatelessWidget {
 
   final RecorderStudentDto student;
 
-  /// Đang được chọn (viền đỏ đô + nút Ghi âm tô đậm). Chạm cả thẻ để chọn.
+  /// Đang được chọn (nền sage + nút Ghi âm tô đậm). Chạm cả thẻ để chọn.
   final bool selected;
   final VoidCallback onSelect;
   final VoidCallback onStart;
@@ -692,82 +735,45 @@ class _StudentRow extends StatelessWidget {
       else if (!student.hasConsent)
         'Chưa có đồng ý ghi âm',
     ].join(' · ');
-    return Material(
-      color: TutorColors.surface,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: selected ? TutorColors.primary : TutorColors.line,
-          width: selected ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: student.isDeclined ? null : onSelect,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              TutorAvatar(name: student.fullName),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      student.fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TutorType.rowTitle(),
-                    ),
-                    if (sub.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        sub,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TutorType.rowSub(
-                          color: student.hasConsent
-                              ? TutorColors.ink3
-                              : TutorColors.warning,
-                        ),
-                      ),
-                    ],
-                  ],
+    return _ChoiceTile(
+      selected: selected,
+      onTap: student.isDeclined ? null : onSelect,
+      child: Row(
+        children: [
+          TutorAvatar(name: student.fullName, size: 32),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  student.fullName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TutorType.body(),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 44,
-                child: selected
-                    ? FilledButton(
-                        onPressed: student.isDeclined ? null : onStart,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: TutorColors.primary,
-                          foregroundColor: TutorColors.surface,
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          'Ghi âm',
-                          style: TutorType.action(color: TutorColors.surface),
-                        ),
-                      )
-                    : OutlinedButton(
-                        onPressed: student.isDeclined ? null : onStart,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 36),
-                          backgroundColor: TutorColors.surface,
-                          side: const BorderSide(color: TutorColors.line),
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text('Ghi âm', style: TutorType.action()),
-                      ),
-              ),
-            ],
+                if (sub.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TutorType.rowSub(
+                      color: student.hasConsent
+                          ? TutorColors.ink3
+                          : TutorColors.warning,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          _RecordPill(
+            selected: selected,
+            onPressed: student.isDeclined ? null : onStart,
+          ),
+        ],
       ),
     );
   }
@@ -790,54 +796,16 @@ class _AddStudentRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          height: 52,
+          height: 48,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.add_rounded,
-                size: 18,
-                color: TutorColors.primary,
-              ),
+              const Icon(Icons.add_rounded, size: 18, color: TutorColors.ink),
               const SizedBox(width: 6),
-              Text(
-                'Thêm học sinh ngoài TopTutor',
-                style: TutorType.action(),
-              ),
+              Text('Thêm học sinh ngoài TopTutor', style: TutorType.action()),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: TutorColors.primary,
-          foregroundColor: TutorColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        icon: Icon(icon, size: 18),
-        label: Text(label, style: TutorType.action(color: TutorColors.surface)),
       ),
     );
   }

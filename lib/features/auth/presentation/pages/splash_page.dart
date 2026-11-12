@@ -3,14 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart'
     show tutorOnlyMessage;
+import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart'
+    show AuthLeaf;
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
@@ -72,15 +74,27 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
+    // V5.6: nền giấy, lá cây góc phải, chữ "TopTutor" Bricolage ở giữa.
     return Scaffold(
-      backgroundColor: AppColors.ink,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('TOPTUTOR', style: AppTextStyles.h1(color: AppColors.cream)),
-            Text('.', style: AppTextStyles.h1(color: AppColors.oxblood)),
-          ],
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              const Positioned(top: 0, right: 0, child: AuthLeaf(width: 170)),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('TopTutor', style: TutorType.display(size: 40)),
+                    const SizedBox(height: 8),
+                    Text('Dành cho gia sư', style: TutorType.rowSub()),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

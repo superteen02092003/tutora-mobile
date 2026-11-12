@@ -6,6 +6,7 @@ import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 
@@ -74,94 +75,30 @@ class TutorClassDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            TutorChildHeader(title: item.subjectName),
-            Padding(
-              padding: TutorSurface.screenPadding,
-              child: _ClassSummary(
-                item: item,
-                total: item.totalWithReserved,
-                completed: item.completedSessions,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 32),
+            children: [
+              CanvasHeader(
+                title: item.subjectName,
+                onBack: () => Navigator.of(context).pop(),
               ),
-            ),
-            const SizedBox(height: TutorSurface.sectionGap),
-            if (upcoming.isNotEmpty) ...[
-              const _Label('SẮP TỚI'),
-              for (final s in upcoming.take(3))
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    TutorSurface.gutter,
-                    0,
-                    TutorSurface.gutter,
-                    TutorSurface.rowGap,
-                  ),
-                  child: _SessionRow(lesson: s),
-                ),
-              const SizedBox(height: 8),
-            ],
-            if (recorded.isNotEmpty) ...[
-              _Label('BUỔI ĐÃ GHI ÂM · ${recorded.length}'),
-              for (final l in recorded)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    TutorSurface.gutter,
-                    0,
-                    TutorSurface.gutter,
-                    TutorSurface.rowGap,
-                  ),
-                  child: RecordedLessonTile(lesson: l),
-                ),
-              const SizedBox(height: 8),
-            ],
-            if (sessions.isNotEmpty) const _Label('TẤT CẢ BUỔI HỌC'),
-            if (async.isLoading && sessions.isEmpty)
-              const Padding(
-                padding: TutorSurface.screenPadding,
-                child: TutorSkeleton(height: 180, radius: TutorSurface.radius),
-              )
-            else if (sessions.isEmpty)
+              const SizedBox(height: 18),
               Padding(
                 padding: TutorSurface.screenPadding,
-                child: TutorCard(
-                  color: TutorColors.dangerBg,
-                  borderColor: TutorColors.dangerBorder,
-                  onTap: () =>
-                      ref.invalidate(classSessionsProvider(item.bookingId)),
-                  child: Text(
-                    'Không tải được buổi học của lớp này. Chạm để thử lại.',
-                    style: TutorType.rowSub(color: TutorColors.danger),
-                  ),
+                child: _ClassSummary(
+                  item: item,
+                  total: item.totalWithReserved,
+                  completed: item.completedSessions,
                 ),
-              )
-            else ...[
-              for (final entry in groups.entries) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    TutorSurface.gutter,
-                    0,
-                    TutorSurface.gutter,
-                    10,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _monthLabel(entry.key),
-                          style: TutorType.sectionTitle(),
-                        ),
-                      ),
-                      if (entry.value.any(
-                        (c) => c.parent.isExtra || c.children.isNotEmpty,
-                      ))
-                        const _ExtraSessionLegend(),
-                    ],
-                  ),
-                ),
-                for (final chain in entry.value) ...[
+              ),
+              const SizedBox(height: TutorSurface.sectionGap),
+              if (upcoming.isNotEmpty) ...[
+                const _Label('Sắp tới'),
+                for (final s in upcoming.take(3))
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
                       TutorSurface.gutter,
@@ -169,24 +106,98 @@ class TutorClassDetailScreen extends ConsumerWidget {
                       TutorSurface.gutter,
                       TutorSurface.rowGap,
                     ),
-                    child: _SessionRow(lesson: chain.parent),
+                    child: _SessionRow(lesson: s),
                   ),
-                  // Buổi phụ / học lại thụt vào để thấy rõ nó bám buổi trên
-                  for (final child in chain.children)
+                const SizedBox(height: 8),
+              ],
+              if (recorded.isNotEmpty) ...[
+                _Label('Buổi đã ghi âm · ${recorded.length}'),
+                for (final l in recorded)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      TutorSurface.gutter,
+                      0,
+                      TutorSurface.gutter,
+                      TutorSurface.rowGap,
+                    ),
+                    child: RecordedLessonTile(lesson: l),
+                  ),
+                const SizedBox(height: 8),
+              ],
+              if (sessions.isNotEmpty) const _Label('Tất cả buổi học'),
+              if (async.isLoading && sessions.isEmpty)
+                const Padding(
+                  padding: TutorSurface.screenPadding,
+                  child: TutorSkeleton(
+                    height: 180,
+                    radius: TutorSurface.radius,
+                  ),
+                )
+              else if (sessions.isEmpty)
+                Padding(
+                  padding: TutorSurface.screenPadding,
+                  child: TutorCard(
+                    color: TutorColors.dangerBg,
+                    borderColor: TutorColors.dangerBorder,
+                    onTap: () =>
+                        ref.invalidate(classSessionsProvider(item.bookingId)),
+                    child: Text(
+                      'Không tải được buổi học của lớp này. Chạm để thử lại.',
+                      style: TutorType.rowSub(color: TutorColors.danger),
+                    ),
+                  ),
+                )
+              else ...[
+                for (final entry in groups.entries) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      TutorSurface.gutter,
+                      0,
+                      TutorSurface.gutter,
+                      10,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _monthLabel(entry.key),
+                            style: TutorType.sectionTitle(),
+                          ),
+                        ),
+                        if (entry.value.any(
+                          (c) => c.parent.isExtra || c.children.isNotEmpty,
+                        ))
+                          const _ExtraSessionLegend(),
+                      ],
+                    ),
+                  ),
+                  for (final chain in entry.value) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
-                        TutorSurface.gutter + 24,
+                        TutorSurface.gutter,
                         0,
                         TutorSurface.gutter,
                         TutorSurface.rowGap,
                       ),
-                      child: _SessionRow(lesson: child, nested: true),
+                      child: _SessionRow(lesson: chain.parent),
                     ),
+                    // Buổi phụ / học lại thụt vào để thấy rõ nó bám buổi trên
+                    for (final child in chain.children)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          TutorSurface.gutter + 24,
+                          0,
+                          TutorSurface.gutter,
+                          TutorSurface.rowGap,
+                        ),
+                        child: _SessionRow(lesson: child, nested: true),
+                      ),
+                  ],
+                  const SizedBox(height: 8),
                 ],
-                const SizedBox(height: 8),
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -213,16 +224,9 @@ class _ClassSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TutorCard(
-      color: TutorColors.heroTealBg,
-      borderColor: TutorColors.heroTealBg,
-      shadow: TutorColors.cardShadow,
-      backgroundImage: const DecorationImage(
-        image: AssetImage('assets/images/common/backgroud_tutor_next.png'),
-        fit: BoxFit.cover,
-        alignment: Alignment.bottomRight,
-        opacity: 0.3,
-      ),
+    return Container(
+      padding: TutorSurface.cardPadding,
+      decoration: TutorSurface.sage(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -236,14 +240,14 @@ class _ClassSummary extends StatelessWidget {
                   children: [
                     Text(
                       item.studentName,
-                      style: TutorType.numeral().copyWith(fontSize: 18),
+                      style: TutorType.display(size: 19),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       item.subjectName,
-                      style: TutorType.rowSub(color: TutorColors.ink2),
+                      style: TutorType.rowSub(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -257,22 +261,17 @@ class _ClassSummary extends StatelessWidget {
             children: [
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
                     value: total == 0 ? 0 : completed / total,
-                    minHeight: 7,
-                    backgroundColor: TutorColors.surface,
-                    valueColor: const AlwaysStoppedAnimation(
-                      TutorColors.heroTeal,
-                    ),
+                    minHeight: 4,
+                    backgroundColor: const Color(0x1F1F2A24),
+                    valueColor: const AlwaysStoppedAnimation(TutorColors.ink),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                '$completed/$total buổi',
-                style: TutorType.action(),
-              ),
+              Text('$completed/$total buổi', style: TutorType.action()),
             ],
           ),
           if (item.schedule.isNotEmpty) ...[
@@ -282,13 +281,13 @@ class _ClassSummary extends StatelessWidget {
                 const Icon(
                   Icons.repeat_rounded,
                   size: 14,
-                  color: TutorColors.ink2,
+                  color: TutorColors.ink3,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     item.schedule,
-                    style: TutorType.caption(color: TutorColors.ink2),
+                    style: TutorType.rowSub(),
                     maxLines: 2,
                   ),
                 ),
@@ -314,15 +313,12 @@ class _ExtraSessionLegend extends StatelessWidget {
           width: 3,
           height: 12,
           decoration: BoxDecoration(
-            color: TutorColors.heroTeal,
+            color: _SessionRow._extraTone,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          'Buổi học phụ',
-          style: TutorType.caption(color: TutorColors.ink2),
-        ),
+        Text('Buổi học phụ', style: TutorType.caption(color: TutorColors.ink3)),
       ],
     );
   }
@@ -338,7 +334,7 @@ class _SessionRow extends StatelessWidget {
   final bool nested;
 
   /// Màu ribbon cho buổi sinh thêm.
-  static const Color _extraTone = TutorColors.heroTeal;
+  static const Color _extraTone = TutorColors.ink3;
 
   @override
   Widget build(BuildContext context) {
@@ -384,113 +380,141 @@ class _SessionRow extends StatelessWidget {
         'Bạn chưa gửi báo cáo cho buổi này',
       ),
       _ when lesson.isPendingConfirmation => (
-        TutorColors.warning,
+        TutorColors.ink3,
         'Chờ xác nhận',
         'Đã gửi báo cáo, chờ học sinh xác nhận',
       ),
       _ when lesson.isCompleted => (
-        TutorColors.success,
+        TutorColors.ink,
         'Hoàn thành',
         'Đã dạy xong và được xác nhận',
       ),
       _ when lesson.isLive => (
-        TutorColors.accent,
+        TutorColors.ink,
         'Đang dạy',
         'Buổi học đang diễn ra',
       ),
-      _ => (TutorColors.primary, 'Sắp tới', 'Đã lên lịch, chưa diễn ra'),
+      _ => (TutorColors.ink, 'Sắp tới', 'Đã lên lịch, chưa diễn ra'),
     };
 
-    return TutorCard(
-      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-      color: nested ? TutorColors.surfaceSunken : null,
-      shadow: nested ? null : TutorColors.cardShadow,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => TutorBookingDetailScreen(lesson: lesson),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (lesson.linkLabel != null) ...[
-            Container(
-              width: 3,
-              height: 46,
-              decoration: BoxDecoration(
-                color: _extraTone,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 9),
-          ],
-          // Ô ngày: mốc neo mắt khi lướt danh sách nhiều buổi.
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  dt == null ? '—' : '${dt.day}',
-                  style: TutorType.numeral(color: tone).copyWith(fontSize: 16),
-                ),
-                Text(
-                  dt == null ? '' : 'Th${dt.month}',
-                  style: TutorType.caption(color: tone).copyWith(fontSize: 10),
-                ),
-              ],
+    // Màu chỉ cho cảnh báo thật; còn lại là mực.
+    final warn = tone == TutorColors.danger || tone == TutorColors.warning;
+
+    return DecoratedBox(
+      decoration: nested
+          ? BoxDecoration(
+              color: TutorColors.surfaceSunken,
+              borderRadius: BorderRadius.circular(TutorSurface.radius),
+            )
+          : TutorSurface.card(),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(TutorSurface.radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => TutorBookingDetailScreen(lesson: lesson),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Text(
-                      '${lesson.timeStart}–${lesson.timeEnd}',
-                      style: TutorType.rowTitle(),
+                if (lesson.linkLabel != null) ...[
+                  Container(
+                    width: 3,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: _extraTone,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: tone.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        label,
-                        style: TutorType.caption(
+                  ),
+                  const SizedBox(width: 9),
+                ],
+                // Ô ngày: mốc neo mắt khi lướt danh sách nhiều buổi.
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: warn
+                        ? tone.withValues(alpha: 0.1)
+                        : (nested
+                              ? TutorColors.surface
+                              : TutorColors.surfaceSunken),
+                    borderRadius: BorderRadius.circular(
+                      TutorSurface.radiusSmall,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        dt == null ? '—' : '${dt.day}',
+                        style: TutorType.numeral(
                           color: tone,
-                        ).copyWith(fontWeight: FontWeight.w700),
+                        ).copyWith(fontSize: 16),
                       ),
-                    ),
-                  ],
+                      Text(
+                        dt == null ? '' : 'Th${dt.month}',
+                        style: TutorType.caption(
+                          color: warn ? tone : TutorColors.ink3,
+                        ).copyWith(fontSize: 10),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  reason,
-                  style: TutorType.caption(color: TutorColors.ink2),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            '${lesson.timeStart}–${lesson.timeEnd}',
+                            style: TutorType.rowTitle(),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: warn
+                                    ? tone.withValues(alpha: 0.1)
+                                    : const Color(0xFFEAEAE4),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TutorType.caption(
+                                  color: warn ? tone : TutorColors.ink,
+                                ).copyWith(fontSize: 11.5),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        reason,
+                        style: TutorType.rowSub(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
+                const CanvasChevron(),
               ],
             ),
           ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: TutorColors.ink4,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -509,14 +533,6 @@ class _Label extends StatelessWidget {
       TutorSurface.gutter,
       10,
     ),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
-        color: TutorColors.ink4,
-      ),
-    ),
+    child: Text(text, style: TutorType.sectionTitle().copyWith(fontSize: 17)),
   );
 }

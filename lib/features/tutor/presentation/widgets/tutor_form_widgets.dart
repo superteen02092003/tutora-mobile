@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
+
+/// Ô nhập dùng chung cho các form gia sư — design V5.6: nhãn nhỏ thường phía
+/// trên, ô nhập trên nền sáng (light well) có viền mực 8%, bo 14.
+
+/// Nền ô nhập sáng (canvas `#FBFAF7`).
+const Color _wellFill = Color(0xFFFBFAF7);
+const Color _wellLine = Color(0x141F2A24);
+
+OutlineInputBorder _border(Color color, [double width = 1]) =>
+    OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: color, width: width),
+    );
 
 class TutorFormField extends StatelessWidget {
   const TutorFormField({
@@ -33,14 +46,7 @@ class TutorFormField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.ink3,
-          ),
-        ),
+        Text(label, style: TutorType.caption(color: TutorColors.ink3)),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -49,40 +55,24 @@ class TutorFormField extends StatelessWidget {
           keyboardType: keyboardType,
           readOnly: readOnly,
           onTap: onTap,
-          style: GoogleFonts.inter(fontSize: 14, color: AppColors.ink),
+          style: TutorType.body().copyWith(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.ink4),
+            hintStyle: TutorType.body(
+              color: TutorColors.ink4,
+            ).copyWith(fontSize: 14),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: AppColors.paper,
+            fillColor: _wellFill,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: 12,
+              vertical: 13,
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.line),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.line),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.ink, width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.oxblood),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                color: AppColors.oxblood,
-                width: 1.5,
-              ),
-            ),
+            border: _border(_wellLine),
+            enabledBorder: _border(_wellLine),
+            focusedBorder: _border(TutorColors.ink, 1.4),
+            errorBorder: _border(TutorColors.danger),
+            focusedErrorBorder: _border(TutorColors.danger, 1.4),
           ),
         ),
       ],
@@ -107,29 +97,20 @@ class TutorReadOnlyField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.ink3,
-          ),
-        ),
+        Text(label, style: TutorType.caption(color: TutorColors.ink3)),
         const SizedBox(height: 6),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
-            color: AppColors.cream2,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.line),
+            color: TutorColors.surfaceSunken,
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Text(
             value.isNotEmpty ? value : hint,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: value.isNotEmpty ? AppColors.ink3 : AppColors.ink4,
-            ),
+            style: TutorType.body(
+              color: value.isNotEmpty ? TutorColors.ink3 : TutorColors.ink4,
+            ).copyWith(fontSize: 14),
           ),
         ),
       ],
@@ -153,14 +134,13 @@ class TutorSaveButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
+      height: 48,
       child: FilledButton(
         onPressed: saving ? null : onSave,
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.ink,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          backgroundColor: TutorColors.primary,
+          disabledBackgroundColor: TutorColors.surfaceSunken,
+          shape: const StadiumBorder(),
         ),
         child: saving
             ? const SizedBox(
@@ -168,16 +148,14 @@ class TutorSaveButton extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: TutorColors.ink,
                 ),
               )
             : Text(
                 label,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                style: TutorType.action(
                   color: Colors.white,
-                ),
+                ).copyWith(fontSize: 15),
               ),
       ),
     );

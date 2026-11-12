@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 
 /// Nút "Báo nội dung AI sai" — Google Play yêu cầu app có AI tạo nội dung phải
@@ -15,11 +16,13 @@ class AiFeedbackButton extends StatelessWidget {
     alignment: Alignment.centerLeft,
     child: TextButton.icon(
       onPressed: () => showAiFeedbackSheet(context, recordingId),
-      icon: const Icon(Icons.flag_outlined, size: 18),
+      icon: const Icon(Icons.flag_outlined, size: 16),
       label: const Text('Báo nội dung AI sai'),
       style: TextButton.styleFrom(
         foregroundColor: TutorColors.ink3,
+        textStyle: TutorType.rowSub(),
         padding: EdgeInsets.zero,
+        minimumSize: const Size(0, 44),
       ),
     ),
   );
@@ -34,6 +37,12 @@ Future<bool> showAiFeedbackSheet(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
+    backgroundColor: TutorColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(TutorSurface.radius),
+      ),
+    ),
     builder: (_) => _AiFeedbackSheet(recordingId: recordingId),
   );
   if ((sent ?? false) && context.mounted) {
@@ -105,28 +114,21 @@ class _AiFeedbackSheetState extends ConsumerState<_AiFeedbackSheet> {
   @override
   Widget build(BuildContext context) => Padding(
     padding: EdgeInsets.fromLTRB(
-      20,
+      TutorSurface.gutter,
       0,
-      20,
+      TutorSurface.gutter,
       20 + MediaQuery.of(context).viewInsets.bottom,
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Báo nội dung AI sai',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: TutorColors.ink,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
+        Text('Báo nội dung AI sai', style: TutorType.sectionTitle()),
+        const SizedBox(height: 6),
+        Text(
           'TopTutor dùng báo cáo này để sửa cách AI tóm tắt. Bạn vẫn sửa được '
           'nội dung trước khi gửi phụ huynh.',
-          style: TextStyle(fontSize: 13, color: TutorColors.ink3, height: 1.35),
+          style: TutorType.rowSub(),
         ),
         const SizedBox(height: 12),
         RadioGroup<String>(
@@ -134,36 +136,63 @@ class _AiFeedbackSheetState extends ConsumerState<_AiFeedbackSheet> {
           onChanged: (v) => setState(() => _reason = v),
           child: Column(
             children: [
-              for (final (value, label) in _reasons)
-                RadioListTile<String>(
-                  value: value,
-                  title: Text(label, style: const TextStyle(fontSize: 14)),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
+              for (final (i, (value, label)) in _reasons.indexed)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: i == 0 ? BorderSide.none : TutorSurface.rule,
+                    ),
+                  ),
+                  child: RadioListTile<String>(
+                    value: value,
+                    activeColor: TutorColors.ink,
+                    title: Text(label, style: TutorType.rowTitle()),
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                  ),
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         TextField(
           controller: _note,
           maxLength: 1000,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
+          cursorColor: TutorColors.ink,
+          style: TutorType.body(),
+          decoration: InputDecoration(
             labelText: 'Mô tả thêm (không bắt buộc)',
-            border: OutlineInputBorder(),
+            labelStyle: TutorType.rowSub(),
+            floatingLabelStyle: TutorType.caption(color: TutorColors.ink3),
+            counterStyle: TutorType.caption(),
+            filled: true,
+            fillColor: TutorColors.surfaceSunken,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+              borderSide: const BorderSide(color: TutorColors.ink),
+            ),
           ),
         ),
         if (_error != null) ...[
-          Text(_error!, style: const TextStyle(color: TutorColors.primary)),
+          Text(_error!, style: TutorType.rowSub(color: TutorColors.danger)),
           const SizedBox(height: 8),
         ],
+        const SizedBox(height: 4),
         FilledButton(
           onPressed: _reason == null || _sending ? null : _send,
           style: FilledButton.styleFrom(
             minimumSize: const Size(0, 48),
             backgroundColor: TutorColors.primary,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: TutorColors.surfaceSunken,
+            shape: const StadiumBorder(),
+            textStyle: TutorType.action().copyWith(fontSize: 15),
           ),
           child: Text(_sending ? 'Đang gửi…' : 'Gửi'),
         ),

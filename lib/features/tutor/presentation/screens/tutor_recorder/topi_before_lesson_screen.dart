@@ -28,8 +28,9 @@ class BeforeLessonArgs {
   final DateTime? nextLessonAt;
 }
 
-/// T9 Trước buổi học: các lỗ hổng đã thấy (Sai / Đúng), rồi 15 phút đầu buổi
-/// theo bốn bước Kiểm tra · Bài về nhà · Nhớ lại · Khởi động.
+/// V5.6 "Chuẩn bị buổi học": lỗ hổng đang luyện (thẻ sage, Sai / Đúng), rồi
+/// 15 phút đầu buổi theo bốn bước Kiểm tra · Bài về nhà · Nhớ lại · Khởi động
+/// trên một đường thời gian. Mọi khối do Topi soạn mang nhãn "Nháp AI".
 class TopiBeforeLessonScreen extends ConsumerWidget {
   const TopiBeforeLessonScreen({required this.args, super.key});
 
@@ -68,59 +69,38 @@ class TopiBeforeLessonScreen extends ConsumerWidget {
         },
       );
     }
+    final hasPlan = flags.plan && (topi.valueOrNull?.plan?.isEmpty == false);
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            CanvasHeader(
-              onBack: () => Navigator.of(context).maybePop(),
-              right: [
-                if (args.studentName.isNotEmpty) args.studentName,
-                if (args.nextLessonAt != null) _when(args.nextLessonAt!),
-              ].join(' · '),
-              title: 'Trước buổi học',
-              lead:
-                  'Các lỗ hổng thấy trong bản ghi, và kế hoạch cho 15 phút đầu buổi. Sau đó học sinh mang bài của mình ra.',
-            ),
-            const SizedBox(height: 24),
-            Padding(padding: TutorSurface.screenPadding, child: body),
-            if (flags.plan && (topi.valueOrNull?.plan?.isEmpty == false))
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  20,
-                  TutorSurface.gutter,
-                  0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
                   children: [
-                    CanvasCta(
-                      label: 'Bắt đầu ghi âm',
-                      icon: const Icon(
-                        Icons.circle,
-                        size: 14,
-                        color: TutorColors.ink,
-                      ),
-                      onPressed: () => context.push(AppRoutes.tutorRecorder),
+                    CanvasHeader(
+                      onBack: () => Navigator.of(context).maybePop(),
+                      right: args.nextLessonAt == null
+                          ? null
+                          : _when(args.nextLessonAt!),
+                      left: [
+                        'Trước buổi học',
+                        if (args.studentName.isNotEmpty) args.studentName,
+                      ].join(' · '),
+                      title: 'Chuẩn bị buổi học',
                     ),
-                    const SizedBox(height: 8),
-                    CanvasGhostLink(
-                      label: 'Mẹo ghi âm',
-                      onTap: () => context.push(AppRoutes.tutorRecordingTips),
-                    ),
-                    Text(
-                      'Chỉ ghi âm khi phụ huynh đã đồng ý.',
-                      textAlign: TextAlign.center,
-                      style: TutorType.rowSub().copyWith(fontSize: 14),
-                    ),
+                    const SizedBox(height: 16),
+                    Padding(padding: TutorSurface.screenPadding, child: body),
                   ],
                 ),
               ),
-          ],
+              if (hasPlan) const _BottomBar(),
+            ],
+          ),
         ),
       ),
     );
@@ -135,6 +115,67 @@ String _when(DateTime d) {
       '${two(d.hour)}:${two(d.minute)}';
 }
 
+/// Chân màn: mẹo ghi âm (bóng đèn), nút "Bắt đầu ghi âm", nhắc đồng ý.
+class _BottomBar extends StatelessWidget {
+  const _BottomBar();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      TutorSurface.gutter,
+      8,
+      TutorSurface.gutter,
+      14,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          button: true,
+          label: 'Mẹo ghi âm',
+          child: InkWell(
+            onTap: () => context.push(AppRoutes.tutorRecordingTips),
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 44),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.lightbulb_outline_rounded,
+                    size: 18,
+                    color: TutorColors.ink,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Điện thoại giữa bàn · Không làm phiền · pin trên 30%',
+                      style: TutorType.rowSub(color: TutorColors.ink),
+                    ),
+                  ),
+                  const CanvasChevron(),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        CanvasCta(
+          label: 'Bắt đầu ghi âm',
+          icon: const Icon(Icons.mic_none_rounded, size: 18),
+          onPressed: () => context.push(AppRoutes.tutorRecorder),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Chỉ ghi âm khi phụ huynh đã đồng ý.',
+          textAlign: TextAlign.center,
+          style: TutorType.caption(color: TutorColors.ink3),
+        ),
+      ],
+    ),
+  );
+}
+
 class _Message extends StatelessWidget {
   const _Message(this.text, {this.onTap});
 
@@ -145,10 +186,7 @@ class _Message extends StatelessWidget {
   Widget build(BuildContext context) => CanvasRow(
     onTap: onTap,
     lastRule: true,
-    child: Text(
-      text,
-      style: TutorType.rowSub().copyWith(fontSize: 15, height: 1.45),
-    ),
+    child: Text(text, style: TutorType.rowSub().copyWith(fontSize: 15)),
   );
 }
 
@@ -162,8 +200,8 @@ class _PlanView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final gaps = [...plan.gaps];
-    // Canvas T9: lỗ hổng đang tập trung (khối tối), rồi các lỗ hổng "tiếp theo";
-    // lỗ hổng "chỉ theo dõi" gom vào một mục thu gọn để màn không dài.
+    // Lỗ hổng đang luyện (thẻ sage) trước, rồi các lỗ hổng "tiếp theo"; lỗ
+    // hổng "chỉ theo dõi" gom vào một mục thu gọn để màn không dài.
     int rank(TopiGap g) => switch (g.role) {
       'focus' => 0,
       'next' => 1,
@@ -182,30 +220,22 @@ class _PlanView extends StatelessWidget {
         return i(a).compareTo(i(b));
       });
     final total = steps.fold<int>(0, (s, x) => s + (x.minutes ?? 0));
-    final stepsTitle = total > 0 ? '$total phút đầu buổi' : 'Đầu buổi';
+    final stepsTitle = total > 0 ? '$total phút đầu' : 'Đầu buổi';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (gaps.isNotEmpty) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('${gaps.length}', style: TutorType.display(size: 72)),
-              const SizedBox(width: 12),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 6),
-                child: CanvasKicker(
-                  'lỗ hổng thấy\ntrong các buổi',
-                  color: TutorColors.ink,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < shown.length; i++)
-            _GapCard(gap: shown[i], number: i + 1, dark: i == 0),
-          if (watched.isNotEmpty)
+          if (shown.isNotEmpty) _FocusGapCard(gap: shown.first),
+          if (shown.length > 1) ...[
+            const SizedBox(height: 18),
+            const _SectionHead('Lỗ hổng tiếp theo'),
+            const SizedBox(height: 2),
+            for (var i = 1; i < shown.length; i++)
+              _GapRow(gap: shown[i], number: i + 1, first: i == 1),
+          ],
+          if (watched.isNotEmpty) ...[
+            const SizedBox(height: 8),
             CanvasExpander(
               title: 'Chỉ theo dõi',
               badge: '${watched.length}',
@@ -221,44 +251,57 @@ class _PlanView extends StatelessWidget {
                   ),
               ],
             ),
+          ],
           const SizedBox(height: 14),
           const CanvasTipBox(
             'Mỗi lần một lỗ hổng: lỗ hổng gặp nhiều nhất. Sửa một thói quen sai cần vài buổi.',
           ),
         ],
         if (steps.isNotEmpty) ...[
-          const SizedBox(height: 26),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: CanvasKicker(
-              '$stepsTitle · ${steps.length} bước',
-              color: TutorColors.ink,
-            ),
-          ),
+          const SizedBox(height: 22),
+          _SectionHead(stepsTitle),
+          const SizedBox(height: 8),
           for (var i = 0; i < steps.length; i++)
-            _StepCard(
+            _StepRow(
               step: steps[i],
-              number: i + 1,
+              first: i == 0,
               last: i == steps.length - 1,
             ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.only(left: 56),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: CanvasHand(
+                'Chỉ là gợi ý, cứ đổi tự do',
+                size: 17,
+                swash: false,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           const CanvasTipBox(
             'Kiểm tra bằng bài mới, không gợi ý. Làm lại bài cũ không chứng minh gì vì học sinh đã thấy đáp án.',
           ),
         ],
-        const SizedBox(height: 8),
-        const CanvasExpander(
-          title: 'Trước khi ghi âm',
-          lastRule: true,
-          children: [
-            Text('Điện thoại đặt giữa bàn, cách mỗi người khoảng 40 cm'),
-            Text('Bật Không làm phiền, pin trên 30%'),
-            Text('Học online: dùng loa laptop, điện thoại đặt cạnh'),
-          ],
-        ),
       ],
     );
   }
+}
+
+/// Tiêu đề nhóm + nhãn "Nháp AI" bên phải (khối do Topi soạn).
+class _SectionHead extends StatelessWidget {
+  const _SectionHead(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(child: Text(title, style: TutorType.sectionTitle())),
+      const CanvasAiDraftTag(),
+    ],
+  );
 }
 
 String _roleLabel(String? role, int number) => switch (role) {
@@ -268,85 +311,47 @@ String _roleLabel(String? role, int number) => switch (role) {
   _ => 'Lỗ hổng $number',
 };
 
-class _GapCard extends StatelessWidget {
-  const _GapCard({
-    required this.gap,
-    required this.number,
-    required this.dark,
-  });
+/// Thẻ sage nổi: lỗ hổng số 1, Sai / Đúng trong ô sáng, số buổi đã gặp.
+class _FocusGapCard extends StatelessWidget {
+  const _FocusGapCard({required this.gap});
 
   final TopiGap gap;
-  final int number;
-  final bool dark;
 
   @override
   Widget build(BuildContext context) {
-    final title = gap.title ?? gap.node ?? '—';
-    final head = Row(
-      children: [
-        Expanded(
-          child: CanvasKicker(
-            _roleLabel(gap.role, number),
-            color: dark ? TutorColors.accent : TutorColors.ink3,
-          ),
-        ),
-        if (gap.level != null) TopiLevelChip(level: gap.level!),
-      ],
-    );
-    final lines = <Widget>[
-      if (gap.wrong != null) _Line(ok: false, text: gap.wrong!, dark: dark),
-      if (gap.right != null) _Line(ok: true, text: gap.right!, dark: dark),
-    ];
     final seen = (gap.seenInLessons ?? 0) > 0
         ? 'Gặp trong ${gap.seenInLessons} buổi'
         : null;
-    if (dark) {
-      return CanvasDarkCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            head,
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: TutorType.display(
-                size: 22,
-                color: Colors.white,
-                height: 1.2,
-              ).copyWith(letterSpacing: -0.5),
-            ),
-            if (lines.isNotEmpty) ...[const SizedBox(height: 8), ...lines],
-            if (seen != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                seen,
-                style: const TextStyle(fontSize: 14, color: Color(0xFFDCE8E0)),
-              ),
-            ],
-          ],
-        ),
-      );
-    }
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(border: Border(bottom: TutorSurface.rule)),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: TutorSurface.sage(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          head,
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: TutorColors.ink,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: CanvasKicker(
+                  _roleLabel(gap.role, 1),
+                  color: TutorColors.ink,
+                ),
+              ),
+              if (gap.level != null) ...[
+                TopiLevelChip(level: gap.level!),
+                const SizedBox(width: 8),
+              ],
+              const CanvasAiDraftTag(onSage: true),
+            ],
           ),
-          if (lines.isNotEmpty) ...[const SizedBox(height: 8), ...lines],
+          const SizedBox(height: 6),
+          Text(gap.title ?? gap.node ?? '—', style: TutorType.body()),
+          if (gap.wrong != null || gap.right != null) ...[
+            const SizedBox(height: 10),
+            _WrongRight(gap: gap, color: const Color(0xBFF8F7F4)),
+          ],
           if (seen != null) ...[
-            const SizedBox(height: 6),
-            Text(seen, style: TutorType.rowSub().copyWith(fontSize: 14)),
+            const SizedBox(height: 8),
+            Text(seen, style: TutorType.caption(color: TutorColors.ink3)),
           ],
         ],
       ),
@@ -354,32 +359,88 @@ class _GapCard extends StatelessWidget {
   }
 }
 
-/// "✗ Sai: …" / "✓ Đúng: …" như canvas — đỏ gạch / xanh lá, nhạt hơn trên nền tối.
-class _Line extends StatelessWidget {
-  const _Line({required this.ok, required this.text, required this.dark});
+/// Lỗ hổng "tiếp theo": hàng kẻ mảnh, cùng nội dung nhưng phẳng.
+class _GapRow extends StatelessWidget {
+  const _GapRow({required this.gap, required this.number, required this.first});
 
-  final bool ok;
-  final String text;
-  final bool dark;
+  final TopiGap gap;
+  final int number;
+  final bool first;
 
   @override
   Widget build(BuildContext context) {
-    final color = dark
-        ? (ok ? const Color(0xFFCFEBD9) : const Color(0xFFF6D3C9))
-        : (ok ? TutorColors.success : const Color(0xFF9A3B27));
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: ok ? '✓ Đúng: ' : '✗ Sai: ',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            TextSpan(text: topiMathText(text)),
+    final seen = (gap.seenInLessons ?? 0) > 0
+        ? 'Gặp trong ${gap.seenInLessons} buổi'
+        : null;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      decoration: BoxDecoration(
+        border: Border(top: first ? BorderSide.none : TutorSurface.rule),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: CanvasKicker(_roleLabel(gap.role, number))),
+              if (gap.level != null) TopiLevelChip(level: gap.level!),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(gap.title ?? gap.node ?? '—', style: TutorType.body()),
+          if (gap.wrong != null || gap.right != null) ...[
+            const SizedBox(height: 8),
+            _WrongRight(gap: gap, color: TutorColors.surfaceSunken),
           ],
-        ),
-        style: TextStyle(fontSize: 15, height: 1.5, color: color),
+          if (seen != null) ...[
+            const SizedBox(height: 6),
+            Text(seen, style: TutorType.caption(color: TutorColors.ink3)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Sai: …" / "Đúng: …" trong ô sáng như canvas — chỉ mực, không đỏ/xanh.
+class _WrongRight extends StatelessWidget {
+  const _WrongRight({required this.gap, required this.color});
+
+  final TopiGap gap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget line(String label, String text, {required bool strong}) => Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label ',
+            style: TutorType.rowSub(),
+          ),
+          TextSpan(
+            text: topiMathText(text),
+            style: TextStyle(
+              fontWeight: strong ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+      style: TutorType.body().copyWith(fontSize: 13.5, height: 1.7),
+    );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (gap.wrong != null) line('Sai:', gap.wrong!, strong: false),
+          if (gap.right != null) line('Đúng:', gap.right!, strong: true),
+        ],
       ),
     );
   }
@@ -394,66 +455,80 @@ String _stepLabel(String name) =>
       _ => name,
     };
 
-/// Một bước đầu buổi: số phút lớn bên trái, tên bước + câu hỏi bên phải.
-class _StepCard extends StatelessWidget {
-  const _StepCard({
-    required this.step,
-    required this.number,
-    required this.last,
-  });
+/// Một bước đầu buổi trên đường thời gian: số phút · chấm · tên bước + câu hỏi.
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.step, required this.first, required this.last});
 
   final TopiStep step;
-  final int number;
+  final bool first;
   final bool last;
 
   @override
-  Widget build(BuildContext context) => CanvasRow(
-    lastRule: last,
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 76,
-          child: Text.rich(
-            TextSpan(
+  Widget build(BuildContext context) {
+    const lineColor = Color(0x241F2A24);
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 50,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                step.minutes == null ? '–' : '${step.minutes} phút',
+                style: TutorType.rowSub(),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 14,
+            child: Column(
               children: [
-                TextSpan(text: step.minutes == null ? '–' : '${step.minutes}'),
-                const TextSpan(
-                  text: ' phút',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0,
-                    color: TutorColors.ink3,
+                Container(
+                  width: 1,
+                  height: 12,
+                  color: first ? Colors.transparent : lineColor,
+                ),
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: first ? TutorColors.ink : const Color(0xFFA3A8A2),
+                    boxShadow: const [
+                      BoxShadow(color: TutorColors.bg, spreadRadius: 3),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    width: 1,
+                    color: last ? Colors.transparent : lineColor,
                   ),
                 ),
               ],
             ),
-            style: TutorType.display(
-              size: 30,
-              weight: FontWeight.w300,
-            ).copyWith(letterSpacing: -1),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CanvasKicker(
-                '$number · ${_stepLabel(step.name)}',
-                color: TutorColors.ink,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_stepLabel(step.name), style: TutorType.body()),
+                  for (final a in step.asks) ...[
+                    const SizedBox(height: 4),
+                    _AskBlock(ask: a),
+                  ],
+                ],
               ),
-              for (final a in step.asks) ...[
-                const SizedBox(height: 8),
-                _AskBlock(ask: a),
-              ],
-            ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 /// Một câu hỏi: "Hỏi: …", đề bài, và đáp án gập lại cho gia sư.
@@ -483,12 +558,9 @@ class _AskBlockState extends State<_AskBlock> {
                   text: 'Hỏi: ',
                   style: TutorType.rowSub(
                     color: TutorColors.ink,
-                  ).copyWith(fontWeight: FontWeight.w700),
+                  ).copyWith(fontWeight: FontWeight.w600),
                 ),
-                TextSpan(
-                  text: topiAskText(a.say!),
-                  style: TutorType.rowSub(color: TutorColors.ink2),
-                ),
+                TextSpan(text: topiAskText(a.say!), style: TutorType.rowSub()),
               ],
             ),
           ),
@@ -496,16 +568,15 @@ class _AskBlockState extends State<_AskBlock> {
           const SizedBox(height: 6),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: TutorSurface.well(),
             child: Text(
               topiMathText(a.problem!),
-              style: TutorType.rowTitle().copyWith(fontSize: 15),
+              style: TutorType.rowTitle().copyWith(fontSize: 14.5),
             ),
           ),
         ],
         if (a.answer != null) ...[
-          const SizedBox(height: 2),
           InkWell(
             onTap: () => setState(() => _open = !_open),
             borderRadius: BorderRadius.circular(8),
@@ -523,7 +594,9 @@ class _AskBlockState extends State<_AskBlock> {
                   const SizedBox(width: 4),
                   Text(
                     _open ? 'Ẩn đáp án' : 'Xem đáp án (chỉ gia sư)',
-                    style: TutorType.action(color: TutorColors.ink3),
+                    style: TutorType.caption(
+                      color: TutorColors.ink3,
+                    ).copyWith(fontSize: 13),
                   ),
                 ],
               ),
@@ -534,9 +607,10 @@ class _AskBlockState extends State<_AskBlock> {
               padding: const EdgeInsets.only(left: 22, bottom: 4),
               child: Text(
                 topiMathText(a.answer!),
-                style: TutorType.rowTitle(
-                  color: TopiLevelColors.standard,
-                ).copyWith(fontSize: 14),
+                style: TutorType.rowTitle().copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],
@@ -611,52 +685,73 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
     final plan = ref.watch(lessonTopiProvider(args.lessonId)).valueOrNull?.plan;
     if (plan == null || plan.isEmpty) return const SizedBox.shrink();
 
-    final parts = [
-      'Trước buổi học',
-      if (plan.gaps.isNotEmpty) '${plan.gaps.length} lỗ hổng',
-      if (plan.steps.isNotEmpty) '${plan.steps.length} bước đầu buổi',
-    ];
     TopiGap? focus;
     for (final g in plan.gaps) {
       if (g.role == 'focus') focus = g;
     }
     focus ??= plan.gaps.firstOrNull;
-    // Canvas T5: khối tối "LỖ HỔNG 1 · LUYỆN NGAY" dẫn sang màn Trước buổi học.
+    final head = focus == null
+        ? 'Trước buổi học'
+        : _roleLabel(focus.role == 'watch' ? null : focus.role, 1);
+    final sub = [
+      if ((focus?.seenInLessons ?? 0) > 0)
+        'Gặp trong ${focus!.seenInLessons} buổi',
+      if (args.nextLessonAt != null) 'Buổi tới ${_when(args.nextLessonAt!)}',
+      if (focus == null && plan.steps.isNotEmpty)
+        '${plan.steps.length} bước đầu buổi',
+    ].join(' · ');
+
+    // V5.6: thẻ sage nổi "Lỗ hổng 1 · luyện ngay" dẫn sang Chuẩn bị buổi học.
     return Padding(
       padding: padding,
-      child: CanvasDarkCard(
-        onTap: () => TopiBeforeLessonScreen.open(context, args),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: DecoratedBox(
+        decoration: TutorSurface.sage(),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(TutorSurface.radius),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => TopiBeforeLessonScreen.open(context, args),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+              child: Row(
                 children: [
-                  CanvasKicker(parts.join(' · '), color: TutorColors.accent),
-                  const SizedBox(height: 6),
-                  Text(
-                    focus?.title ?? focus?.node ?? 'Kế hoạch 15 phút đầu buổi',
-                    style: TutorType.display(
-                      size: 22,
-                      color: Colors.white,
-                      height: 1.2,
-                    ).copyWith(letterSpacing: -0.5),
-                  ),
-                  if ((focus?.seenInLessons ?? 0) > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Gặp trong ${focus!.seenInLessons} buổi · luyện ngay',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFFDCE8E0),
-                      ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CanvasKicker(head, color: TutorColors.ink),
+                            ),
+                            if (focus?.level != null) ...[
+                              TopiLevelChip(level: focus!.level!),
+                              const SizedBox(width: 8),
+                            ],
+                            const CanvasAiDraftTag(onSage: true),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          focus?.title ??
+                              focus?.node ??
+                              'Kế hoạch 15 phút đầu buổi',
+                          style: TutorType.body(),
+                        ),
+                        if (sub.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(sub, style: TutorType.rowSub()),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 6),
+                  const CanvasChevron(),
                 ],
               ),
             ),
-            const CanvasChevron(color: Colors.white),
-          ],
+          ),
         ),
       ),
     );

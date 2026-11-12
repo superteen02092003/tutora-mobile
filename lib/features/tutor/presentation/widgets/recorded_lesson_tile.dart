@@ -35,7 +35,7 @@ class RecordedLessonTile extends StatelessWidget {
       if (time.isNotEmpty) time,
       if (minutes > 0) '$minutes phút ghi âm' else 'dưới 1 phút ghi âm',
     ].join(' · ');
-    // Canvas: hàng kẻ mực — ngày lớn Bricolage, thẻ chữ hoa bên phải.
+    // V5.6: hàng kẻ mảnh — ngày Bricolage, giờ + thời lượng, trạng thái chữ nhỏ.
     return CanvasRow(
       onTap: () => TutorRecordingDetailScreen.open(
         context,
@@ -47,31 +47,23 @@ class RecordedLessonTile extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 76,
-            child: Text(
-              day,
-              style: TutorType.display(
-                size: 22,
-                weight: FontWeight.w600,
-              ).copyWith(letterSpacing: -0.5),
-            ),
+            width: 64,
+            child: Text(day, style: TutorType.display(size: 20)),
           ),
-          Expanded(
-            child: Text(
-              sub,
-              style: const TextStyle(fontSize: 15, color: TutorColors.ink3),
-            ),
-          ),
+          Expanded(child: Text(sub, style: TutorType.rowSub())),
+          const SizedBox(width: 8),
           if (approve)
             const CanvasTag('Duyệt', filled: true)
           else
-            CanvasKicker(
+            Text(
               label,
-              color: lesson.status == 'failed'
-                  ? TutorColors.danger
-                  : TutorColors.ink3,
+              style: TutorType.caption(
+                color: lesson.status == 'failed'
+                    ? TutorColors.danger
+                    : TutorColors.ink3,
+              ),
             ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           const CanvasChevron(),
         ],
       ),

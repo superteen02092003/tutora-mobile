@@ -13,13 +13,14 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
-/// T6 · Ghi âm (design canvas 11/2026): số buổi đã ghi trong 7 ngày qua, buổi
+/// Bản ghi âm (design V5.6, board V56-Score): màn con mở từ Lộ trình, nút tròn
+/// quay lại, không có thanh tab riêng. Số buổi đã ghi trong 7 ngày qua, buổi
 /// lẽ ra có mà không có bản ghi, và các bản ghi gần đây.
 ///
-/// Khác canvas một điểm có chủ đích: nút "Ghi âm buổi học" ở đầu màn. Canvas bỏ
-/// nút mic nổi; ghi âm vẫn là việc chính nên tab này giữ một lối vào nhanh (và
-/// mở lại màn "Đang ghi" nếu đang có buổi ghi dở). Các nút "Vì sao không ghi?"
-/// của canvas chưa có API lưu lý do — hàng chỉ mở hồ sơ học sinh.
+/// Khác board có chủ đích: nút "Ghi âm buổi học" ở đầu màn (mở lại màn "Đang
+/// ghi" nếu đang có buổi ghi dở). Board đếm "ghi âm tốt" và có chip "Chuyện gì
+/// đã xảy ra?" — chưa có dữ liệu chất lượng bản ghi và chưa có API lưu lý do,
+/// nên màn đếm buổi đã ghi và hàng "không có bản ghi" chỉ mở hồ sơ học sinh.
 class TutorRecordingsScreen extends ConsumerWidget {
   const TutorRecordingsScreen({super.key});
 
@@ -37,6 +38,14 @@ class TutorRecordingsScreen extends ConsumerWidget {
       unawaited(context.push(AppRoutes.tutorRecording, extra: target));
     } else {
       unawaited(context.push(AppRoutes.tutorRecorder));
+    }
+  }
+
+  void _back(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.tutorPath);
     }
   }
 
@@ -63,239 +72,222 @@ class TutorRecordingsScreen extends ConsumerWidget {
             .where((l) => _recorded.contains(l.status) && l.when != null)
             .toList()
           ..sort((a, b) => b.when!.compareTo(a.when!));
+    final shown = recent.length < 20 ? recent.length : 20;
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: TutorColors.ink2,
-          onRefresh: () async => ref.invalidate(recorderAllLessonsProvider),
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 32),
-            children: [
-              CanvasHeader(
-                left: '7 ngày qua · ${_d(weekAgo)}–${_d(now)}',
-                title: 'Bản ghi của bạn',
-                titleSize: 40,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            color: TutorColors.primary,
+            onRefresh: () async => ref.invalidate(recorderAllLessonsProvider),
+            child: ListView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom + 32,
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  20,
-                  TutorSurface.gutter,
-                  0,
-                ),
-                child: CanvasCta(
-                  label: isRecording
-                      ? 'Quay lại buổi đang ghi'
-                      : 'Ghi âm buổi học',
-                  icon: const Icon(
-                    Icons.circle,
-                    size: 14,
-                    color: TutorColors.ink,
-                  ),
-                  onPressed: () => _record(context, ref),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  26,
-                  TutorSurface.gutter,
-                  0,
-                ),
-                child: CanvasRow(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: '$recorded'),
-                            TextSpan(
-                              text: ' / ${lastWeek.length}',
-                              style: TutorType.display(
-                                size: 44,
-                                weight: FontWeight.w300,
-                                color: TutorColors.ink3,
-                              ).copyWith(letterSpacing: -1),
-                            ),
-                          ],
-                        ),
-                        style: TutorType.display(
-                          size: 110,
-                          weight: FontWeight.w300,
-                          height: 0.9,
-                        ).copyWith(letterSpacing: -6),
-                      ),
-                      const SizedBox(height: 22),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: lastWeek.isEmpty
-                              ? 0
-                              : recorded / lastWeek.length,
-                          minHeight: 4,
-                          backgroundColor: TutorColors.surfaceSunken,
-                          color: TutorColors.success,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        lastWeek.isEmpty
-                            ? 'Chưa có buổi nào trong 7 ngày qua.'
-                            : 'Buổi đã ghi âm. Ghi âm đều là nền của bạn: phần này không cộng điểm. Thế nào là "ghi tốt" vẫn đang được thống nhất.',
-                        style: TutorType.rowSub().copyWith(
-                          fontSize: 14,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (missed.isNotEmpty)
+              children: [
+                // Đầu màn: nút quay lại + tiêu đề, nút bóng đèn "Mẹo ghi âm".
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     TutorSurface.gutter,
-                    26,
+                    20,
                     TutorSurface.gutter,
                     0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: Row(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: CanvasKicker('Không có bản ghi'),
+                      CanvasBackButton(onTap: () => _back(context)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bản ghi âm',
+                              style: TutorType.display(size: 24),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '7 ngày qua · ${_d(weekAgo)} đến ${_d(now)}',
+                              style: TutorType.rowSub(),
+                            ),
+                          ],
+                        ),
                       ),
-                      for (final l in missed)
-                        CanvasRow(
-                          onTap: l.studentId == null
-                              ? null
-                              : () => TutorStudentDetailScreen.open(
-                                  context,
-                                  l.studentId!,
-                                ),
-                          child: Row(
+                      const SizedBox(width: 12),
+                      CanvasCircleButton(
+                        tooltip: 'Mẹo ghi âm',
+                        onTap: () => unawaited(
+                          context.push(AppRoutes.tutorRecordingTips),
+                        ),
+                        child: const Icon(
+                          Icons.lightbulb_outline_rounded,
+                          size: 20,
+                          color: TutorColors.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    18,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: CanvasCta(
+                    label: isRecording
+                        ? 'Quay lại buổi đang ghi'
+                        : 'Ghi âm buổi học',
+                    icon: const Icon(Icons.mic_none_rounded, size: 18),
+                    onPressed: () => _record(context, ref),
+                  ),
+                ),
+                // Thẻ số buổi đã ghi.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    14,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: CanvasOutlineCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Buổi đã ghi âm', style: TutorType.caption()),
+                        const SizedBox(height: 6),
+                        Text.rich(
+                          TextSpan(
                             children: [
-                              Expanded(
-                                child: Text(
-                                  '${_dt(l.when!)} · ${l.studentName}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: TutorColors.ink,
-                                  ),
+                              TextSpan(text: '$recorded'),
+                              TextSpan(
+                                text: ' / ${lastWeek.length}',
+                                style: TutorType.display(
+                                  size: 20,
+                                  weight: FontWeight.w500,
+                                  color: const Color(0xFF8A8F89),
                                 ),
                               ),
-                              const CanvasChevron(),
                             ],
                           ),
+                          style: TutorType.display(
+                            size: 40,
+                            weight: FontWeight.w600,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _SegmentBar(done: recorded, total: lastWeek.length),
+                        const SizedBox(height: 10),
+                        Text(
+                          lastWeek.isEmpty
+                              ? 'Chưa có buổi nào trong 7 ngày qua.'
+                              : 'Ghi âm đều là nền tảng, không cộng điểm. Thế nào là "ghi tốt" vẫn đang được thống nhất.',
+                          style: TutorType.rowSub(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (missed.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      TutorSurface.gutter,
+                      12,
+                      TutorSurface.gutter,
+                      0,
+                    ),
+                    child: _MissedCard(
+                      missed: missed,
+                      label: (l) => '${_dt(l.when!)} · ${l.studentName}',
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    22,
+                    TutorSurface.gutter,
+                    4,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Expanded(
+                        child: Text('Gần đây', style: TutorType.sectionTitle()),
+                      ),
+                      if (recent.isNotEmpty)
+                        Text(
+                          '${recent.length} buổi',
+                          style: TutorType.rowSub(),
                         ),
                     ],
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  26,
-                  TutorSurface.gutter,
-                  0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: CanvasKicker('Bản ghi gần đây'),
-                    ),
-                    if (async.isLoading && lessons.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: TutorColors.ink2,
-                          ),
-                        ),
-                      )
-                    else if (recent.isEmpty)
-                      Text('Chưa có bản ghi nào.', style: TutorType.rowSub())
-                    else
-                      for (var i = 0; i < recent.length && i < 20; i++)
-                        CanvasRow(
-                          lastRule: i == recent.length - 1 || i == 19,
-                          onTap: () => TutorRecordingDetailScreen.open(
-                            context,
-                            RecordingDetailArgs(
-                              recordingId: recent[i].lessonId,
-                              studentName: recent[i].studentName,
+                Padding(
+                  padding: TutorSurface.screenPadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (async.isLoading && lessons.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: TutorColors.primary,
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 76,
-                                child: Text(
-                                  '${recent[i].when!.day}/${recent[i].when!.month}',
-                                  style: TutorType.display(
-                                    size: 22,
-                                    weight: FontWeight.w600,
-                                  ).copyWith(letterSpacing: -0.5),
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  recent[i].studentName,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: TutorColors.ink,
-                                  ),
-                                ),
-                              ),
-                              if (recent[i].status == 'awaiting_approval') ...[
-                                const CanvasTag('Duyệt', filled: true),
-                                const SizedBox(width: 10),
-                              ],
-                              const CanvasChevron(),
-                            ],
+                        )
+                      else if (recent.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            'Chưa có bản ghi nào.',
+                            style: TutorType.rowSub(),
                           ),
-                        ),
-                  ],
+                        )
+                      else
+                        for (var i = 0; i < shown; i++)
+                          _RecentRow(
+                            lesson: recent[i],
+                            first: i == 0,
+                            onTap: () => TutorRecordingDetailScreen.open(
+                              context,
+                              RecordingDetailArgs(
+                                recordingId: recent[i].lessonId,
+                                studentName: recent[i].studentName,
+                              ),
+                            ),
+                          ),
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  14,
-                  TutorSurface.gutter,
-                  0,
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    18,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: CanvasTipBox(
+                    'Gắn việc bấm ghi âm với một việc bạn luôn làm: "Khi học sinh mở vở, mình bấm ghi âm."',
+                    bold: 'Một thói quen có ích:',
+                  ),
                 ),
-                child: CanvasGhostLink(
-                  label: 'Mẹo ghi âm ›',
-                  onTap: () => context.push(AppRoutes.tutorRecordingTips),
+                const SizedBox(height: 26),
+                const Padding(
+                  padding: EdgeInsets.only(right: 28),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: CanvasHand('Học sinh mở vở, bấm ghi', size: 17),
+                  ),
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  14,
-                  TutorSurface.gutter,
-                  0,
-                ),
-                child: CanvasExpander(
-                  title: 'Một thói quen có ích',
-                  lastRule: true,
-                  children: [
-                    Text(
-                      'Gắn việc bấm ghi âm với một việc bạn luôn làm: "Khi học sinh mở vở, mình bấm ghi âm."',
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -309,5 +301,187 @@ class TutorRecordingsScreen extends ConsumerWidget {
     final hh = d.hour.toString().padLeft(2, '0');
     final mm = d.minute.toString().padLeft(2, '0');
     return '${wd[d.weekday - 1]} ${d.day}/${d.month} $hh:$mm';
+  }
+}
+
+/// Thanh chia ô: mỗi buổi một ô, ô đã ghi tô mực. Nhiều buổi quá thì dùng một
+/// thanh liền.
+class _SegmentBar extends StatelessWidget {
+  const _SegmentBar({required this.done, required this.total});
+
+  final int done;
+  final int total;
+
+  static const _off = Color(0x241F2A24);
+
+  @override
+  Widget build(BuildContext context) {
+    if (total == 0 || total > 14) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: LinearProgressIndicator(
+          value: total == 0 ? 0 : done / total,
+          minHeight: 6,
+          backgroundColor: _off,
+          color: TutorColors.ink,
+        ),
+      );
+    }
+    return Row(
+      children: [
+        for (var i = 0; i < total; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 6,
+              decoration: BoxDecoration(
+                color: i < done ? TutorColors.ink : _off,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Thẻ sage "Không có bản ghi": mỗi buổi thiếu một hàng, chạm mở hồ sơ học sinh.
+class _MissedCard extends StatelessWidget {
+  const _MissedCard({required this.missed, required this.label});
+
+  final List<RecorderLessonDto> missed;
+  final String Function(RecorderLessonDto) label;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: TutorSurface.sage(),
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(TutorSurface.radius),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Không có bản ghi',
+              style: TutorType.caption(color: TutorColors.ink),
+            ),
+            const SizedBox(height: 4),
+            for (var i = 0; i < missed.length; i++)
+              InkWell(
+                onTap: missed[i].studentId == null
+                    ? null
+                    : () => TutorStudentDetailScreen.open(
+                        context,
+                        missed[i].studentId!,
+                      ),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: i == 0 ? BorderSide.none : TutorSurface.rule,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(label(missed[i]), style: TutorType.body()),
+                      ),
+                      if (missed[i].studentId != null) const CanvasChevron(),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Hàng bản ghi gần đây: ô micro, "Tên · ngày", thời lượng nếu có.
+class _RecentRow extends StatelessWidget {
+  const _RecentRow({
+    required this.lesson,
+    required this.first,
+    required this.onTap,
+  });
+
+  final RecorderLessonDto lesson;
+  final bool first;
+  final VoidCallback onTap;
+
+  String? get _duration {
+    if (lesson.durationSec <= 0) return null;
+    final mins = (lesson.durationSec / 60).round();
+    final start = lesson.scheduledStart;
+    final end = lesson.scheduledEnd;
+    if (start != null && end != null && end.isAfter(start)) {
+      return '$mins/${end.difference(start).inMinutes} phút';
+    }
+    return '$mins phút';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final when = lesson.when!;
+    final duration = _duration;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          border: Border(top: first ? BorderSide.none : TutorSurface.rule),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: TutorSurface.well(),
+              child: const Icon(
+                Icons.mic_none_rounded,
+                size: 18,
+                color: TutorColors.ink,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          lesson.studentName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TutorType.body(),
+                        ),
+                      ),
+                      Text(
+                        ' · ${when.day}/${when.month}',
+                        style: TutorType.body(),
+                      ),
+                    ],
+                  ),
+                  if (duration != null)
+                    Text(duration, style: TutorType.rowSub()),
+                ],
+              ),
+            ),
+            if (lesson.status == 'awaiting_approval') ...[
+              const CanvasTag('Duyệt', filled: true),
+              const SizedBox(width: 10),
+            ],
+            const CanvasChevron(),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -206,9 +206,24 @@ Future<void> typeInto(WidgetTester t, int index, String text) async {
   await t.pump(const Duration(milliseconds: 200));
 }
 
-/// The tab bar draws its labels in capitals ("TRANG CHỦ").
+/// Types into the text field whose label is [label] (independent of how many
+/// fields the list has built, which changes with the layout).
+Future<void> typeIntoLabeled(WidgetTester t, String label, String text) async {
+  final field = find.byWidgetPredicate(
+    (w) => w is TextField && w.decoration?.labelText == label,
+  );
+  if (field.evaluate().isEmpty) throw StateError('no text field "$label"');
+  final f = find.descendant(
+    of: field.first,
+    matching: find.byType(EditableText),
+  );
+  t.widget<EditableText>(f).controller.text = text;
+  await t.pump(const Duration(milliseconds: 200));
+}
+
+/// Tab bar V5.6: labels in sentence case ("Trang chủ") under an icon.
 Future<void> tapTab(WidgetTester t, String label) =>
-    tapText(t, label.toUpperCase(), index: 0);
+    tapFinder(t, find.bySemanticsLabel(label), 'tab $label');
 
 Future<void> tapFinder(WidgetTester t, Finder f, String what) async {
   if (f.evaluate().isEmpty) throw StateError('not found: $what');
@@ -343,10 +358,13 @@ void main() {
       await shot(tester, 'tab-path_loaded_scrolled');
       await tapTab(tester, 'Bài học');
       await shot(tester, 'tab-lessons_loaded');
-      await tapTab(tester, 'Ghi âm');
-      await shot(tester, 'tab-recordings_loaded');
+      await tapTab(tester, 'Học sinh');
+      await shot(tester, 'tab-students_loaded');
+      // Bản ghi âm: không còn là tab (V5.6), mở như màn con.
+      await goTo(tester, AppRoutes.tutorRecordings);
+      await shot(tester, 'recordings_loaded');
       await scrollDown(tester);
-      await shot(tester, 'tab-recordings_loaded_scrolled');
+      await shot(tester, 'recordings_loaded_scrolled');
     });
     for (final s in [Scenario.empty, Scenario.error, Scenario.loading]) {
       await scene(tester, 'tabs-${s.name}', () async {
@@ -354,6 +372,7 @@ void main() {
           ('home', AppRoutes.tutorHome),
           ('path', AppRoutes.tutorPath),
           ('lessons', AppRoutes.tutorSchedule),
+          ('students', AppRoutes.tutorStudents),
           ('recordings', AppRoutes.tutorRecordings),
         ]) {
           await launch(tester, scenario: s, go: path);
@@ -433,8 +452,8 @@ void main() {
         'submit',
       );
       await shot(tester, 'add-pupil_form-validation');
-      await typeInto(tester, 0, 'Minh An');
-      await typeInto(tester, 1, 'Toán');
+      await typeIntoLabeled(tester, 'Họ tên học sinh', 'Minh An');
+      await typeIntoLabeled(tester, 'Môn (vd. Toán)', 'Toán');
       await tapFinder(
         tester,
         find.byType(DropdownButtonFormField<int>),
@@ -449,10 +468,16 @@ void main() {
       await tapText(tester, 'Thêm vào lịch');
       await shot(tester, 'add-pupil_form-with-schedule');
       await scrollDown(tester);
-      // After the scroll the built text fields are (by index): 0 = last field
-      // above, 1 = parent name, 2 = parent phone, 3 = note.
-      await typeInto(tester, 1, 'Mẹ của An');
-      await typeInto(tester, 2, '0900000001');
+      await typeIntoLabeled(
+        tester,
+        'Tên phụ huynh (vd. Chị Hương)',
+        'Mẹ của An',
+      );
+      await typeIntoLabeled(
+        tester,
+        'SĐT phụ huynh (có dùng Zalo)',
+        '0900000001',
+      );
       await shot(tester, 'add-pupil_form-parent');
       await tapText(tester, 'Xem nội dung đồng ý');
       await shot(tester, 'add-pupil_consent-dialog');
@@ -624,7 +649,7 @@ void main() {
     await scene(tester, 'review-from-lessons-tab', () async {
       await launch(tester, go: AppRoutes.tutorSchedule);
       await shot(tester, 'tab-lessons_needs-you');
-      await tapText(tester, 'báo cáo cần duyệt', contains: true);
+      await tapText(tester, 'Duyệt báo cáo', contains: true);
       await shot(tester, 'report-review_from-lessons-tab');
     });
 
