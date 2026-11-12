@@ -17,6 +17,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_path_screen.dar
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorded_well_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorder_entry_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
@@ -24,6 +25,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recordings_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_welcome_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
 // Auth-only routes — no role guard needed
@@ -64,6 +66,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // App chỉ dành cho gia sư: vai trò khác về trang đăng nhập (splash và
       // login tự xoá token + báo dùng web tutora.vn).
       if (claims.role != UserRole.tutor) return AppRoutes.login;
+
+      // T1: lần đầu vào Trang chủ trên máy này → màn chào mừng trước.
+      if (path == AppRoutes.tutorHome && !await storage.getWelcomeSeen()) {
+        return AppRoutes.tutorWelcome;
+      }
       return null;
     },
     routes: [
@@ -144,6 +151,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             TutorReportReviewScreen(args: state.extra! as ReportReviewArgs),
       ),
       GoRoute(
+        path: AppRoutes.tutorRecordedWell,
+        builder: (context, state) =>
+            TutorRecordedWellScreen(args: state.extra! as RecordedWellArgs),
+      ),
+      GoRoute(
         path: AppRoutes.tutorBeforeLesson,
         builder: (context, state) =>
             TopiBeforeLessonScreen(args: state.extra! as BeforeLessonArgs),
@@ -155,6 +167,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.tutorProfile,
         builder: (context, _) => const TutorProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.tutorWelcome,
+        builder: (context, _) => const TutorWelcomeScreen(),
       ),
 
       // Tutor shell — 4 tab theo canvas: Trang chủ · Lộ trình · Bài học · Ghi âm

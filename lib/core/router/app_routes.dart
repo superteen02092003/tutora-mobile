@@ -22,12 +22,16 @@ abstract final class AppRoutes {
   static const tutorRecordings = '/tutor/recordings';
   static const tutorRecordingTips = '/tutor/recorder/tips';
   static const tutorProfile = '/tutor/profile';
+  // T1 Chào mừng — lần đầu sau đăng nhập, và "Xem lại" từ Cài đặt.
+  static const tutorWelcome = '/tutor/welcome';
 
   // Tutor sub-routes
   static const tutorNotifications = '/tutor/notifications';
   static const tutorRecorder = '/tutor/recorder';
   static const tutorRecording = '/tutor/recorder/session';
   static const tutorReportReview = '/tutor/recorder/report';
+  // T11 Ghi âm tốt — ngay sau khi kết thúc buổi, trước bản nháp báo cáo.
+  static const tutorRecordedWell = '/tutor/recorder/done';
   static const tutorRecordingDetail = '/tutor/recorder/detail';
 
   // Topi v1 — chỉ mở được khi cờ `plan` bật.

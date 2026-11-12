@@ -5,10 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
 
 /// Tham số mở màn chi tiết một buổi đã ghi.
@@ -95,36 +97,50 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
         : widget.args.studentName;
     final when = s?.startedAt ?? s?.scheduledStart;
 
+    final subject = [
+      if (s?.subject != null && s!.subject!.isNotEmpty) s.subject!,
+      if (s?.grade != null) 'Lớp ${s!.grade}',
+    ].join(' · ');
+
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      appBar: AppBar(
-        backgroundColor: TutorColors.bg,
-        surfaceTintColor: Colors.transparent,
-        titleSpacing: 0,
-        title: Text(
-          when == null ? name : '$name · ${when.day}/${when.month}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: TutorColors.ink,
-          ),
-        ),
-      ),
-      body: s == null
-          ? Center(
-              child: _error == null
-                  ? const CircularProgressIndicator()
-                  : TextButton(
-                      onPressed: _load,
-                      child: const Text('Không tải được. Chạm để thử lại.'),
-                    ),
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CanvasHeader(
+              title: name,
+              titleSize: 38,
+              onBack: () => Navigator.of(context).maybePop(),
+              right: [
+                if (when != null) '${when.day}/${when.month}',
+                if (subject.isNotEmpty) subject,
+              ].join(' · '),
+            ),
+            if (s == null)
+              Expanded(
+                child: Center(
+                  child: _error == null
+                      ? const CircularProgressIndicator()
+                      : TextButton(
+                          onPressed: _load,
+                          child: const Text('Không tải được. Chạm để thử lại.'),
+                        ),
+                ),
+              )
+            else ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  18,
+                  TutorSurface.gutter,
+                  0,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(bottom: TutorSurface.rule),
+                  ),
                   child: Row(
                     children: [
                       _TabPill(
@@ -132,7 +148,7 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                         selected: _tab == 0,
                         onTap: () => setState(() => _tab = 0),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 24),
                       _TabPill(
                         label: 'Tóm tắt buổi',
                         selected: _tab == 1,
@@ -141,21 +157,24 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: RefreshIndicator(
-                    color: TutorColors.primary,
-                    onRefresh: _load,
-                    child: _tab == 0
-                        ? _SummaryTab(
-                            status: s,
-                            name: name,
-                            onEdit: _openEditor,
-                          )
-                        : _MinutesTab(status: s),
-                  ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  color: TutorColors.primary,
+                  onRefresh: _load,
+                  child: _tab == 0
+                      ? _SummaryTab(
+                          status: s,
+                          name: name,
+                          onEdit: _openEditor,
+                        )
+                      : _MinutesTab(status: s),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -187,22 +206,26 @@ class _TabPill extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// Tab chữ kiểu canvas: tab đang chọn có gạch mực dày bên dưới.
   @override
-  Widget build(BuildContext context) => Material(
-    color: selected ? TutorColors.ink : TutorColors.surfaceSunken,
-    shape: const StadiumBorder(),
-    child: InkWell(
-      customBorder: const StadiumBorder(),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: selected ? TutorColors.surface : TutorColors.ink3,
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: selected ? TutorColors.ink : Colors.transparent,
+            width: 3,
           ),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          color: selected ? TutorColors.ink : TutorColors.ink3,
         ),
       ),
     ),
@@ -232,58 +255,32 @@ class _SummaryTab extends StatelessWidget {
       if (s.grade != null) 'Lớp ${s.grade}',
     ].join(' · ');
 
-    final (stLabel, stBg, stFg) = switch (s.status) {
+    final (stLabel, stFilled) = switch (s.status) {
       'sent' =>
         s.deliveryStatus == 'sent'
-            ? ('Đã gửi phụ huynh', TutorColors.successBg, TutorColors.success)
-            : (
-                'Đã duyệt · chờ gửi Zalo',
-                TutorColors.accentBg,
-                TutorColors.warning,
-              ),
-      'awaiting_approval' => (
-        'Chờ bạn duyệt',
-        TutorColors.primaryBg,
-        TutorColors.primary,
-      ),
-      'failed' => ('AI lỗi', TutorColors.primaryBg, TutorColors.primary),
-      _ => ('AI đang viết báo cáo', TutorColors.accentBg, TutorColors.warning),
+            ? ('Đã gửi phụ huynh', false)
+            : ('Đã duyệt · chờ gửi Zalo', false),
+      'awaiting_approval' => ('Chờ bạn duyệt', true),
+      'failed' => ('AI lỗi', true),
+      _ => ('AI đang viết báo cáo', false),
     };
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        20,
+        TutorSurface.gutter,
+        40,
+      ),
       children: [
-        const Text(
-          'Báo cáo buổi học',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-            color: TutorColors.primary,
-          ),
+        Row(
+          children: [
+            const Expanded(child: CanvasKicker('Báo cáo buổi học')),
+            CanvasTag(stLabel, filled: stFilled),
+          ],
         ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          alignment: Alignment.centerLeft,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: stBg,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              stLabel,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: stFg,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 14),
         _InfoCard(
           rows: [
             (
@@ -330,23 +327,11 @@ class _SummaryTab extends StatelessWidget {
         ],
         if (s.isAwaitingApproval || (s.isFailed && !s.isSent)) ...[
           const SizedBox(height: 8),
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: onEdit,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 48),
-                backgroundColor: TutorColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Text(
-                s.isAwaitingApproval
-                    ? 'Sửa & gửi phụ huynh'
-                    : 'Tự viết báo cáo',
-              ),
-            ),
+          CanvasCta(
+            label: s.isAwaitingApproval
+                ? 'Sửa và gửi phụ huynh'
+                : 'Tự viết báo cáo',
+            onPressed: onEdit,
           ),
         ],
         if (s.approvedAt != null || s.isSent) ...[
@@ -369,49 +354,35 @@ class _InfoCard extends StatelessWidget {
 
   final List<(IconData, String, String)> rows;
 
+  /// Hàng kẻ mực của canvas: nhãn nhỏ viết hoa trái, giá trị phải (bỏ icon).
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-    decoration: BoxDecoration(
-      color: TutorColors.surface,
-      border: Border.all(color: TutorColors.line),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Column(
-      children: [
-        for (final (icon, k, v) in rows)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Icon(icon, size: 17, color: TutorColors.ink4),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 110,
-                  child: Text(
-                    k,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: TutorColors.ink4,
-                    ),
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (var i = 0; i < rows.length; i++)
+        CanvasRow(
+          lastRule: i == rows.length - 1,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 110,
+                child: CanvasKicker(rows[i].$2),
+              ),
+              Expanded(
+                child: Text(
+                  rows[i].$3,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: TutorColors.ink,
                   ),
                 ),
-                Expanded(
-                  child: Text(
-                    v,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: TutorColors.ink,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-      ],
-    ),
+        ),
+    ],
   );
 }
 
@@ -434,21 +405,14 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: TutorColors.ink,
-            ),
-          ),
+          CanvasKicker(title, color: TutorColors.ink),
           const SizedBox(height: 8),
           SelectableText(
             text,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 16,
               height: 1.55,
-              color: TutorColors.ink2,
+              color: TutorColors.ink,
             ),
           ),
         ],
@@ -465,10 +429,7 @@ class _Note extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: TutorColors.surfaceSunken,
-      borderRadius: BorderRadius.circular(10),
-    ),
+    decoration: TutorSurface.well(),
     child: Text(
       text,
       style: const TextStyle(
@@ -568,7 +529,12 @@ class _MinutesTab extends StatelessWidget {
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 40),
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        20,
+        TutorSurface.gutter,
+        40,
+      ),
       children: [
         if (m == null || m.isEmpty)
           _Note(

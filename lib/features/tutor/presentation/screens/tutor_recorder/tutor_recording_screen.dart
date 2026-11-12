@@ -10,13 +10,15 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorded_well_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
-const Color _recDot = Color(0xFFE0514F);
+const Color _recDot = Color(0xFFFF9C80);
 
-/// Màn đang ghi âm (prototype: "4 · Đang ghi âm").
+/// T10 Đang ghi âm (canvas H3-Recording).
 ///
-/// Nền tối, đồng hồ to, hai nút. Gia sư nhìn màn này trong lúc đang dạy — mọi
+/// Nền mực, đồng hồ to, trượt để kết thúc. Gia sư nhìn màn này trong lúc đang dạy — mọi
 /// thứ không phải "còn đang ghi không" và "dừng thế nào" đều là nhiễu.
 ///
 /// Nút thu nhỏ (và vuốt quay lại) chỉ ĐÓNG MÀN, không dừng ghi: bản ghi chạy
@@ -105,12 +107,23 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     super.dispose();
   }
 
+  /// Đếm mẫu biên độ khi đang ghi, để T11 báo tỉ lệ thời gian máy nghe nhỏ.
+  int _samples = 0;
+  int _quietSamples = 0;
+
   void _pushLevel(double level) {
     setState(() {
       _levels
         ..removeAt(0)
         ..add(level);
     });
+    // "Nhỏ" = cả cửa sổ gần đây đều nhỏ (không tính một lúc im lặng ngắn khi
+    // học sinh đang nghĩ). Ngưỡng ước lượng, chưa đo trên buổi thật.
+    final paused = ref.read(lessonRecordingProvider).isPaused;
+    if (!paused) {
+      _samples++;
+      if (_SoundLevel.of(_levels, paused: false).quiet) _quietSamples++;
+    }
   }
 
   static String _clock(Duration d) {
@@ -135,6 +148,7 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     // chết và snackbar không bao giờ hiện.
     final navigator = Navigator.of(context);
     final router = GoRouter.of(context);
+    final elapsed = ref.read(lessonRecordingProvider).elapsed;
 
     final status = await ref.read(lessonRecordingProvider.notifier).finish();
     if (!mounted) return;
@@ -144,20 +158,41 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     // nằm trên máy để bấm lại khi có mạng.
     if (status == null) return;
 
-    // Sang thẳng màn "Nội dung buổi": AI thường xong trong 1–2 phút, gia sư
-    // duyệt ngay tại chỗ trước khi rời nhà học sinh.
+    // Sang T11 "Ghi âm tốt", rồi từ đó mở bản nháp: AI thường xong trong vài
+    // phút, gia sư duyệt ngay tại chỗ trước khi rời nhà học sinh.
     ref.invalidate(recorderPendingReviewsProvider);
     navigator.pop();
     unawaited(
       router.push(
-        AppRoutes.tutorReportReview,
-        extra: ReportReviewArgs(
-          recordingId: status.recordingId,
-          studentName: widget.target.studentName,
-          subtitle: widget.target.subjectName,
+        AppRoutes.tutorRecordedWell,
+        extra: RecordedWellArgs(
+          review: ReportReviewArgs(
+            recordingId: status.recordingId,
+            studentName: widget.target.studentName,
+            subtitle: widget.target.subjectName,
+          ),
+          recordedMin: (elapsed.inSeconds / 60).round(),
+          bookedMin: _bookedMin(),
+          quietShare: _samples == 0 ? 0 : _quietSamples / _samples,
         ),
       ),
     );
+  }
+
+  /// Số phút theo lịch từ "19:00" – "20:30"; null nếu không đọc được.
+  int? _bookedMin() {
+    int? m(String s) {
+      final p = s.trim().split(':');
+      if (p.length < 2) return null;
+      final h = int.tryParse(p[0]);
+      final mi = int.tryParse(p[1]);
+      return h == null || mi == null ? null : h * 60 + mi;
+    }
+
+    final a = m(widget.target.timeStart);
+    final b = m(widget.target.timeEnd);
+    if (a == null || b == null || b <= a) return null;
+    return b - a;
   }
 
   Future<void> _confirmDiscard() async {
@@ -198,35 +233,55 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     final state = ref.watch(lessonRecordingProvider);
     final paused = state.isPaused;
     final remaining = _remaining();
+    final sound = _SoundLevel.of(_levels, paused: paused);
     const white = TutorColors.surface;
     final muted = white.withValues(alpha: 0.66);
+    final kicker = [
+      widget.target.studentName,
+      widget.target.subjectName,
+    ].where((s) => s.trim().isNotEmpty).join(' · ');
 
     return Scaffold(
-      backgroundColor: TutorColors.heroInk,
+      backgroundColor: TutorColors.ink,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          padding: const EdgeInsets.fromLTRB(
+            TutorSurface.gutter,
+            16,
+            TutorSurface.gutter,
+            16,
+          ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Trạng thái + thu nhỏ ───────────────────────────────
+              // ── Buổi học · trạng thái · thu nhỏ ─────────────────────
               Row(
                 children: [
+                  Expanded(
+                    child: CanvasKicker(
+                      kicker,
+                      color: white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   _StatusDot(paused: paused, error: state.error != null),
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   Semantics(
                     label: 'Thu nhỏ, vẫn tiếp tục ghi',
                     button: true,
                     child: InkWell(
-                      customBorder: const CircleBorder(),
                       onTap: () => Navigator.of(context).maybePop(),
                       child: Container(
-                        width: 38,
-                        height: 38,
+                        width: 36,
+                        height: 36,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(
+                            TutorSurface.radius,
+                          ),
                           border: Border.all(
-                            color: white.withValues(alpha: 0.22),
+                            color: white.withValues(alpha: 0.35),
+                            width: TutorSurface.ruleWidth,
                           ),
                         ),
                         child: const Icon(
@@ -240,113 +295,153 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                 ],
               ),
 
-              // ── Đồng hồ · sóng · buổi học ─────────────────────────
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _clock(state.elapsed),
-                      style: TutorType.numeralLarge(color: white).copyWith(
-                        fontSize: 56,
-                        letterSpacing: -2,
-                        height: 1,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+              // ── Đồng hồ ──────────────────────────────────────────────
+              const Spacer(),
+              Text(
+                _clock(state.elapsed),
+                style:
+                    TutorType.display(
+                      size: 84,
+                      weight: FontWeight.w300,
+                      color: white,
+                    ).copyWith(
+                      letterSpacing: -3,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  'Lưu lại mỗi 5 phút',
+                  ?remaining,
+                ].join(' · '),
+                style: TutorType.rowSub(color: muted).copyWith(fontSize: 15),
+              ),
+              const Spacer(),
+
+              // ── Âm thanh ─────────────────────────────────────────────
+              _VoiceRow(
+                label: 'Âm thanh',
+                status: sound.label,
+                statusColor: sound.color,
+                child: _Waveform(levels: _levels, paused: paused),
+              ),
+              if (sound.quiet)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: white.withValues(alpha: 0.35),
+                        width: TutorSurface.ruleWidth,
                       ),
                     ),
-                    if (remaining != null) ...[
-                      const SizedBox(height: 10),
-                      Text(remaining, style: TutorType.caption(color: muted)),
-                    ],
-                    const SizedBox(height: 30),
-                    _Waveform(levels: _levels, paused: paused),
-                    const SizedBox(height: 30),
-                    Text(
-                      widget.target.studentName,
-                      textAlign: TextAlign.center,
-                      style: TutorType.numeralLarge(color: white),
-                    ),
-                    if (widget.target.subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        widget.target.subtitle,
-                        textAlign: TextAlign.center,
+                        'Đưa điện thoại lại gần học sinh một chút.',
                         style: TutorType.rowTitle(
-                          color: white.withValues(alpha: 0.78),
+                          color: white,
+                        ).copyWith(fontSize: 16, height: 1.35),
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () => unawaited(
+                          context.push(AppRoutes.tutorRecordingTips),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Text(
+                            'Xem mẹo →',
+                            style: TutorType.action(
+                              color: TutorColors.accent,
+                            ).copyWith(fontSize: 14),
+                          ),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 13,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            size: 13,
-                            color: TutorColors.accent,
-                          ),
-                          const SizedBox(width: 7),
-                          Text(
-                            'Báo cáo → Phụ huynh',
-                            style: TutorType.caption(color: TutorColors.accent),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+              Container(
+                height: TutorSurface.ruleWidth,
+                color: white.withValues(alpha: 0.35),
               ),
+              const SizedBox(height: 14),
 
-              // ── Lỗi (nếu có) ──────────────────────────────────────
+              // ── Lỗi (nếu có) ─────────────────────────────────────────
               if (state.error != null) ...[
                 Text(
                   state.error!,
                   textAlign: TextAlign.center,
                   style: TutorType.rowSub(color: TutorColors.accent),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
               ],
 
-              // ── Nút ───────────────────────────────────────────────
-              _Controls(
-                paused: paused,
+              // ── Kết thúc: trượt, để không bấm nhầm giữa buổi ─────────
+              _SlideToEnd(
                 busy: state.isFinishing,
-                enabled: state.isActive || state.error != null,
-                onTogglePause: () =>
-                    ref.read(lessonRecordingProvider.notifier).togglePause(),
-                onFinish: _finish,
+                enabled:
+                    (state.isActive || state.error != null) &&
+                    !state.isFinishing,
+                onEnd: _finish,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed:
+                      (state.isActive || state.error != null) &&
+                          !state.isFinishing
+                      ? () => ref
+                            .read(lessonRecordingProvider.notifier)
+                            .togglePause()
+                      : null,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: white,
+                    side: BorderSide(
+                      color: white.withValues(alpha: 0.5),
+                      width: TutorSurface.ruleWidth,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(TutorSurface.radius),
+                    ),
+                  ),
+                  icon: Icon(
+                    paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    paused ? 'Tiếp tục' : 'Tạm dừng',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.lock_outline_rounded, size: 13, color: muted),
-                  const SizedBox(width: 7),
                   Flexible(
                     child: Text(
-                      'Vẫn ghi khi tắt màn hình hoặc có cuộc gọi',
+                      'Vẫn ghi khi tắt màn hình',
                       style: TutorType.caption(color: muted),
                     ),
                   ),
-                ],
-              ),
-              TextButton(
-                onPressed: state.isFinishing ? null : _confirmDiscard,
-                child: Text(
-                  'Huỷ bản ghi',
-                  style: TutorType.caption(
-                    color: white.withValues(alpha: 0.45),
+                  TextButton(
+                    onPressed: state.isFinishing ? null : _confirmDiscard,
+                    child: Text(
+                      'Huỷ bản ghi',
+                      style: TutorType.caption(
+                        color: white.withValues(alpha: 0.55),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -354,6 +449,84 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
       ),
     );
   }
+}
+
+/// Mức âm thanh chung (app chưa tách giọng gia sư / học sinh): trung bình
+/// biên độ gần đây → Rõ / Nhỏ / Không nghe thấy.
+class _SoundLevel {
+  const _SoundLevel(this.label, this.color, {this.quiet = false});
+
+  factory _SoundLevel.of(List<double> levels, {required bool paused}) {
+    if (paused) {
+      return _SoundLevel('Tạm dừng', TutorColors.surface.withValues(alpha: .6));
+    }
+    final recent = levels.sublist(levels.length - 8);
+    final avg = recent.reduce((a, b) => a + b) / recent.length;
+    if (avg >= 0.18) return const _SoundLevel('Rõ', TutorColors.accent);
+    if (avg >= 0.05) {
+      return const _SoundLevel('Nhỏ', Color(0xFFFF9C80), quiet: true);
+    }
+    return const _SoundLevel('Không nghe', Color(0xFFFF9C80), quiet: true);
+  }
+
+  final String label;
+  final Color color;
+  final bool quiet;
+}
+
+class _VoiceRow extends StatelessWidget {
+  const _VoiceRow({
+    required this.label,
+    required this.status,
+    required this.statusColor,
+    required this.child,
+  });
+
+  final String label;
+  final String status;
+  final Color statusColor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    decoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(
+          color: TutorColors.surface.withValues(alpha: 0.35),
+          width: TutorSurface.ruleWidth,
+        ),
+      ),
+    ),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 82,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: TutorColors.surface,
+            ),
+          ),
+        ),
+        Expanded(child: child),
+        SizedBox(
+          width: 84,
+          child: Text(
+            status,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: statusColor,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _StatusDot extends StatelessWidget {
@@ -365,10 +538,10 @@ class _StatusDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = error
-        ? 'KHÔNG GHI ĐƯỢC'
+        ? 'LỖI'
         : paused
-        ? 'TẠM DỪNG'
-        : 'ĐANG GHI';
+        ? 'DỪNG'
+        : 'GHI';
     final dot = error
         ? TutorColors.accent
         : paused
@@ -376,54 +549,50 @@ class _StatusDot extends StatelessWidget {
         : _recDot;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 9,
-          height: 9,
-          decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TutorType.caption(color: TutorColors.surface).copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.6,
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: dot,
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
+        const SizedBox(width: 6),
+        Text(label, style: TutorType.kicker(color: TutorColors.surface)),
       ],
     );
   }
 }
 
-/// Sóng âm: 20 vạch vàng chạy từ phải sang trái. Chỉ để trả lời "máy có còn
-/// nghe thấy tiếng không", không phải để đọc chính xác biên độ.
+/// Vạch biên độ chạy từ phải sang trái: chỉ trả lời "máy còn nghe thấy không".
 class _Waveform extends StatelessWidget {
   const _Waveform({required this.levels, required this.paused});
 
   final List<double> levels;
   final bool paused;
 
-  static const double _maxH = 76;
+  static const double _maxH = 28;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: _maxH,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           for (var i = 0; i < levels.length; i++) ...[
-            if (i > 0) const SizedBox(width: 4),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 5,
-              height: math.max(8, levels[i] * _maxH),
-              decoration: BoxDecoration(
-                color: TutorColors.accent.withValues(
-                  alpha: paused ? 0.3 : (0.45 + levels[i] * 0.55),
+            if (i > 0) const SizedBox(width: 3),
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: math.max(4, levels[i] * _maxH),
+                decoration: BoxDecoration(
+                  color: TutorColors.accent.withValues(
+                    alpha: paused ? 0.3 : (0.45 + levels[i] * 0.55),
+                  ),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                borderRadius: BorderRadius.circular(999),
               ),
             ),
           ],
@@ -433,79 +602,111 @@ class _Waveform extends StatelessWidget {
   }
 }
 
-class _Controls extends StatelessWidget {
-  const _Controls({
-    required this.paused,
+/// "Trượt để kết thúc buổi": kéo núm đồng sang phải quá 85% mới kết thúc.
+class _SlideToEnd extends StatefulWidget {
+  const _SlideToEnd({
     required this.busy,
     required this.enabled,
-    required this.onTogglePause,
-    required this.onFinish,
+    required this.onEnd,
   });
 
-  final bool paused;
   final bool busy;
   final bool enabled;
-  final VoidCallback onTogglePause;
-  final VoidCallback onFinish;
+  final VoidCallback onEnd;
+
+  @override
+  State<_SlideToEnd> createState() => _SlideToEndState();
+}
+
+class _SlideToEndState extends State<_SlideToEnd> {
+  static const double _h = 56;
+  static const double _knob = 52;
+  double _dx = 0;
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
-    );
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: enabled && !busy ? onTogglePause : null,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              foregroundColor: TutorColors.surface,
-              side: BorderSide(
-                color: TutorColors.surface.withValues(alpha: 0.3),
+    return LayoutBuilder(
+      builder: (context, c) {
+        final max = c.maxWidth - _knob - 4;
+        final t = max <= 0 ? 0.0 : (_dx / max).clamp(0.0, 1.0);
+        return Semantics(
+          button: true,
+          label: 'Kết thúc buổi học',
+          onTap: widget.enabled ? widget.onEnd : null,
+          child: Container(
+            height: _h,
+            decoration: BoxDecoration(
+              color: TutorColors.surface.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(TutorSurface.radius),
+              border: Border.all(
+                color: TutorColors.surface.withValues(alpha: 0.35),
+                width: TutorSurface.ruleWidth,
               ),
-              shape: shape,
             ),
-            icon: Icon(
-              paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-              size: 18,
-            ),
-            label: Text(
-              paused ? 'Tiếp tục' : 'Tạm dừng',
-              style: TutorType.action(color: TutorColors.surface),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: enabled && !busy ? onFinish : null,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              backgroundColor: TutorColors.accent,
-              foregroundColor: TutorColors.heroInk,
-              disabledBackgroundColor: TutorColors.accent.withValues(
-                alpha: 0.4,
-              ),
-              shape: shape,
-            ),
-            icon: busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: TutorColors.heroInk,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Center(
+                  child: Opacity(
+                    opacity: 1 - t,
+                    child: Text(
+                      widget.busy ? 'Đang lưu…' : 'Trượt để kết thúc buổi',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: TutorColors.surface,
+                      ),
                     ),
-                  )
-                : const Icon(Icons.stop_rounded, size: 18),
-            label: Text(
-              busy ? 'Đang lưu…' : 'Kết thúc',
-              style: TutorType.action(),
+                  ),
+                ),
+                Positioned(
+                  left: 2 + _dx,
+                  child: GestureDetector(
+                    onHorizontalDragUpdate: widget.enabled
+                        ? (d) => setState(
+                            () => _dx = (_dx + d.delta.dx).clamp(0.0, max),
+                          )
+                        : null,
+                    onHorizontalDragEnd: widget.enabled
+                        ? (_) {
+                            final done = t > 0.85;
+                            setState(() => _dx = 0);
+                            if (done) widget.onEnd();
+                          }
+                        : null,
+                    child: Container(
+                      width: _knob,
+                      height: _knob - 4,
+                      decoration: BoxDecoration(
+                        color: widget.enabled
+                            ? TutorColors.accent
+                            : TutorColors.accent.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(
+                          TutorSurface.radius - 2,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: widget.busy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: TutorColors.ink,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: TutorColors.ink,
+                            ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
