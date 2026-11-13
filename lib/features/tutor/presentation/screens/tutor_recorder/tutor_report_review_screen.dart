@@ -233,6 +233,7 @@ class _TutorReportReviewScreenState
         deliveryChannel: r.deliveryChannel,
         deliveryStatus: r.deliveryStatus,
         aiDrafted: !_manual,
+        hasParentPhone: (r.parentPhone ?? s.parentPhone ?? '').isNotEmpty,
         approvedAtUtc: DateTime.now().toUtc(),
       );
       unawaited(

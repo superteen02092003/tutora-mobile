@@ -18,6 +18,7 @@ class ReportSentArgs {
     this.deliveryChannel,
     this.deliveryStatus,
     this.aiDrafted = true,
+    this.hasParentPhone = true,
   });
 
   final String lessonId;
@@ -34,6 +35,10 @@ class ReportSentArgs {
   /// sent | pending | failed | null.
   final String? deliveryStatus;
   final bool aiDrafted;
+
+  /// Học sinh ngoài nền tảng có SĐT phụ huynh (backend vẫn ghi kênh ZNS khi
+  /// chưa có số, nhưng tin không gửi được).
+  final bool hasParentPhone;
 }
 
 String _dm(DateTime d) =>
@@ -45,7 +50,7 @@ String _dm(DateTime d) =>
   if (a.deliveryChannel == 'booking' || !a.offPlatform) {
     return (title: 'Đã gửi', text: 'Phụ huynh $who xem báo cáo trên TopTutor.');
   }
-  if (a.deliveryChannel != 'zns') {
+  if (a.deliveryChannel != 'zns' || !a.hasParentPhone) {
     return (
       title: 'Đã duyệt',
       text: 'Báo cáo đã lưu. Thêm SĐT phụ huynh để gửi qua Zalo.',
@@ -194,12 +199,15 @@ class ReportSentScreen extends StatelessWidget {
       'booking' => 'TopTutor',
       _ => args.offPlatform ? 'Chưa gửi' : 'TopTutor',
     };
+    final shownChannel = args.offPlatform && !args.hasParentPhone
+        ? 'Chưa gửi'
+        : channel;
     final rows = <(String, String)>[
       (
         day == null ? 'Báo cáo buổi học' : 'Báo cáo buổi ${_dm(day)}',
         'Đã duyệt',
       ),
-      ('Kênh', channel),
+      ('Kênh', shownChannel),
       ('Ghi chú', args.aiDrafted ? 'AI soạn, bạn đã duyệt' : 'Bạn tự viết'),
     ];
     return _Frame(

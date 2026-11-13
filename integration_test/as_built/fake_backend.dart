@@ -988,6 +988,22 @@ class FakeBackend implements HttpClientAdapter {
     final write = _phase1Write(options);
     if (write != null) return write;
 
+    // Approve, like the backend: status "sent", off-platform → Zalo (ZNS)
+    // pending, the delivery job sends it (06:30 at the earliest).
+    final approve = RegExp(
+      r'^/recording/app/([^/]+)/approve$',
+    ).firstMatch(path);
+    if (approve != null && options.method == 'POST') {
+      return _json(
+        _ok(
+          recordingStatus(approve.group(1)!)
+            ..['status'] = 'sent'
+            ..['deliveryChannel'] = 'zns'
+            ..['deliveryStatus'] = 'pending',
+        ),
+      );
+    }
+
     // Anything else (writes, unknown reads): succeed with an empty body so a
     // stray tap cannot fail loudly. Nothing leaves the process.
     return _json(_ok(<String, dynamic>{}));
