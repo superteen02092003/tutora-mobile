@@ -17,8 +17,10 @@ abstract final class AppRoutes {
   // Tutor shell tabs — Trang chủ · Lịch (Hồ sơ là màn con)
   static const tutorHome = '/tutor/home';
   static const tutorSchedule = '/tutor/schedule';
-  // Tab canvas 11/2026: Lộ trình (T3) và Ghi âm (T6).
+  // Tab V5.6 (2026-11-12): Trang chủ · Lộ trình · Bài học · Học sinh.
   static const tutorPath = '/tutor/path';
+  static const tutorStudents = '/tutor/students';
+  // Danh sách bản ghi âm (T6) — không còn là tab, mở từ Lộ trình.
   static const tutorRecordings = '/tutor/recordings';
   static const tutorRecordingTips = '/tutor/recorder/tips';
   static const tutorProfile = '/tutor/profile';

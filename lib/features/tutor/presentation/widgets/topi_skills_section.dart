@@ -4,10 +4,11 @@ import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/topi_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_ui.dart';
 
-/// T5 "Kỹ năng": số kỹ năng tìm thấy, thanh chia theo bốn mức kèm chú thích,
-/// danh sách theo mức với sao (một sao cho mỗi bậc lên).
+/// Thẻ "Kỹ năng" (canvas V5.6 Pupil): số kỹ năng tìm thấy, lưới bốn mức với
+/// 4 chấm ("Vững · 2"), rồi danh sách theo mức với sao (một sao mỗi bậc lên).
 ///
 /// Không vẽ gì khi cờ `skills` tắt, khi đang tải, lỗi hoặc chưa có kỹ năng.
 class TopiSkillsSection extends ConsumerWidget {
@@ -38,13 +39,20 @@ class TopiSkillsSection extends ConsumerWidget {
   }
 }
 
+int _dots(TopiLevel l) => switch (l) {
+  TopiLevel.toDo => 1,
+  TopiLevel.improving => 2,
+  TopiLevel.standard => 3,
+  TopiLevel.mastered => 4,
+};
+
 class TopiSkillsView extends StatelessWidget {
   const TopiSkillsView({required this.items, required this.title, super.key});
 
   final List<TopiSkillItem> items;
   final String title;
 
-  /// Thứ tự hiển thị danh sách: mức cao trước.
+  /// Thứ tự hiển thị: mức cao trước (như lưới trên canvas).
   static const List<TopiLevel> _order = [
     TopiLevel.mastered,
     TopiLevel.standard,
@@ -62,71 +70,53 @@ class TopiSkillsView extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: TutorSurface.cardPadding,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: TutorSurface.card(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TutorType.sectionTitle()),
-          const SizedBox(height: 10),
+          Text(title, style: TutorType.caption(color: TutorColors.ink3)),
+          const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('${items.length}', style: TutorType.numeralLarge()),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('kỹ năng', style: TutorType.rowSub()),
-              ),
-              if (stars > 0) ...[
-                const Icon(
-                  Icons.star_rounded,
-                  size: 18,
-                  color: TutorColors.accent,
+              Text('${items.length}', style: TutorType.numeral()),
+              const SizedBox(width: 6),
+              Expanded(child: Text('kỹ năng', style: TutorType.rowSub())),
+              if (stars > 0)
+                Text(
+                  '$stars ngôi sao',
+                  style: TutorType.rowSub(color: TutorColors.ink),
                 ),
-                const SizedBox(width: 3),
-                Text('$stars sao', style: TutorType.action()),
-              ],
             ],
           ),
           const SizedBox(height: 12),
-          // Thanh chia theo bốn mức, cùng thứ tự với chú thích.
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 12,
-              child: Row(
+          // Lưới 2 × 2: bốn mức, mỗi mức một hàng chấm + số kỹ năng.
+          LayoutBuilder(
+            builder: (context, c) {
+              final w = (c.maxWidth - 14) / 2;
+              return Wrap(
+                spacing: 14,
+                runSpacing: 10,
                 children: [
-                  for (final l in TopiLevel.values)
-                    if (byLevel[l]!.isNotEmpty)
-                      Expanded(
-                        flex: byLevel[l]!.length,
-                        child: ColoredBox(color: TopiLevelColors.of(l)),
-                      ),
+                  for (final l in _order)
+                    SizedBox(
+                      width: w,
+                      child: _Legend(level: l, count: byLevel[l]!.length),
+                    ),
                 ],
-              ),
-            ),
+              );
+            },
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 14,
-            runSpacing: 6,
-            children: [
-              for (final l in TopiLevel.values)
-                _Legend(level: l, count: byLevel[l]!.length),
-            ],
-          ),
+          const SizedBox(height: 6),
           for (final l in _order)
             if (byLevel[l]!.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                topiLevelLabel(l).toUpperCase(),
-                style: TutorType.caption(
-                  color: TopiLevelColors.of(l),
-                ).copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.6),
-              ),
-              const SizedBox(height: 4),
-              for (final i in byLevel[l]!) _SkillRow(item: i),
+              const SizedBox(height: 10),
+              Text(topiLevelLabel(l), style: TutorType.kicker()),
+              const SizedBox(height: 2),
+              for (var i = 0; i < byLevel[l]!.length; i++)
+                _SkillRow(item: byLevel[l]![i], first: i == 0),
             ],
         ],
       ),
@@ -142,43 +132,35 @@ class _Legend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 9,
-        height: 9,
-        decoration: BoxDecoration(
-          color: TopiLevelColors.of(level),
-          borderRadius: BorderRadius.circular(2),
+      CanvasSkillDots(level: _dots(level)),
+      const SizedBox(width: 8),
+      Flexible(
+        child: Text(
+          '${topiLevelLabel(level)} · $count',
+          overflow: TextOverflow.ellipsis,
+          style: TutorType.rowSub(),
         ),
-      ),
-      const SizedBox(width: 5),
-      Text(
-        '${topiLevelLabel(level)} $count',
-        style: TutorType.caption(color: TutorColors.ink3),
       ),
     ],
   );
 }
 
 class _SkillRow extends StatelessWidget {
-  const _SkillRow({required this.item});
+  const _SkillRow({required this.item, required this.first});
 
   final TopiSkillItem item;
+  final bool first;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: BoxDecoration(
+      border: Border(top: first ? BorderSide.none : TutorSurface.rule),
+    ),
     child: Row(
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: TopiLevelColors.of(item.level),
-            shape: BoxShape.circle,
-          ),
-        ),
+        CanvasSkillDots(level: _dots(item.level)),
         const SizedBox(width: 10),
         Expanded(
           child: Text.rich(

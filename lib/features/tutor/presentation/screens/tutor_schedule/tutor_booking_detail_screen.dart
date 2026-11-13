@@ -1,279 +1,177 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
-import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
-import 'package:tutora/shared/widgets/status_chip.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
+/// Chi tiết một buổi trong lớp — design V5.6: nút quay lại tròn, thẻ bo 20,
+/// hàng khoá–giá trị kẻ mảnh, nút viên thuốc.
 class TutorBookingDetailScreen extends StatelessWidget {
   const TutorBookingDetailScreen({required this.lesson, super.key});
 
   final TutorLessonDto lesson;
 
-  (String, ChipTone) get _chip => lessonChip(lesson.status);
+  String get _chipLabel => lessonChip(lesson.status).$1;
 
   // BE trả `in_progress` có gạch dưới — bản cũ so sai với 'inprogress'.
-  Color get _heroColor => switch (lesson.status.toLowerCase()) {
-    'scheduled' || 'confirmed' => const Color(0xFFFFF3CD),
-    'reserved' => const Color(0xFFF0F1F5),
-    'in_progress' || 'inprogress' => const Color(0xFFD5EDD9),
-    'pending_confirmation' || 'interrupted' => const Color(0xFFFFF3CD),
-    'completed' => const Color(0xFFD5E8F5),
-    _ => const Color(0xFFFFDEDE),
-  };
-
-  Color get _heroBorder => switch (lesson.status.toLowerCase()) {
-    'scheduled' || 'confirmed' => const Color(0xFF7A5900),
-    'reserved' => AppColors.ink4,
-    'in_progress' || 'inprogress' => AppColors.moss,
-    'pending_confirmation' || 'interrupted' => const Color(0xFF7A5900),
-    'completed' => const Color(0xFF0D3F6B),
-    _ => AppColors.oxblood,
-  };
+  String get _s => lesson.status.toLowerCase();
 
   @override
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).padding.bottom;
-    final (chipLabel, chipTone) = _chip;
     final dt = lesson.startDt;
 
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const TutorChildHeader(title: 'Chi tiết buổi dạy'),
-
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad + 24),
-                children: [
-                  // Hero card
-                  _HeroCard(
-                    lesson: lesson,
-                    chipLabel: chipLabel,
-                    chipTone: chipTone,
-                    heroColor: _heroColor,
-                    heroBorder: _heroBorder,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Buổi phụ / buổi học lại: giải thích buổi này từ đâu ra.
-                  if (lesson.linkLabel != null) ...[
-                    _LinkedSessionNote(lesson: lesson),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Student info card
-                  _InfoCard(
-                    child: Row(
-                      children: [
-                        _Avatar(name: lesson.studentName),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                lesson.studentName,
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.ink,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Học sinh · ${lesson.subjectName}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  color: AppColors.ink4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _OutlineBtn(label: 'Nhắn tin', onTap: () {}),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Timeline
-                  _InfoCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('TIẾN TRÌNH', style: AppTextStyles.eyebrow()),
-                        const SizedBox(height: 14),
-                        const _TimelineStep(
-                          label: 'Đã xếp lịch',
-                          done: true,
-                          isLast: false,
-                        ),
-                        _TimelineStep(
-                          label: 'Đang diễn ra',
-                          done: const {
-                            'in_progress',
-                            'inprogress',
-                            'pending_confirmation',
-                            'completed',
-                            'disputed',
-                          }.contains(lesson.status.toLowerCase()),
-                          isLast: false,
-                        ),
-                        // Chờ xác nhận = báo cáo đã gửi, chưa xong hẳn.
-                        _TimelineStep(
-                          label: 'Chờ xác nhận',
-                          done: const {
-                            'pending_confirmation',
-                            'completed',
-                          }.contains(lesson.status.toLowerCase()),
-                          isLast: false,
-                        ),
-                        _TimelineStep(
-                          label: 'Hoàn thành',
-                          done: lesson.status.toLowerCase() == 'completed',
-                          isLast: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Date / time info
-                  _InfoCard(
-                    child: Column(
-                      children: [
-                        _InfoRow(
-                          icon: Icons.calendar_today_rounded,
-                          label: 'Ngày',
-                          value: dt != null
-                              ? '${dt.day} tháng ${dt.month}, ${dt.year}'
-                              : '—',
-                        ),
-                        const SizedBox(height: 10),
-                        _InfoRow(
-                          icon: Icons.access_time_rounded,
-                          label: 'Giờ',
-                          value: '${lesson.timeStart} – ${lesson.timeEnd}',
-                        ),
-                        if (lesson.teachingMode != null) ...[
-                          const SizedBox(height: 10),
-                          _InfoRow(
-                            icon: Icons.cast_for_education_rounded,
-                            label: 'Hình thức',
-                            value: lesson.teachingMode!,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Bỏ ghi chú escrow: mâu thuẫn với thẻ trạng thái bên dưới.
-                  if (lesson.status.toLowerCase() == 'completed')
-                    _InfoCard(
-                      color: const Color(0xFFD5E8F5),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.check_circle_outline_rounded,
-                            size: 18,
-                            color: Color(0xFF0D3F6B),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Buổi học đã hoàn thành',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF0D3F6B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  // Hai trạng thái này ảnh hưởng tới tiền nên phải nói rõ.
-                  if (lesson.status.toLowerCase() == 'disputed')
-                    _InfoCard(
-                      color: const Color(0xFFFFDEDE),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.gavel_rounded,
-                            size: 18,
-                            color: AppColors.oxblood,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Buổi học đang tranh chấp — tiền bị giữ tới khi '
-                              'được xử lý.',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.oxblood,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (const {
-                    'no_show',
-                    'cancelled_noshow',
-                  }.contains(lesson.status.toLowerCase()))
-                    _InfoCard(
-                      color: const Color(0xFFFFDEDE),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.person_off_outlined,
-                            size: 18,
-                            color: AppColors.oxblood,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Buổi học không diễn ra do có bên vắng mặt.',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.oxblood,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (lesson.status.toLowerCase() == 'cancelled')
-                    _InfoCard(
-                      color: const Color(0xFFFFDEDE),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.cancel_outlined,
-                            size: 18,
-                            color: AppColors.oxblood,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Buổi học đã bị huỷ',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.oxblood,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: EdgeInsets.only(bottom: bottomPad + 32),
+            children: [
+              CanvasHeader(
+                title: 'Chi tiết buổi dạy',
+                onBack: () => Navigator.of(context).pop(),
+                trailing: CanvasTag(_chipLabel),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  18,
+                  TutorSurface.gutter,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _HeroCard(lesson: lesson),
+                    const SizedBox(height: 12),
+
+                    // Buổi phụ / buổi học lại: giải thích buổi này từ đâu ra.
+                    if (lesson.linkLabel != null) ...[
+                      _LinkedSessionNote(lesson: lesson),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Học sinh
+                    _InfoCard(
+                      child: Row(
+                        children: [
+                          _Avatar(name: lesson.studentName),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  lesson.studentName,
+                                  style: TutorType.rowTitle(),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Học sinh · ${lesson.subjectName}',
+                                  style: TutorType.rowSub(),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _PillBtn(label: 'Nhắn tin', onTap: () {}),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: TutorSurface.sectionGap),
+
+                    // Tiến trình
+                    Text('Tiến trình', style: TutorType.sectionTitle()),
+                    const SizedBox(height: 12),
+                    _InfoCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const _TimelineStep(
+                            label: 'Đã xếp lịch',
+                            done: true,
+                            isLast: false,
+                          ),
+                          _TimelineStep(
+                            label: 'Đang diễn ra',
+                            done: const {
+                              'in_progress',
+                              'inprogress',
+                              'pending_confirmation',
+                              'completed',
+                              'disputed',
+                            }.contains(_s),
+                            isLast: false,
+                          ),
+                          // Chờ xác nhận = báo cáo đã gửi, chưa xong hẳn.
+                          _TimelineStep(
+                            label: 'Chờ xác nhận',
+                            done: const {
+                              'pending_confirmation',
+                              'completed',
+                            }.contains(_s),
+                            isLast: false,
+                          ),
+                          _TimelineStep(
+                            label: 'Hoàn thành',
+                            done: _s == 'completed',
+                            isLast: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: TutorSurface.sectionGap),
+
+                    // Ngày / giờ / hình thức
+                    _KvRow(
+                      label: 'Ngày',
+                      value: dt != null
+                          ? '${dt.day} tháng ${dt.month}, ${dt.year}'
+                          : '—',
+                    ),
+                    _KvRow(
+                      label: 'Giờ',
+                      value: '${lesson.timeStart} – ${lesson.timeEnd}',
+                    ),
+                    if (lesson.teachingMode != null)
+                      _KvRow(label: 'Hình thức', value: lesson.teachingMode!),
+                    Container(height: 1, color: TutorColors.line),
+                    const SizedBox(height: 18),
+
+                    // Bỏ ghi chú escrow: mâu thuẫn với thẻ trạng thái bên dưới.
+                    if (_s == 'completed')
+                      const _StatusNote(
+                        icon: Icons.check_circle_outline_rounded,
+                        text: 'Buổi học đã hoàn thành',
+                      ),
+                    // Các trạng thái này ảnh hưởng tới tiền nên phải nói rõ.
+                    if (_s == 'disputed')
+                      const _StatusNote(
+                        icon: Icons.gavel_rounded,
+                        text:
+                            'Buổi học đang tranh chấp — tiền bị giữ tới khi '
+                            'được xử lý.',
+                        warning: true,
+                      ),
+                    if (const {'no_show', 'cancelled_noshow'}.contains(_s))
+                      const _StatusNote(
+                        icon: Icons.person_off_outlined,
+                        text: 'Buổi học không diễn ra do có bên vắng mặt.',
+                        warning: true,
+                      ),
+                    if (_s == 'cancelled')
+                      const _StatusNote(
+                        icon: Icons.cancel_outlined,
+                        text: 'Buổi học đã bị huỷ',
+                        warning: true,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -282,50 +180,27 @@ class TutorBookingDetailScreen extends StatelessWidget {
 
 // ── Sub-widgets ─────────────────────────────────────────────────────────────
 
+/// Thẻ sage nổi: môn, ngày, giờ.
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({
-    required this.lesson,
-    required this.chipLabel,
-    required this.chipTone,
-    required this.heroColor,
-    required this.heroBorder,
-  });
+  const _HeroCard({required this.lesson});
 
   final TutorLessonDto lesson;
-  final String chipLabel;
-  final ChipTone chipTone;
-  final Color heroColor;
-  final Color heroBorder;
 
   @override
   Widget build(BuildContext context) {
     final dt = lesson.startDt;
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: heroColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: heroBorder.withValues(alpha: 0.2)),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: TutorSurface.sage(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          StatusChip(label: chipLabel, tone: chipTone),
-          const SizedBox(height: 10),
-          Text(
-            lesson.subjectName,
-            style: GoogleFonts.bricolageGrotesque(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-              letterSpacing: -0.01,
-            ),
-          ),
+          Text(lesson.subjectName, style: TutorType.display(size: 22)),
           if (dt != null) ...[
             const SizedBox(height: 6),
             Text(
               '${dt.day} tháng ${dt.month}, ${dt.year}',
-              style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
+              style: TutorType.rowSub(),
             ),
           ],
           const SizedBox(height: 4),
@@ -333,17 +208,13 @@ class _HeroCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.access_time_rounded,
-                size: 13,
-                color: AppColors.ink3,
+                size: 14,
+                color: TutorColors.ink3,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Text(
                 '${lesson.timeStart} – ${lesson.timeEnd}',
-                style: GoogleFonts.ibmPlexMono(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
-                ),
+                style: TutorType.rowTitle(),
               ),
             ],
           ),
@@ -354,110 +225,135 @@ class _HeroCard extends StatelessWidget {
 }
 
 class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.child, this.color});
+  const _InfoCard({required this.child});
+
   final Widget child;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color ?? AppColors.paper,
-        borderRadius: BorderRadius.circular(14),
-        border: color == null ? Border.all(color: AppColors.line) : null,
-      ),
+      padding: TutorSurface.cardPadding,
+      decoration: TutorSurface.card(),
       child: child,
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-  final IconData icon;
+/// Hàng "Nhãn ........ giá trị" kẻ mảnh phía trên.
+class _KvRow extends StatelessWidget {
+  const _KvRow({required this.label, required this.value});
+
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: AppColors.ink3),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      decoration: BoxDecoration(border: Border(top: TutorSurface.rule)),
+      child: Row(
+        children: [
+          Text(label, style: TutorType.rowSub()),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TutorType.rowTitle().copyWith(fontSize: 13.5),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Ghi chú trạng thái cuối trang. Màu cảnh báo chỉ cho trạng thái ảnh hưởng
+/// tới tiền / buổi không diễn ra.
+class _StatusNote extends StatelessWidget {
+  const _StatusNote({
+    required this.icon,
+    required this.text,
+    this.warning = false,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool warning;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = warning ? TutorStatusTone.attention : TutorColors.ink;
+    return Container(
+      width: double.infinity,
+      padding: TutorSurface.cardPadding,
+      decoration: BoxDecoration(
+        color: warning ? TutorStatusTone.attentionBg : TutorColors.sage,
+        borderRadius: BorderRadius.circular(TutorSurface.radius),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: TutorType.rowTitle(color: fg)),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.name});
+
   final String name;
 
   @override
   Widget build(BuildContext context) {
-    final initials = name.trim().split(' ').map((w) => w[0]).take(2).join();
+    final initials = name
+        .trim()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0])
+        .take(2)
+        .join();
     return Container(
       width: 44,
       height: 44,
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(12),
+      decoration: const BoxDecoration(
+        color: TutorColors.sage,
+        shape: BoxShape.circle,
       ),
       alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.cream,
-        ),
-      ),
+      child: Text(initials, style: TutorType.display(size: 16)),
     );
   }
 }
 
-class _OutlineBtn extends StatelessWidget {
-  const _OutlineBtn({required this.label, required this.onTap});
+class _PillBtn extends StatelessWidget {
+  const _PillBtn({required this.label, required this.onTap});
+
   final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.circular(999),
+    return SizedBox(
+      height: 36,
+      child: FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          // Theme app đặt minimumSize rộng vô hạn cho nút.
+          minimumSize: const Size(0, 36),
+          backgroundColor: TutorColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: const StadiumBorder(),
+          textStyle: TutorType.action(),
         ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.cream,
-          ),
-        ),
+        child: Text(label),
       ),
     );
   }
@@ -469,6 +365,7 @@ class _TimelineStep extends StatelessWidget {
     required this.done,
     required this.isLast,
   });
+
   final String label;
   final bool done;
   final bool isLast;
@@ -485,35 +382,34 @@ class _TimelineStep extends StatelessWidget {
               height: 20,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: done ? AppColors.ink : AppColors.line,
+                color: done ? TutorColors.ink : null,
+                border: done
+                    ? null
+                    : Border.all(color: const Color(0xFFA3A8A2), width: 1.6),
               ),
               child: done
                   ? const Icon(
                       Icons.check_rounded,
                       size: 12,
-                      color: AppColors.cream,
+                      color: Colors.white,
                     )
                   : null,
             ),
             if (!isLast)
               Container(
-                width: 1.5,
+                width: 1,
                 height: 20,
-                color: done ? AppColors.ink : AppColors.line,
+                color: done ? TutorColors.ink : const Color(0x241F2A24),
                 margin: const EdgeInsets.symmetric(vertical: 2),
               ),
           ],
         ),
         const SizedBox(width: 12),
         Padding(
-          padding: EdgeInsets.only(top: 2, bottom: isLast ? 0 : 10),
+          padding: EdgeInsets.only(top: 1, bottom: isLast ? 0 : 10),
           child: Text(
             label,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: done ? FontWeight.w600 : FontWeight.w400,
-              color: done ? AppColors.ink : AppColors.ink4,
-            ),
+            style: done ? TutorType.rowTitle() : TutorType.rowSub(),
           ),
         ),
       ],
@@ -542,38 +438,30 @@ class _LinkedSessionNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.cream2,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.line),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: TutorSurface.well().copyWith(
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.link_rounded, size: 16, color: AppColors.ink4),
-          const SizedBox(width: 8),
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(Icons.link_rounded, size: 18, color: TutorColors.ink3),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   lesson.linkLabel!,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
+                  style: TutorType.rowTitle().copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  _body,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    color: AppColors.ink4,
-                    height: 1.4,
-                  ),
-                ),
+                Text(_body, style: TutorType.rowSub()),
               ],
             ),
           ),

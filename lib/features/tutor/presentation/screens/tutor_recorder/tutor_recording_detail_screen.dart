@@ -11,6 +11,7 @@ import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
 
 /// Tham số mở màn chi tiết một buổi đã ghi.
@@ -21,20 +22,11 @@ class RecordingDetailArgs {
   final String studentName;
 }
 
-String _mmss(Duration d) {
-  final h = d.inHours;
-  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-  return h > 0 ? '${h.toString().padLeft(2, '0')}:$m:$s' : '$m:$s';
-}
-
-String _date(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-
 String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-/// Chi tiết một buổi đã ghi: báo cáo gửi phụ huynh (Báo cáo) và tóm tắt buổi (Tóm tắt buổi).
+/// Chi tiết một buổi đã ghi (V5.6 board V56-LessonDetail): báo cáo gửi phụ
+/// huynh (Báo cáo) và tóm tắt buổi (Tóm tắt buổi).
 /// Gia sư không nghe lại âm thanh và không xem lời thoại đầy đủ.
 class TutorRecordingDetailScreen extends ConsumerStatefulWidget {
   const TutorRecordingDetailScreen({required this.args, super.key});
@@ -102,77 +94,103 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
       if (s?.grade != null) 'Lớp ${s!.grade}',
     ].join(' · ');
 
+    // "19:01 – 20:30 · 86 phút · 18 đoạn ghi" — chỉ phần có dữ liệu.
+    final start = s?.startedAt ?? s?.scheduledStart;
+    final end = s?.endedAt;
+    final lead = s == null
+        ? null
+        : [
+            if (start != null && end != null)
+              '${_hm(start)} – ${_hm(end)}'
+            else if (start != null)
+              _hm(start),
+            if (s.durationSec > 0) '${(s.durationSec / 60).round()} phút',
+            if (s.partCount > 0) '${s.partCount} đoạn ghi',
+          ].join(' · ');
+
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            CanvasHeader(
-              title: name,
-              titleSize: 38,
-              onBack: () => Navigator.of(context).maybePop(),
-              right: [
-                if (when != null) '${when.day}/${when.month}',
-                if (subject.isNotEmpty) subject,
-              ].join(' · '),
-            ),
-            if (s == null)
-              Expanded(
-                child: Center(
-                  child: _error == null
-                      ? const CircularProgressIndicator()
-                      : TextButton(
-                          onPressed: _load,
-                          child: const Text('Không tải được. Chạm để thử lại.'),
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CanvasHeader(
+                title: name,
+                onBack: () => Navigator.of(context).maybePop(),
+                right: [
+                  if (when != null) '${when.day}/${when.month}',
+                  if (subject.isNotEmpty) subject,
+                ].join(' · '),
+                lead: (lead ?? '').isEmpty ? null : lead,
+              ),
+              if (s == null)
+                Expanded(
+                  child: Center(
+                    child: _error == null
+                        ? const CircularProgressIndicator(
+                            color: TutorColors.ink,
+                          )
+                        : TextButton(
+                            onPressed: _load,
+                            style: TextButton.styleFrom(
+                              foregroundColor: TutorColors.ink,
+                            ),
+                            child: const Text(
+                              'Không tải được. Chạm để thử lại.',
+                            ),
+                          ),
+                  ),
+                )
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    16,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Color(0x141F2A24)),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        _TabPill(
+                          label: 'Báo cáo',
+                          selected: _tab == 0,
+                          onTap: () => setState(() => _tab = 0),
                         ),
-                ),
-              )
-            else ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  TutorSurface.gutter,
-                  18,
-                  TutorSurface.gutter,
-                  0,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(bottom: TutorSurface.rule),
-                  ),
-                  child: Row(
-                    children: [
-                      _TabPill(
-                        label: 'Báo cáo',
-                        selected: _tab == 0,
-                        onTap: () => setState(() => _tab = 0),
-                      ),
-                      const SizedBox(width: 24),
-                      _TabPill(
-                        label: 'Tóm tắt buổi',
-                        selected: _tab == 1,
-                        onTap: () => setState(() => _tab = 1),
-                      ),
-                    ],
+                        const SizedBox(width: 22),
+                        _TabPill(
+                          label: 'Tóm tắt buổi',
+                          selected: _tab == 1,
+                          onTap: () => setState(() => _tab = 1),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  color: TutorColors.primary,
-                  onRefresh: _load,
-                  child: _tab == 0
-                      ? _SummaryTab(
-                          status: s,
-                          name: name,
-                          onEdit: _openEditor,
-                        )
-                      : _MinutesTab(status: s),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: TutorColors.primary,
+                    onRefresh: _load,
+                    child: _tab == 0
+                        ? _SummaryTab(
+                            status: s,
+                            name: name,
+                            onEdit: _openEditor,
+                          )
+                        : _MinutesTab(status: s),
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -206,30 +224,96 @@ class _TabPill extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Tab chữ kiểu canvas: tab đang chọn có gạch mực dày bên dưới.
+  /// Tab chữ V5.6: tab đang chọn chữ mực, gạch 2 px bên dưới.
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: selected ? TutorColors.ink : Colors.transparent,
-            width: 3,
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.only(top: 6, bottom: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? TutorColors.ink : Colors.transparent,
+              width: 2,
+            ),
           ),
         ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          color: selected ? TutorColors.ink : TutorColors.ink3,
+        child: Text(
+          label,
+          style: TutorType.action(
+            color: selected ? TutorColors.ink : const Color(0xFF8A8F89),
+          ),
         ),
       ),
     ),
   );
+}
+
+// ── Mảnh dùng chung ──────────────────────────────────────────────────────────
+
+/// Nhãn nhỏ thường (canvas `.lbl`).
+Widget _lbl(String text, {Color color = TutorColors.ink3}) =>
+    Text(text, style: TutorType.caption(color: color));
+
+/// Tiêu đề nhóm Bricolage, tuỳ chọn nhãn "Nháp AI" bên phải.
+class _SectionHead extends StatelessWidget {
+  const _SectionHead(this.text, {this.ai = false});
+
+  final String text;
+  final bool ai;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      children: [
+        Expanded(child: Text(text, style: TutorType.sectionTitle())),
+        if (ai) const CanvasAiDraftTag(),
+      ],
+    ),
+  );
+}
+
+/// Chip sage có biểu tượng ("Đã gửi qua Zalo").
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.text, this.icon, this.filled = false});
+
+  final String text;
+  final IconData? icon;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = filled ? Colors.white : TutorColors.ink;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: filled ? TutorColors.ink : TutorColors.sage,
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: fg),
+            const SizedBox(width: 5),
+          ],
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TutorType.caption(
+                color: fg,
+              ).copyWith(fontSize: 11.5, height: 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Báo cáo ──────────────────────────────────────────────────────────────────
@@ -248,85 +332,77 @@ class _SummaryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = status;
-    final start = s.startedAt ?? s.scheduledStart;
-    final end = s.endedAt;
-    final subtitle = [
-      if (s.subject != null && s.subject!.isNotEmpty) s.subject!,
-      if (s.grade != null) 'Lớp ${s.grade}',
-    ].join(' · ');
 
-    final (stLabel, stFilled) = switch (s.status) {
+    final (stLabel, stFilled, stIcon) = switch (s.status) {
       'sent' =>
         s.deliveryStatus == 'sent'
-            ? ('Đã gửi phụ huynh', false)
-            : ('Đã duyệt · chờ gửi Zalo', false),
-      'awaiting_approval' => ('Chờ bạn duyệt', true),
-      'failed' => ('AI lỗi', true),
-      _ => ('AI đang viết báo cáo', false),
+            ? ('Đã gửi phụ huynh', false, Icons.check_rounded)
+            : ('Đã duyệt · chờ gửi Zalo', false, Icons.schedule_rounded),
+      'awaiting_approval' => ('Chờ bạn duyệt', true, null),
+      'failed' => ('AI lỗi', true, null),
+      _ => ('AI đang viết báo cáo', false, null),
     };
+
+    final sections = [
+      ('Nội dung buổi học', _pick(s.zaloContent, s.lessonContent)),
+      ('Bài về nhà', _pick(s.zaloHomework, s.homework)),
+      ('Nhận xét', _pick(s.zaloNotes, s.tutorNotes)),
+    ].where((e) => (e.$2 ?? '').trim().isNotEmpty).toList();
+
+    final processing = s.isAiRunning || s.status == 'processing';
+    final failedEmpty = s.isFailed && (s.lessonContent ?? '').isEmpty;
+    final exercises = s.sessionMinutes?.exercises ?? const [];
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         TutorSurface.gutter,
-        20,
+        14,
         TutorSurface.gutter,
         40,
       ),
       children: [
-        Row(
-          children: [
-            const Expanded(child: CanvasKicker('Báo cáo buổi học')),
-            CanvasTag(stLabel, filled: stFilled),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _InfoCard(
-          rows: [
-            (
-              Icons.person_outline_rounded,
-              'Học sinh',
-              subtitle.isEmpty ? name : '$name · $subtitle',
-            ),
-            if (start != null) (Icons.event_outlined, 'Ngày', _date(start)),
-            if (start != null)
-              (
-                Icons.schedule_rounded,
-                'Giờ ghi',
-                end == null ? _hm(start) : '${_hm(start)} – ${_hm(end)}',
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          decoration: TutorSurface.card(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: _StatusChip(
+                      text: stLabel,
+                      icon: stIcon,
+                      filled: stFilled,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (!processing && !failedEmpty && sections.isNotEmpty)
+                    const CanvasAiDraftTag(),
+                ],
               ),
-            (
-              Icons.timer_outlined,
-              'Thời lượng',
-              s.durationSec > 0 ? _mmss(Duration(seconds: s.durationSec)) : '—',
-            ),
-            (
-              Icons.graphic_eq_rounded,
-              'Số đoạn ghi',
-              '${s.partCount} đoạn · ${(s.bytes / 1048576).toStringAsFixed(1)} MB',
-            ),
-          ],
+              if (processing)
+                const _Note(
+                  'AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.',
+                )
+              else if (failedEmpty)
+                _Note(
+                  s.errorMessage ?? 'AI chưa tạo được báo cáo từ bản ghi này.',
+                )
+              else
+                for (final (title, body) in sections) ...[
+                  const SizedBox(height: 12),
+                  _lbl(title),
+                  const SizedBox(height: 4),
+                  SelectableText(body!.trim(), style: TutorType.body()),
+                ],
+              if (s.approvedAt != null || s.isSent) _DeliveryState(status: s),
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
-        if (s.isAiRunning || s.status == 'processing')
-          const _Note(
-            'AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.',
-          )
-        else if (s.isFailed && (s.lessonContent ?? '').isEmpty)
-          _Note(s.errorMessage ?? 'AI chưa tạo được báo cáo từ bản ghi này.')
-        else ...[
-          _Section(
-            title: 'Nội dung buổi học',
-            body: _pick(s.zaloContent, s.lessonContent),
-          ),
-          _Section(
-            title: 'Bài tập về nhà',
-            body: _pick(s.zaloHomework, s.homework),
-          ),
-          _Section(title: 'Nhận xét', body: _pick(s.zaloNotes, s.tutorNotes)),
-        ],
         if (s.isAwaitingApproval || (s.isFailed && !s.isSent)) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           CanvasCta(
             label: s.isAwaitingApproval
                 ? 'Sửa và gửi phụ huynh'
@@ -334,9 +410,11 @@ class _SummaryTab extends StatelessWidget {
             onPressed: onEdit,
           ),
         ],
-        if (s.approvedAt != null || s.isSent) ...[
-          const SizedBox(height: 8),
-          _DeliveryState(status: s),
+        if (exercises.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          const _SectionHead('Bài đã làm', ai: true),
+          for (final (i, e) in exercises.indexed)
+            _ExerciseRow(exercise: e, first: i == 0),
         ],
         // Topi v1 — mỗi phần tự ẩn khi cờ tắt hoặc chưa có dữ liệu.
         TopiBeforeLessonEntry(
@@ -349,77 +427,9 @@ class _SummaryTab extends StatelessWidget {
   }
 }
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.rows});
-
-  final List<(IconData, String, String)> rows;
-
-  /// Hàng kẻ mực của canvas: nhãn nhỏ viết hoa trái, giá trị phải (bỏ icon).
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      for (var i = 0; i < rows.length; i++)
-        CanvasRow(
-          lastRule: i == rows.length - 1,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 110,
-                child: CanvasKicker(rows[i].$2),
-              ),
-              Expanded(
-                child: Text(
-                  rows[i].$3,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: TutorColors.ink,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-    ],
-  );
-}
-
 /// Mục phụ huynh nhận: tin Zalo đã duyệt; buổi cũ chưa có thì dùng bản dài.
 String? _pick(String? zalo, String? long) =>
     (zalo ?? '').trim().isNotEmpty ? zalo : long;
-
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.body});
-
-  final String title;
-  final String? body;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = (body ?? '').trim();
-    if (text.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CanvasKicker(title, color: TutorColors.ink),
-          const SizedBox(height: 8),
-          SelectableText(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.55,
-              color: TutorColors.ink,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Note extends StatelessWidget {
   const _Note(this.text);
@@ -427,21 +437,13 @@ class _Note extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: TutorSurface.well(),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        color: TutorColors.ink3,
-        height: 1.4,
-      ),
-    ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Text(text, style: TutorType.rowSub()),
   );
 }
 
-/// Trạng thái gửi báo cáo qua Zalo.
+/// Trạng thái gửi báo cáo qua Zalo — dòng nhỏ cuối thẻ báo cáo.
 class _DeliveryState extends StatelessWidget {
   const _DeliveryState({required this.status});
 
@@ -454,45 +456,109 @@ class _DeliveryState extends StatelessWidget {
       'sent' => (
         Icons.check_circle_outline_rounded,
         'Đã gửi qua Zalo',
-        TutorColors.success,
+        TutorColors.ink3,
       ),
       'failed' => (
         Icons.error_outline_rounded,
         '${(s.deliveryError ?? '').trim().isNotEmpty ? s.deliveryError!.trim() : 'Chưa gửi được qua Zalo.'}'
             ' Hãy kiểm tra lại số điện thoại phụ huynh.',
-        TutorColors.warning,
+        TutorColors.danger,
       ),
       'pending' when s.deliveryChannel != 'booking' => (
         Icons.schedule_rounded,
         'Đang chờ gửi qua Zalo',
-        TutorColors.warning,
+        TutorColors.ink3,
       ),
       _ => null,
     };
     if (v == null) return const SizedBox.shrink();
     final (icon, text, color) = v;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(border: Border(top: TutorSurface.rule)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 17, color: color),
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 16, color: color),
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.4,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
-            ),
+            child: Text(text, style: TutorType.rowSub(color: color)),
           ),
         ],
       ),
     );
   }
+}
+
+/// Hàng bài đã làm: biểu tượng kết quả, dạng bài (+ ghi chú), kết quả bên phải.
+class _ExerciseRow extends StatelessWidget {
+  const _ExerciseRow({required this.exercise, this.first = false});
+
+  final MinutesExerciseDto exercise;
+  final bool first;
+
+  IconData get _icon => switch (exercise.result) {
+    'Tự làm đúng' => Icons.check_circle_rounded,
+    'Đúng sau khi được gợi ý' => Icons.adjust_rounded,
+    'Làm sai' => Icons.cancel_outlined,
+    _ => Icons.radio_button_unchecked_rounded,
+  };
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 13),
+    decoration: BoxDecoration(
+      border: Border(
+        top: first
+            ? BorderSide.none
+            : const BorderSide(color: Color(0x0F1F2A24)),
+      ),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            _icon,
+            size: 18,
+            color: exercise.result == 'Làm sai'
+                ? TutorColors.ink3
+                : TutorColors.ink,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(exercise.type, style: TutorType.body()),
+              if (exercise.note != null)
+                Text(exercise.note!, style: TutorType.rowSub()),
+            ],
+          ),
+        ),
+        if (exercise.result != null) ...[
+          const SizedBox(width: 10),
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                exercise.result!,
+                textAlign: TextAlign.right,
+                style: TutorType.caption(color: TutorColors.ink3),
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 // ── Tóm tắt buổi ─────────────────────────────────────────────────────────────
@@ -505,11 +571,11 @@ class _MinutesTab extends StatelessWidget {
   static const _bullet = Padding(
     padding: EdgeInsets.only(top: 8),
     child: SizedBox(
-      width: 6,
-      height: 6,
+      width: 5,
+      height: 5,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: TutorColors.primary,
+          color: TutorColors.ink,
           shape: BoxShape.circle,
         ),
       ),
@@ -517,8 +583,8 @@ class _MinutesTab extends StatelessWidget {
   );
 
   static Widget _icon(IconData icon, Color color) => Padding(
-    padding: const EdgeInsets.only(top: 1),
-    child: Icon(icon, size: 18, color: color),
+    padding: const EdgeInsets.only(top: 2),
+    child: Icon(icon, size: 17, color: color),
   );
 
   @override
@@ -526,112 +592,134 @@ class _MinutesTab extends StatelessWidget {
     final m = status.sessionMinutes;
     final processing = status.isAiRunning || status.status == 'processing';
     final summary = (m?.summary ?? '').trim();
+    // "Bài đã làm" nằm ở tab Báo cáo (board V56-LessonDetail).
+    final empty =
+        m == null ||
+        (summary.isEmpty &&
+            m.sections.isEmpty &&
+            m.strengths.isEmpty &&
+            m.difficulties.isEmpty &&
+            m.usefulNotes.isEmpty &&
+            m.teachingNotes.isEmpty &&
+            m.keyPoints.isEmpty &&
+            m.followUps.isEmpty);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         TutorSurface.gutter,
-        20,
+        14,
         TutorSurface.gutter,
         40,
       ),
       children: [
-        if (m == null || m.isEmpty)
-          _Note(
-            processing
-                ? 'AI đang tóm tắt buổi học. Thường mất 1–2 phút — màn này tự cập nhật.'
-                : 'Chưa có tóm tắt buổi cho bản ghi này.',
+        // Số liệu đo từ bản ghi (chỉ gia sư thấy) — tự ẩn khi chưa có.
+        LessonInsightsCard(
+          lessonId: status.recordingId,
+          padding: const EdgeInsets.only(bottom: 14),
+        ),
+        if (empty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: TutorSurface.card(),
+            child: Text(
+              processing
+                  ? 'AI đang tóm tắt buổi học. Thường mất 1–2 phút — màn này tự cập nhật.'
+                  : (m?.exercises.isNotEmpty ?? false)
+                  ? 'Chưa có tóm tắt buổi. Bài đã làm nằm ở tab Báo cáo.'
+                  : 'Chưa có tóm tắt buổi cho bản ghi này.',
+              style: TutorType.rowSub(),
+            ),
           )
         else ...[
           if (summary.isNotEmpty) ...[
-            const _MinutesHeading('Tóm tắt'),
-            SelectableText(
-              summary,
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.55,
-                color: TutorColors.ink2,
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              decoration: TutorSurface.card(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _lbl('Tóm tắt')),
+                      const CanvasAiDraftTag(),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(summary, style: TutorType.body()),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
           ],
           if (m.sections.isNotEmpty) ...[
-            const _MinutesHeading('Diễn biến buổi học'),
+            const _SectionHead('Diễn biến buổi học', ai: true),
             for (final (i, s) in m.sections.indexed) ...[
               Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(top: 4, bottom: 6),
                 child: Text(
                   '${i + 1}. ${s.title ?? ''}',
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TutorType.rowTitle().copyWith(
                     fontWeight: FontWeight.w600,
-                    color: TutorColors.ink,
                   ),
                 ),
               ),
               for (final d in s.details) _ListItem(leading: _bullet, text: d),
               const SizedBox(height: 6),
             ],
-            const SizedBox(height: 12),
-          ],
-          if (m.exercises.isNotEmpty) ...[
-            _MinutesHeading('Bài đã làm (${m.exercises.length})'),
-            for (final e in m.exercises) _ExerciseCard(exercise: e),
             const SizedBox(height: 14),
           ],
           if (m.strengths.isNotEmpty) ...[
-            const _MinutesHeading('Học sinh đã nắm'),
+            const _SectionHead('Học sinh đã nắm', ai: true),
             for (final s in m.strengths)
               _ListItem(
                 leading: _icon(
                   Icons.check_circle_outline_rounded,
-                  TutorColors.success,
+                  TutorColors.ink,
                 ),
                 text: s,
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
           if (m.difficulties.isNotEmpty) ...[
-            const _MinutesHeading('Học sinh còn vướng'),
+            const _SectionHead('Học sinh còn vướng', ai: true),
             for (final d in m.difficulties)
               _ListItem(
-                leading: _icon(
-                  Icons.error_outline_rounded,
-                  TutorColors.warning,
-                ),
+                leading: _icon(Icons.error_outline_rounded, TutorColors.ink3),
                 text: d,
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
           if (m.usefulNotes.isNotEmpty) ...[
-            const _MinutesHeading('Thông tin hữu ích'),
+            const _SectionHead('Thông tin hữu ích', ai: true),
             for (final u in m.usefulNotes)
               _ListItem(
                 leading: _icon(
                   Icons.lightbulb_outline_rounded,
-                  TutorColors.accent,
+                  TutorColors.ink,
                 ),
                 text: u,
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
           if (m.teachingNotes.isNotEmpty) ...[
-            const _MinutesHeading('Gợi ý cách dạy'),
-            for (final n in m.teachingNotes) _TeachingNoteCard(note: n),
+            const _SectionHead('Gợi ý cách dạy'),
+            for (final (i, n) in m.teachingNotes.indexed)
+              _TeachingNoteCard(note: n, sage: i == 0),
             const SizedBox(height: 14),
           ],
           if (m.keyPoints.isNotEmpty) ...[
-            const _MinutesHeading('Ý chính'),
+            const _SectionHead('Ý chính', ai: true),
             for (final k in m.keyPoints) _ListItem(leading: _bullet, text: k),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
           ],
           if (m.followUps.isNotEmpty) ...[
-            const _MinutesHeading('Việc cần làm buổi sau'),
+            const _SectionHead('Việc cần làm buổi sau', ai: true),
             for (final f in m.followUps)
               _ListItem(
                 leading: _icon(
                   Icons.check_box_outline_blank_rounded,
-                  TutorColors.ink4,
+                  TutorColors.ink3,
                 ),
                 text: f,
               ),
@@ -642,122 +730,46 @@ class _MinutesTab extends StatelessWidget {
   }
 }
 
-class _MinutesHeading extends StatelessWidget {
-  const _MinutesHeading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: CanvasKicker(text, color: TutorColors.ink),
-  );
-}
-
-class _ExerciseCard extends StatelessWidget {
-  const _ExerciseCard({required this.exercise});
-
-  final MinutesExerciseDto exercise;
-
-  (Color, Color) get _tone => switch (exercise.result) {
-    'Tự làm đúng' => (TutorColors.success, TutorColors.successBg),
-    'Đúng sau khi được gợi ý' => (TutorColors.warning, TutorColors.warningBg),
-    'Làm sai' => (TutorColors.danger, TutorColors.dangerBg),
-    _ => (TutorColors.ink3, TutorColors.surfaceSunken),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final (fg, bg) = _tone;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: TutorColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: TutorColors.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            exercise.type,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.45,
-              color: TutorColors.ink,
-            ),
-          ),
-          if (exercise.result != null) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                exercise.result!,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: fg,
-                ),
-              ),
-            ),
-          ],
-          if (exercise.note != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              exercise.note!,
-              style: const TextStyle(
-                fontSize: 13.5,
-                height: 1.45,
-                color: TutorColors.ink3,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
+/// Gợi ý cách dạy (board V56-Feedback): thẻ có bóng đèn + "Nháp AI"; thẻ đầu
+/// là sage nổi ("thử lần sau").
 class _TeachingNoteCard extends StatelessWidget {
-  const _TeachingNoteCard({required this.note});
+  const _TeachingNoteCard({required this.note, this.sage = false});
 
   final TeachingNoteDto note;
+  final bool sage;
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: TutorColors.accentBg,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: TutorColors.accentBorder),
-    ),
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+    decoration: sage ? TutorSurface.sage() : TutorSurface.card(),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          note.content,
-          style: const TextStyle(
-            fontSize: 15,
-            height: 1.45,
-            color: TutorColors.ink,
-          ),
+        Row(
+          children: [
+            const Icon(
+              Icons.lightbulb_outline_rounded,
+              size: 16,
+              color: TutorColors.ink,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _lbl(
+                'Gợi ý',
+                color: sage ? TutorColors.ink : TutorColors.ink3,
+              ),
+            ),
+            CanvasAiDraftTag(onSage: sage),
+          ],
         ),
+        const SizedBox(height: 8),
+        Text(note.content, style: TutorType.body()),
         if (note.example != null) ...[
           const SizedBox(height: 6),
           Text(
             note.example!,
-            style: const TextStyle(
-              fontSize: 13.5,
-              height: 1.45,
-              fontStyle: FontStyle.italic,
-              color: TutorColors.ink3,
-            ),
+            style: TutorType.rowSub().copyWith(fontStyle: FontStyle.italic),
           ),
         ],
       ],
@@ -782,16 +794,7 @@ class _ListItem extends StatelessWidget {
           child: Align(alignment: Alignment.topLeft, child: leading),
         ),
         const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.5,
-              color: TutorColors.ink2,
-            ),
-          ),
-        ),
+        Expanded(child: Text(text, style: TutorType.body())),
       ],
     ),
   );

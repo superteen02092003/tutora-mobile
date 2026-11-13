@@ -25,6 +25,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recordings_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_students_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_welcome_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
@@ -172,8 +173,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.tutorWelcome,
         builder: (context, _) => const TutorWelcomeScreen(),
       ),
+      // Danh sách bản ghi âm — màn con (V5.6), mở từ Lộ trình.
+      GoRoute(
+        path: AppRoutes.tutorRecordings,
+        builder: (context, _) => const TutorRecordingsScreen(),
+      ),
 
-      // Tutor shell — 4 tab theo canvas: Trang chủ · Lộ trình · Bài học · Ghi âm
+      // Tutor shell V5.6 — 4 tab: Trang chủ · Lộ trình · Bài học · Học sinh
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShellV2(navigationShell: shell),
         branches: [
@@ -204,8 +210,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.tutorRecordings,
-                builder: (context, _) => const TutorRecordingsScreen(),
+                path: AppRoutes.tutorStudents,
+                builder: (context, _) => const TutorStudentsScreen(),
               ),
             ],
           ),

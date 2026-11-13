@@ -1,131 +1,113 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
+/// Lá cây trang trí góc phải — sau nội dung, không nhận chạm.
+class AuthLeaf extends StatelessWidget {
+  const AuthLeaf({this.width = 150, super.key});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    child: const IgnorePointer(
+      child: ExcludeSemantics(
+        child: Opacity(
+          opacity: 0.94,
+          child: Image(
+            image: AssetImage('assets/images/decor/leaf_home.webp'),
+            fit: BoxFit.fitWidth,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Đầu màn đăng nhập / đăng ký — design V5.6: nền giấy, lá cây góc phải (sau
+/// chữ), nút tròn quay lại hoặc chữ "TopTutor", một dòng viết tay Charm ở
+/// khoảng trống, tiêu đề Bricolage, mô tả Inter.
 class AuthTopDeco extends StatelessWidget {
   const AuthTopDeco({
-    required this.bgColor,
-    required this.line1,
-    required this.italicWord,
-    required this.line2Suffix,
+    required this.title,
     super.key,
-    this.accentColor = AppColors.gold,
+    this.greeting,
+    this.lead,
+    this.hand,
+    this.showBrand = false,
+    this.onBack,
   });
 
-  final Color bgColor;
-  final String line1;
-  final String italicWord;
-  final String line2Suffix;
-  final Color accentColor;
+  /// Tiêu đề lớn ("Đăng nhập").
+  final String title;
+
+  /// Dòng nhỏ trên tiêu đề (Bricolage thường).
+  final String? greeting;
+
+  /// Mô tả dưới tiêu đề.
+  final Widget? lead;
+
+  /// Một dòng viết tay ngắn (Charm).
+  final String? hand;
+
+  /// Hiện chữ "TopTutor" (chỉ màn đăng nhập).
+  final bool showBrand;
+
+  /// Có thì hiện nút tròn quay lại.
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
-    final statusBarH = MediaQuery.of(context).padding.top;
-
-    return SizedBox(
-      height: 190 + statusBarH,
-      child: Stack(
-        children: [
-          Positioned.fill(child: ColoredBox(color: bgColor)),
-          Positioned(
-            top: -60,
-            right: -40,
-            child: Transform.rotate(
-              angle: -18 * math.pi / 180,
-              child: Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(0.4, -0.4),
-                    colors: [
-                      accentColor.withValues(alpha: 0.16),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.65],
-                  ),
+    return Stack(
+      children: [
+        // Lá cây góc phải, sau nội dung, không bao giờ đè chữ.
+        const Positioned(top: 0, right: 0, child: AuthLeaf()),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            TutorSurface.gutter,
+            14,
+            TutorSurface.gutter,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    if (onBack != null) CanvasBackButton(onTap: onBack!),
+                    if (showBrand)
+                      Text('TopTutor', style: TutorType.display(size: 20)),
+                  ],
                 ),
               ),
-            ),
+              const SizedBox(height: 52),
+              if (hand != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 2, bottom: 10),
+                  child: CanvasHand(hand!, swash: false),
+                ),
+              if (greeting != null) ...[
+                Text(
+                  greeting!,
+                  style: TutorType.display(size: 17, weight: FontWeight.w400),
+                ),
+                const SizedBox(height: 4),
+              ],
+              Text(title, style: TutorType.display(size: 30)),
+              if (lead != null) ...[
+                const SizedBox(height: 8),
+                DefaultTextStyle.merge(
+                  style: TutorType.rowSub().copyWith(fontSize: 14),
+                  child: lead!,
+                ),
+              ],
+            ],
           ),
-          Positioned.fill(child: CustomPaint(painter: _GridPainter())),
-          Positioned(
-            top: statusBarH + 20,
-            left: 24,
-            child: Text(
-              'TOPTUTOR.',
-              style: GoogleFonts.bricolageGrotesque(
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-                letterSpacing: 2,
-                color: AppColors.cream.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 28,
-            left: 24,
-            right: 24,
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$line1\n',
-                    style: GoogleFonts.bricolageGrotesque(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 30,
-                      letterSpacing: -0.75,
-                      height: 1.05,
-                      color: AppColors.cream,
-                    ),
-                  ),
-                  TextSpan(
-                    text: '"$italicWord"',
-                    style: AppTextStyles.serifItalic(
-                      color: accentColor,
-                      fontSize: 28,
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' $line2Suffix',
-                    style: GoogleFonts.bricolageGrotesque(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 30,
-                      letterSpacing: -0.75,
-                      height: 1.05,
-                      color: AppColors.cream,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.06)
-      ..strokeWidth = 0.5;
-
-    for (var i = 0; i < 6; i++) {
-      final x = i * 70.0;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var i = 0; i < 4; i++) {
-      final y = i * 65.0;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_GridPainter _) => false;
 }

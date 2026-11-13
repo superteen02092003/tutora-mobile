@@ -42,6 +42,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_booking_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_session_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_journal_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 
 import 'as_built/fake_backend.dart';
@@ -206,9 +207,24 @@ Future<void> typeInto(WidgetTester t, int index, String text) async {
   await t.pump(const Duration(milliseconds: 200));
 }
 
-/// The tab bar draws its labels in capitals ("TRANG CHỦ").
+/// Types into the text field whose label is [label] (independent of how many
+/// fields the list has built, which changes with the layout).
+Future<void> typeIntoLabeled(WidgetTester t, String label, String text) async {
+  final field = find.byWidgetPredicate(
+    (w) => w is TextField && w.decoration?.labelText == label,
+  );
+  if (field.evaluate().isEmpty) throw StateError('no text field "$label"');
+  final f = find.descendant(
+    of: field.first,
+    matching: find.byType(EditableText),
+  );
+  t.widget<EditableText>(f).controller.text = text;
+  await t.pump(const Duration(milliseconds: 200));
+}
+
+/// Tab bar V5.6: labels in sentence case ("Trang chủ") under an icon.
 Future<void> tapTab(WidgetTester t, String label) =>
-    tapText(t, label.toUpperCase(), index: 0);
+    tapFinder(t, find.bySemanticsLabel(label), 'tab $label');
 
 Future<void> tapFinder(WidgetTester t, Finder f, String what) async {
   if (f.evaluate().isEmpty) throw StateError('not found: $what');
@@ -343,10 +359,13 @@ void main() {
       await shot(tester, 'tab-path_loaded_scrolled');
       await tapTab(tester, 'Bài học');
       await shot(tester, 'tab-lessons_loaded');
-      await tapTab(tester, 'Ghi âm');
-      await shot(tester, 'tab-recordings_loaded');
+      await tapTab(tester, 'Học sinh');
+      await shot(tester, 'tab-students_loaded');
+      // Bản ghi âm: không còn là tab (V5.6), mở như màn con.
+      await goTo(tester, AppRoutes.tutorRecordings);
+      await shot(tester, 'recordings_loaded');
       await scrollDown(tester);
-      await shot(tester, 'tab-recordings_loaded_scrolled');
+      await shot(tester, 'recordings_loaded_scrolled');
     });
     for (final s in [Scenario.empty, Scenario.error, Scenario.loading]) {
       await scene(tester, 'tabs-${s.name}', () async {
@@ -354,6 +373,7 @@ void main() {
           ('home', AppRoutes.tutorHome),
           ('path', AppRoutes.tutorPath),
           ('lessons', AppRoutes.tutorSchedule),
+          ('students', AppRoutes.tutorStudents),
           ('recordings', AppRoutes.tutorRecordings),
         ]) {
           await launch(tester, scenario: s, go: path);
@@ -433,8 +453,8 @@ void main() {
         'submit',
       );
       await shot(tester, 'add-pupil_form-validation');
-      await typeInto(tester, 0, 'Minh An');
-      await typeInto(tester, 1, 'Toán');
+      await typeIntoLabeled(tester, 'Họ tên học sinh', 'Minh An');
+      await typeIntoLabeled(tester, 'Môn (vd. Toán)', 'Toán');
       await tapFinder(
         tester,
         find.byType(DropdownButtonFormField<int>),
@@ -449,10 +469,16 @@ void main() {
       await tapText(tester, 'Thêm vào lịch');
       await shot(tester, 'add-pupil_form-with-schedule');
       await scrollDown(tester);
-      // After the scroll the built text fields are (by index): 0 = last field
-      // above, 1 = parent name, 2 = parent phone, 3 = note.
-      await typeInto(tester, 1, 'Mẹ của An');
-      await typeInto(tester, 2, '0900000001');
+      await typeIntoLabeled(
+        tester,
+        'Tên phụ huynh (vd. Chị Hương)',
+        'Mẹ của An',
+      );
+      await typeIntoLabeled(
+        tester,
+        'SĐT phụ huynh (có dùng Zalo)',
+        '0900000001',
+      );
       await shot(tester, 'add-pupil_form-parent');
       await tapText(tester, 'Xem nội dung đồng ý');
       await shot(tester, 'add-pupil_consent-dialog');
@@ -592,13 +618,21 @@ void main() {
           await shot(tester, 'report-review_ready_scrolled');
           await scrollDown(tester);
           await shot(tester, 'report-review_ready_bottom');
-          await tapText(tester, 'Xem trước tin gửi phụ huynh');
+          await tapText(tester, 'Xem cả tin nhắn Zalo ›');
           await shot(tester, 'report-preview_zalo');
           await scrollDown(tester);
           await shot(tester, 'report-preview_zalo_scrolled');
-          // The fake backend accepts the send; nothing leaves the process.
-          await tapText(tester, 'Gửi cho phụ huynh');
-          await shot(tester, 'report-preview_after-send');
+          await tapText(tester, 'Quay lại báo cáo');
+          // "Trượt để gửi phụ huynh": drag the knob to the end. The fake
+          // backend accepts the send; nothing leaves the process.
+          await tester.drag(
+            find.byIcon(Icons.send_rounded),
+            const Offset(600, 0),
+          );
+          await settle(tester, 1500);
+          await shot(tester, 'report-feedback_step-2');
+          await tapText(tester, 'Tiếp tục');
+          await shot(tester, 'report-sent_step-3');
         }
         if (label == 'ai-failed') {
           await tapText(tester, 'Tự viết báo cáo');
@@ -624,7 +658,7 @@ void main() {
     await scene(tester, 'review-from-lessons-tab', () async {
       await launch(tester, go: AppRoutes.tutorSchedule);
       await shot(tester, 'tab-lessons_needs-you');
-      await tapText(tester, 'báo cáo cần duyệt', contains: true);
+      await tapText(tester, 'Duyệt báo cáo', contains: true);
       await shot(tester, 'report-review_from-lessons-tab');
     });
 
@@ -760,6 +794,76 @@ void main() {
       await shot(tester, 'tab-lessons_with-booking-classes');
       await tapText(tester, 'Linh', index: 0);
       await shot(tester, 'agenda_tap-booking-lesson');
+    });
+
+    // ── V5.6 journal + reminder settings (appended) ─────────────────────────
+    await scene(tester, 'journal-minh-an', () async {
+      await launch(tester, go: AppRoutes.tutorHome);
+      unawaited(
+        TutorJournalScreen.open(navContext(tester), 'stu-minh-an', 'Minh An'),
+      );
+      await settle(tester, 1000);
+      await shot(tester, 'journal_minh-an');
+      await tapFinder(tester, find.byTooltip('Tháng trước'), 'prev month');
+      await settle(tester, 1000);
+      await shot(tester, 'journal_empty-month');
+    });
+    await scene(tester, 'settings-reminder', () async {
+      await launch(tester, go: AppRoutes.tutorProfile);
+      await tapText(tester, 'Nhắc trước buổi học');
+      await shot(tester, 'settings_reminder-sheet');
+    });
+
+    // ── V5.6 recording insights + "ghi âm tốt" (appended) ──────────────────
+    await scene(tester, 'recordings-missing-reason', () async {
+      await launch(tester, go: AppRoutes.tutorRecordings);
+      await shot(tester, 'recordings_good-week_missing');
+      await tapText(tester, 'Học sinh vắng');
+      await shot(tester, 'recordings_missing_reason-saved');
+    });
+    await scene(tester, 'detail-insights', () async {
+      await launch(tester, go: AppRoutes.tutorHome);
+      await pushRoute(
+        tester,
+        AppRoutes.tutorRecordingDetail,
+        extra: const RecordingDetailArgs(
+          recordingId: 'rec-ready',
+          studentName: 'Minh An',
+        ),
+      );
+      await tapText(tester, 'Tóm tắt buổi');
+      await shot(tester, 'lesson-detail_minutes_insights');
+    });
+
+    // ── V5.6 move / cancel a recorder lesson (appended) ────────────────────
+    await scene(tester, 'session-detail-move-cancel', () async {
+      await launch(tester, go: AppRoutes.tutorSchedule);
+      final t = DateTime.now().add(const Duration(days: 1));
+      final start = DateTime(t.year, t.month, t.day, 19);
+      final lesson = TutorLessonDto(
+        lessonId: 0,
+        bookingId: null,
+        studentName: 'Bao',
+        subjectName: 'Lớp 9',
+        scheduledStart: start.toUtc().toIso8601String(),
+        scheduledEnd: start
+            .add(const Duration(minutes: 90))
+            .toUtc()
+            .toIso8601String(),
+        status: 'scheduled',
+        recorderLessonId: 'les-bao-today',
+        recorderStudentId: 'stu-bao',
+        recorderStatus: 'scheduled',
+      );
+      unawaited(TutorSessionDetailScreen.open(navContext(tester), lesson));
+      await settle(tester, 1000);
+      await shot(tester, 'session-detail_offplatform');
+      await tapText(tester, 'Đổi lịch');
+      await shot(tester, 'session-detail_move-sheet');
+      await back(tester);
+      await tapText(tester, 'Huỷ buổi');
+      await shot(tester, 'session-detail_cancel-reason');
+      await back(tester);
     });
 
     // ── Summary for the README / the caller ─────────────────────────────────

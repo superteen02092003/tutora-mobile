@@ -1,12 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 
-/// Thành phần dùng chung theo design canvas "TopTutor: tutor app and parent Mini
-/// App" (11/2026): nhãn nhỏ viết hoa, tiêu đề Bricolage lớn, hàng kẻ mực 1,5 px,
-/// nút đồng, khối xanh rêu đậm, ô gợi ý có bóng đèn, mục mở/thu gọn.
+/// Thành phần dùng chung theo design V5.6 (canvas "TopTutor tutor app V5.6",
+/// 2026-11-12): nhãn nhỏ thường, tiêu đề Bricolage, thẻ bo 20 có bóng nhẹ, đường
+/// kẻ mảnh 10%, nút xanh rêu dạng viên thuốc, thẻ sage "tiếp theo", nhãn
+/// "Nháp AI" (quy tắc D1), bóng đèn cho mọi mẹo, chữ viết tay Charm.
+///
+/// Tên lớp và tham số giữ như bản "Swiss" trước để màn cũ vẫn dựng được.
 
-/// Nhãn nhỏ viết hoa giãn chữ ("BUỔI TỚI · THỨ NĂM").
+/// Nhãn nhỏ đầu khối ("Cần bạn duyệt"). V5.6: chữ thường, không giãn.
 class CanvasKicker extends StatelessWidget {
   const CanvasKicker(this.text, {this.color = TutorColors.ink3, super.key});
 
@@ -15,10 +20,65 @@ class CanvasKicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Text(text.toUpperCase(), style: TutorType.kicker(color: color));
+      Text(text, style: TutorType.kicker(color: color));
 }
 
-/// Đầu màn: dòng nhãn trái/phải + tiêu đề lớn + (tuỳ chọn) đoạn mô tả.
+/// Nút tròn quay lại (42 px, nền giấy sáng, bóng nhẹ).
+class CanvasBackButton extends StatelessWidget {
+  const CanvasBackButton({required this.onTap, super.key});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => CanvasCircleButton(
+    onTap: onTap,
+    tooltip: 'Quay lại',
+    child: const Icon(
+      Icons.chevron_left_rounded,
+      size: 24,
+      color: TutorColors.ink,
+    ),
+  );
+}
+
+/// Nút tròn 42 px (chuông, bóng đèn, quay lại).
+class CanvasCircleButton extends StatelessWidget {
+  const CanvasCircleButton({
+    required this.child,
+    required this.onTap,
+    required this.tooltip,
+    this.color = const Color(0xFFF8F7F4),
+    super.key,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final String tooltip;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: Semantics(
+      button: true,
+      label: tooltip,
+      excludeSemantics: true,
+      child: Material(
+        color: color,
+        shape: const CircleBorder(),
+        shadowColor: const Color(0x331F2A24),
+        elevation: 1,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(width: 44, height: 44, child: Center(child: child)),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Đầu màn: nút quay lại tròn hoặc nhãn trái, nhãn phải, tiêu đề, mô tả.
 class CanvasHeader extends StatelessWidget {
   const CanvasHeader({
     required this.title,
@@ -27,7 +87,7 @@ class CanvasHeader extends StatelessWidget {
     this.lead,
     this.onBack,
     this.trailing,
-    this.titleSize = 46,
+    this.titleSize = 26,
     super.key,
   });
 
@@ -37,6 +97,8 @@ class CanvasHeader extends StatelessWidget {
   final String? lead;
   final VoidCallback? onBack;
   final Widget? trailing;
+
+  /// Cỡ tiêu đề; bản cũ dùng 34–46, V5.6 giới hạn tối đa 28.
   final double titleSize;
 
   @override
@@ -44,42 +106,46 @@ class CanvasHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         TutorSurface.gutter,
-        20,
+        16,
         TutorSurface.gutter,
         0,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (onBack != null)
-                Semantics(
-                  button: true,
-                  label: 'Quay lại',
-                  child: InkWell(
-                    onTap: onBack,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: CanvasKicker('‹ Quay lại', color: TutorColors.ink),
+          if (onBack != null || right != null || trailing != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                children: [
+                  if (onBack != null) CanvasBackButton(onTap: onBack!),
+                  const Spacer(),
+                  if (right != null)
+                    Flexible(
+                      child: Text(
+                        right!,
+                        textAlign: TextAlign.right,
+                        style: TutorType.rowSub(),
+                      ),
                     ),
-                  ),
-                )
-              else if (left != null)
-                Flexible(child: CanvasKicker(left!, color: TutorColors.ink)),
-              const Spacer(),
-              if (right != null) Flexible(child: CanvasKicker(right!)),
-              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(title, style: TutorType.display(size: titleSize)),
-          if (lead != null) ...[
-            const SizedBox(height: 10),
-            Text(
-              lead!,
-              style: TutorType.rowSub().copyWith(fontSize: 15, height: 1.45),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 8),
+                    trailing!,
+                  ],
+                ],
+              ),
             ),
+          if (left != null) ...[
+            CanvasKicker(left!),
+            const SizedBox(height: 4),
+          ],
+          Text(
+            title,
+            style: TutorType.display(size: math.min(titleSize, 28)),
+          ),
+          if (lead != null) ...[
+            const SizedBox(height: 6),
+            Text(lead!, style: TutorType.rowSub().copyWith(fontSize: 14)),
           ],
         ],
       ),
@@ -87,13 +153,13 @@ class CanvasHeader extends StatelessWidget {
   }
 }
 
-/// Hàng có đường kẻ mực phía trên (và tuỳ chọn phía dưới) — kiểu danh sách của canvas.
+/// Hàng danh sách có đường kẻ mảnh phía trên (và tuỳ chọn phía dưới).
 class CanvasRow extends StatelessWidget {
   const CanvasRow({
     required this.child,
     this.onTap,
     this.lastRule = false,
-    this.padding = const EdgeInsets.symmetric(vertical: 14),
+    this.padding = const EdgeInsets.symmetric(vertical: 13),
     super.key,
   });
 
@@ -120,25 +186,18 @@ class CanvasRow extends StatelessWidget {
   }
 }
 
-/// Mũi tên "›" mảnh cuối hàng.
+/// Mũi tên cuối hàng (mảnh, xám).
 class CanvasChevron extends StatelessWidget {
-  const CanvasChevron({this.color = TutorColors.ink, super.key});
+  const CanvasChevron({this.color = const Color(0xFFA3A8A2), super.key});
 
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Text(
-    '›',
-    style: TextStyle(
-      fontSize: 26,
-      fontWeight: FontWeight.w300,
-      height: 1,
-      color: color,
-    ),
-  );
+  Widget build(BuildContext context) =>
+      Icon(Icons.chevron_right_rounded, size: 20, color: color);
 }
 
-/// Thẻ nhỏ viền mực chữ hoa ("DUYỆT", "CHUẨN BỊ"); `filled` = nền đồng.
+/// Chip nhỏ cao 22 ("Tiếp theo", "Bạn ở đây"); `filled` = nền mực chữ trắng.
 class CanvasTag extends StatelessWidget {
   const CanvasTag(this.text, {this.filled = false, super.key});
 
@@ -147,30 +206,51 @@ class CanvasTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
     decoration: BoxDecoration(
-      color: filled ? TutorColors.accent : null,
-      borderRadius: BorderRadius.circular(TutorSurface.radius),
-      border: Border.all(
-        color: TutorColors.ink,
-        width: TutorSurface.ruleWidth,
-      ),
+      color: filled ? TutorColors.ink : const Color(0xFFEAEAE4),
+      borderRadius: BorderRadius.circular(11),
     ),
     child: Text(
-      text.toUpperCase(),
-      style: TutorType.kicker(color: TutorColors.ink).copyWith(
-        letterSpacing: 1.2,
-      ),
+      text,
+      maxLines: 1,
+      style: TutorType.caption(
+        color: filled ? Colors.white : TutorColors.ink,
+      ).copyWith(fontSize: 11.5, height: 1),
     ),
   );
 }
 
-/// Nút hành động chính của canvas: nền đồng, chữ mực, cao 56.
+/// Nhãn xám "Nháp AI" trên mọi khối do AI soạn (quy tắc D1).
+class CanvasAiDraftTag extends StatelessWidget {
+  const CanvasAiDraftTag({this.onSage = false, super.key});
+
+  /// Trên thẻ sage dùng nền sáng hơn để không chìm.
+  final bool onSage;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: onSage ? const Color(0xFFF8F7F4) : const Color(0xFFEAEAE4),
+      borderRadius: BorderRadius.circular(11),
+    ),
+    child: Text(
+      'Nháp AI',
+      style: TutorType.caption(
+        color: const Color(0xFF4A514C),
+      ).copyWith(fontSize: 11.5, height: 1),
+    ),
+  );
+}
+
+/// Nút chính: xanh rêu đậm, chữ trắng, dạng viên thuốc cao 48.
 class CanvasCta extends StatelessWidget {
   const CanvasCta({
     required this.label,
     required this.onPressed,
     this.icon,
+    this.secondary = false,
     super.key,
   });
 
@@ -178,25 +258,26 @@ class CanvasCta extends StatelessWidget {
   final VoidCallback? onPressed;
   final Widget? icon;
 
+  /// Nút phụ: nền sage, chữ mực.
+  final bool secondary;
+
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 56,
+    height: 48,
     width: double.infinity,
     child: FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: TutorColors.accent,
-        foregroundColor: TutorColors.ink,
+        backgroundColor: secondary ? TutorColors.sage : TutorColors.primary,
+        foregroundColor: secondary ? TutorColors.ink : Colors.white,
         disabledBackgroundColor: TutorColors.surfaceSunken,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(TutorSurface.radius),
-        ),
-        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        shape: const StadiumBorder(),
+        textStyle: TutorType.action().copyWith(fontSize: 15),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[icon!, const SizedBox(width: 10)],
+          if (icon != null) ...[icon!, const SizedBox(width: 8)],
           Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
         ],
       ),
@@ -204,7 +285,7 @@ class CanvasCta extends StatelessWidget {
   );
 }
 
-/// Nút phụ dạng chữ xám ("Mẹo ghi âm").
+/// Nút phụ dạng chữ xám ("Về trang chủ").
 class CanvasGhostLink extends StatelessWidget {
   const CanvasGhostLink({required this.label, required this.onTap, super.key});
 
@@ -214,23 +295,17 @@ class CanvasGhostLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
+    borderRadius: BorderRadius.circular(22),
     child: ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 44),
       child: Center(
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: TutorColors.ink3,
-          ),
-        ),
+        child: Text(label, style: TutorType.action(color: TutorColors.ink3)),
       ),
     ),
   );
 }
 
-/// Khối xanh rêu đậm (việc đang tập trung) — dùng một lần mỗi màn.
+/// Khối tối xanh rêu (banner, việc đang tập trung) — một lần mỗi màn.
 class CanvasDarkCard extends StatelessWidget {
   const CanvasDarkCard({required this.child, this.onTap, super.key});
 
@@ -238,49 +313,57 @@ class CanvasDarkCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: TutorColors.ink2,
-    borderRadius: BorderRadius.circular(TutorSurface.radius),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: DefaultTextStyle.merge(
-          style: const TextStyle(color: Colors.white),
-          child: child,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: TutorSurface.cardInk(),
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(TutorSurface.radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: DefaultTextStyle.merge(
+            style: const TextStyle(color: Colors.white),
+            child: child,
+          ),
         ),
       ),
     ),
   );
 }
 
-/// Thẻ viền mực (khối nhấn thứ hai, nền giấy).
+/// Thẻ mức 1 (nền sáng, bóng nhẹ). Tên giữ từ bản "viền mực" trước.
 class CanvasOutlineCard extends StatelessWidget {
-  const CanvasOutlineCard({required this.child, this.onTap, super.key});
+  const CanvasOutlineCard({
+    required this.child,
+    this.onTap,
+    this.sage = false,
+    super.key,
+  });
 
   final Widget child;
   final VoidCallback? onTap;
 
+  /// Thẻ sage nổi (mức 2) cho "việc tiếp theo / cần bạn".
+  final bool sage;
+
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    shape: RoundedRectangleBorder(
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: sage ? TutorSurface.sage() : TutorSurface.card(),
+    child: Material(
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(TutorSurface.radius),
-      side: TutorSurface.rule,
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: child,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(16), child: child),
       ),
     ),
   );
 }
 
-/// Ô gợi ý có bóng đèn (mọi mẹo / thông tin đều có bóng đèn — cuộc họp 10/11).
+/// Ô gợi ý có bóng đèn (mọi mẹo đều có bóng đèn — quy tắc của Michael).
 class CanvasTipBox extends StatelessWidget {
   const CanvasTipBox(this.text, {this.bold, super.key});
 
@@ -293,8 +376,8 @@ class CanvasTipBox extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
-      color: TutorColors.surfaceSunken,
-      borderRadius: BorderRadius.circular(TutorSurface.radius),
+      color: TutorColors.sage,
+      borderRadius: BorderRadius.circular(16),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +387,7 @@ class CanvasTipBox extends StatelessWidget {
           child: Icon(
             Icons.lightbulb_outline_rounded,
             size: 18,
-            color: TutorColors.warning,
+            color: TutorColors.ink,
           ),
         ),
         const SizedBox(width: 10),
@@ -315,16 +398,12 @@ class CanvasTipBox extends StatelessWidget {
                 if (bold != null)
                   TextSpan(
                     text: '$bold ',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 TextSpan(text: text),
               ],
             ),
-            style: const TextStyle(
-              fontSize: 14,
-              height: 1.45,
-              color: TutorColors.ink,
-            ),
+            style: TutorType.rowSub(color: TutorColors.ink),
           ),
         ),
       ],
@@ -332,7 +411,77 @@ class CanvasTipBox extends StatelessWidget {
   );
 }
 
-/// Mục mở/thu gọn kiểu `<details>` của canvas: hàng kẻ trên, dấu + / −.
+/// Chữ viết tay Charm nghiêng −4° với nét gạch dưới (chỉ ở khoảng trống).
+class CanvasHand extends StatelessWidget {
+  const CanvasHand(this.text, {this.size = 19, this.swash = true, super.key});
+
+  final String text;
+  final double size;
+  final bool swash;
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+    angle: -4 * math.pi / 180,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(text, style: TutorType.hand(size: size)),
+        if (swash)
+          CustomPaint(size: const Size(96, 10), painter: _SwashPainter()),
+      ],
+    ),
+  );
+}
+
+class _SwashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = const Color(0xFF8E938D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(2, size.height - 2)
+      ..quadraticBezierTo(size.width * 0.45, 0, size.width - 2, 4);
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 4 chấm mức kỹ năng (thay thanh tiến độ).
+class CanvasSkillDots extends StatelessWidget {
+  const CanvasSkillDots({required this.level, this.max = 4, super.key});
+
+  final int level;
+  final int max;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Mức $level trên $max',
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < max; i++) ...[
+          if (i > 0) const SizedBox(width: 4),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i < level ? TutorColors.ink : const Color(0x241F2A24),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+/// Mục mở/thu gọn: hàng kẻ mảnh, dấu + / −.
 class CanvasExpander extends StatefulWidget {
   const CanvasExpander({
     required this.title,
@@ -369,30 +518,20 @@ class _CanvasExpanderState extends State<CanvasExpander> {
           InkWell(
             onTap: () => setState(() => _open = !_open),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 56),
+              constraints: const BoxConstraints(minHeight: 52),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      widget.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: TutorColors.ink,
-                      ),
-                    ),
+                    child: Text(widget.title, style: TutorType.rowTitle()),
                   ),
                   if (widget.badge != null) ...[
                     CanvasTag(widget.badge!),
                     const SizedBox(width: 10),
                   ],
-                  Text(
-                    _open ? '−' : '+',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w300,
-                      color: TutorColors.ink,
-                    ),
+                  Icon(
+                    _open ? Icons.remove_rounded : Icons.add_rounded,
+                    size: 20,
+                    color: TutorColors.ink3,
                   ),
                 ],
               ),
@@ -402,11 +541,7 @@ class _CanvasExpanderState extends State<CanvasExpander> {
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: DefaultTextStyle.merge(
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: TutorColors.ink3,
-                ),
+                style: TutorType.rowSub(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -424,7 +559,7 @@ class _CanvasExpanderState extends State<CanvasExpander> {
   }
 }
 
-/// Hàng số liệu "NHÃN ........ 5" của canvas (số Bricolage mảnh).
+/// Hàng số liệu "Nhãn ........ 5".
 class CanvasStatRow extends StatelessWidget {
   const CanvasStatRow({
     required this.label,
@@ -442,23 +577,136 @@ class CanvasStatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CanvasRow(
     lastRule: lastRule,
-    padding: const EdgeInsets.fromLTRB(0, 14, 0, 10),
+    padding: const EdgeInsets.symmetric(vertical: 12),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
-        Expanded(child: CanvasKicker(label, color: TutorColors.ink)),
-        Text(value, style: TutorType.numeralLarge()),
-        if (suffix != null)
-          Text(
-            ' · $suffix',
-            style: TutorType.display(
-              size: 20,
-              weight: FontWeight.w300,
-              color: TutorColors.ink3,
-            ).copyWith(letterSpacing: 0),
-          ),
+        Expanded(child: Text(label, style: TutorType.rowSub())),
+        Text(value, style: TutorType.numeral()),
+        if (suffix != null) Text(' · $suffix', style: TutorType.rowSub()),
       ],
     ),
   );
+}
+
+/// Thanh trượt xanh rêu (V5.6 "slide control"): kéo núm sang phải quá 85% mới
+/// chạy [onDone] — dùng cho thao tác không nên bấm nhầm ("Trượt để gửi phụ
+/// huynh"). Trình đọc màn hình bấm thẳng được qua [semanticsLabel].
+class CanvasSlideAction extends StatefulWidget {
+  const CanvasSlideAction({
+    required this.label,
+    required this.semanticsLabel,
+    required this.onDone,
+    this.busy = false,
+    this.busyLabel = 'Đang gửi…',
+    this.enabled = true,
+    this.knobIcon = Icons.arrow_forward_rounded,
+    super.key,
+  });
+
+  final String label;
+  final String semanticsLabel;
+  final VoidCallback onDone;
+  final bool busy;
+  final String busyLabel;
+  final bool enabled;
+  final IconData knobIcon;
+
+  @override
+  State<CanvasSlideAction> createState() => _CanvasSlideActionState();
+}
+
+class _CanvasSlideActionState extends State<CanvasSlideAction> {
+  static const double _h = 56;
+  static const double _knob = 46;
+  static const double _inset = 5;
+  double _dx = 0;
+
+  bool get _active => widget.enabled && !widget.busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final max = c.maxWidth - _knob - _inset * 2;
+        final t = max <= 0 ? 0.0 : (_dx / max).clamp(0.0, 1.0);
+        return Semantics(
+          button: true,
+          label: widget.semanticsLabel,
+          onTap: _active ? widget.onDone : null,
+          child: Container(
+            height: _h,
+            decoration: BoxDecoration(
+              color: widget.enabled
+                  ? TutorColors.ink
+                  : TutorColors.ink.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(_h / 2),
+            ),
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: _knob),
+                    child: Opacity(
+                      opacity: 1 - t,
+                      child: Text(
+                        widget.busy ? widget.busyLabel : widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TutorType.action(color: const Color(0xFFC8CEC8)),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: _inset + _dx,
+                  child: GestureDetector(
+                    onHorizontalDragUpdate: _active
+                        ? (d) => setState(
+                            () => _dx = (_dx + d.delta.dx).clamp(0.0, max),
+                          )
+                        : null,
+                    onHorizontalDragEnd: _active
+                        ? (_) {
+                            final done = t > 0.85;
+                            setState(() => _dx = 0);
+                            if (done) widget.onDone();
+                          }
+                        : null,
+                    child: Container(
+                      width: _knob,
+                      height: _knob,
+                      decoration: BoxDecoration(
+                        color: widget.enabled
+                            ? TutorColors.surface
+                            : TutorColors.surface.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: widget.busy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: TutorColors.ink,
+                              ),
+                            )
+                          : Icon(
+                              widget.knobIcon,
+                              size: 20,
+                              color: TutorColors.ink,
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

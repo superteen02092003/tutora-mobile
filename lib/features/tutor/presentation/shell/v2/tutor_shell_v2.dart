@@ -3,16 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_tab_bar.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
 
-/// Shell gia sư theo design canvas (11/2026) — 4 tab chữ:
-/// Trang chủ · Lộ trình · Bài học · Ghi âm.
-///
-/// Không còn nút mic nổi ở giữa: ghi âm bắt đầu từ màn "Trước buổi học", hồ sơ
-/// học sinh, thẻ buổi hôm nay, hoặc nút "Ghi âm buổi học" đầu tab Ghi âm. Thông
-/// báo và Tôi (cài đặt) vẫn là màn con mở từ header Trang chủ.
+/// Shell gia sư V5.6 (canvas "TopTutor tutor app V5.6", 2026-11-12):
+/// 4 tab Trang chủ · Lộ trình · Bài học · Học sinh trong viên thuốc nổi, và nút
+/// tròn bên phải để ghi âm (mở sheet chọn học sinh / buổi). Danh sách bản ghi
+/// âm là màn con mở từ Lộ trình. Thông báo và Cài đặt mở từ header Trang chủ.
 class TutorShellV2 extends ConsumerStatefulWidget {
   const TutorShellV2({required this.navigationShell, super.key});
 
@@ -23,7 +22,12 @@ class TutorShellV2 extends ConsumerStatefulWidget {
 }
 
 class _TutorShellV2State extends ConsumerState<TutorShellV2> {
-  static const _labels = ['Trang chủ', 'Lộ trình', 'Bài học', 'Ghi âm'];
+  static const _items = [
+    TutorTabItem(label: 'Trang chủ', icon: Icons.home_outlined),
+    TutorTabItem(label: 'Lộ trình', icon: Icons.route_outlined),
+    TutorTabItem(label: 'Bài học', icon: Icons.calendar_today_outlined),
+    TutorTabItem(label: 'Học sinh', icon: Icons.people_outline_rounded),
+  ];
 
   final GlobalKey _bodyKey = GlobalKey();
 
@@ -53,9 +57,10 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
           child: AuthListener(child: widget.navigationShell),
         ),
         bottomNavigationBar: TutorTabBar(
-          labels: _labels,
+          items: _items,
           currentIndex: widget.navigationShell.currentIndex,
           onTap: _onTap,
+          onRecord: () => unawaited(context.push(AppRoutes.tutorRecorder)),
         ),
       ),
     );

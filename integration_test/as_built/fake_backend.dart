@@ -106,6 +106,35 @@ class FakeBackend implements HttpClientAdapter {
     'inviteExpiresAt': _utc(now.add(const Duration(days: 2))),
   };
 
+  /// Khôi's course ended four days ago (Học sinh tab "Hết khóa", Home renew
+  /// panel). A PUT from the renew panel stores the new range here.
+  Map<String, dynamic>? khoiRenewed;
+
+  Map<String, dynamic> studentKhoi() => {
+    'studentId': 'stu-khoi',
+    'fullName': 'Khôi',
+    'grade': 9,
+    'subject': 'Toán',
+    'parentName': 'Mẹ của Khôi',
+    'parentPhone': '0900000003',
+    'consentStatus': 'tutor_confirmed',
+    'consentVersion': 'v1',
+    'note': null,
+    'lessonCount': 8,
+    'lastLessonAt': _utc(today.subtract(const Duration(days: 5))),
+    'schedule': [
+      {'dayOfWeek': 5, 'start': '18:00', 'end': '19:30'},
+    ],
+    'scheduleFrom': _day(today.subtract(const Duration(days: 34))),
+    'scheduleUntil': _day(today.subtract(const Duration(days: 4))),
+    'parentLinkStatus': 'none',
+    ...?khoiRenewed,
+  };
+
+  static String _day(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
   Map<String, dynamic> _lesson({
     required String id,
     required String student,
@@ -128,6 +157,12 @@ class FakeBackend implements HttpClientAdapter {
     'aiStatus': ai,
     'durationSec': durationSec,
     if (durationSec > 0) 'startedAt': _utc(start),
+    // A lesson with a recording is always present, set automatically.
+    'attendance': durationSec > 0 ? 'present' : null,
+    'attendanceSource': durationSec > 0 ? 'recording' : null,
+    'absenceReason': null,
+    'movedFromStart': null,
+    'cancelReason': null,
   };
 
   List<Map<String, dynamic>> recorderLessons() {
@@ -435,6 +470,344 @@ class FakeBackend implements HttpClientAdapter {
     };
   }
 
+  /// Bao's extra lesson on Saturday 7 Nov: time passed, nothing recorded, no
+  /// reason given yet (the "missing" row of the weekly recording card).
+  Map<String, dynamic> missedBaoSaturday() => _lesson(
+    id: 'les-bao-sat',
+    student: 'stu-bao',
+    name: 'Bao',
+    grade: 9,
+    start: _local(2026, 11, 7, 9),
+    minutes: 90,
+    status: 'scheduled',
+  );
+
+  Map<String, dynamic>? _findLesson(String id) {
+    for (final l in [...recorderLessons(), missedBaoSaturday()]) {
+      if (l['lessonId'] == id) return l;
+    }
+    return null;
+  }
+
+  /// Transcript insights: only lessons with a finished transcript.
+  Map<String, dynamic> lessonInsights(String id) {
+    final none = <String, dynamic>{
+      'lessonId': id,
+      'available': false,
+      'metricsVersion': null,
+      'minutesRecorded': null,
+      'minutesPlanned': null,
+      'bothVoices': null,
+      'studentTalkShare': null,
+      'tutorTurns': null,
+      'studentTurns': null,
+      'tutorQuestions': null,
+      'avgWaitAfterQuestionSec': null,
+      'studentQuietStretches': null,
+      'unclearMarks': null,
+    };
+    if (scenario != Scenario.loaded) return none;
+    switch (id) {
+      case 'rec-ready':
+        // Minh An, 9 Nov: quiet for the first 20 minutes.
+        return {
+          'lessonId': id,
+          'available': true,
+          'metricsVersion': 'score-b-v1',
+          'minutesRecorded': 86,
+          'minutesPlanned': 90,
+          'bothVoices': true,
+          'studentTalkShare': 0.31,
+          'tutorTurns': 120,
+          'studentTurns': 85,
+          'tutorQuestions': 42,
+          'avgWaitAfterQuestionSec': 3.4,
+          'studentQuietStretches': [
+            {'fromMin': 0, 'toMin': 20},
+          ],
+          'unclearMarks': 3,
+        };
+      case 'rec-sent':
+        // Minh An, 2 Nov.
+        return {
+          'lessonId': id,
+          'available': true,
+          'metricsVersion': 'score-b-v1',
+          'minutesRecorded': 89,
+          'minutesPlanned': 90,
+          'bothVoices': true,
+          'studentTalkShare': 0.36,
+          'tutorTurns': 104,
+          'studentTurns': 91,
+          'tutorQuestions': 37,
+          'avgWaitAfterQuestionSec': 4.1,
+          'studentQuietStretches': <dynamic>[],
+          'unclearMarks': 1,
+        };
+      default:
+        return none;
+    }
+  }
+
+  /// "Ghi âm tốt" per week, newest first. This week (9 Nov): 4 usable of 5
+  /// due. Missing: Bao's Saturday 7 Nov lesson (no recording, no reason).
+  Map<String, dynamic> weeklyRecording(int weeks) {
+    if (scenario != Scenario.loaded) {
+      return {'weeks': <dynamic>[], 'missing': <dynamic>[]};
+    }
+    final all = [
+      {
+        'weekStart': '2026-11-09',
+        'lessonsDue': 5,
+        'recorded': 4,
+        'usable': 4,
+        'avgStudentTalkShare': 0.29,
+      },
+      {
+        'weekStart': '2026-11-02',
+        'lessonsDue': 4,
+        'recorded': 3,
+        'usable': 3,
+        'avgStudentTalkShare': 0.28,
+      },
+      {
+        'weekStart': '2026-10-26',
+        'lessonsDue': 4,
+        'recorded': 4,
+        'usable': 3,
+        'avgStudentTalkShare': 0.26,
+      },
+    ];
+    final sat = missedBaoSaturday();
+    return {
+      'weeks': all.take(weeks.clamp(1, all.length)).toList(),
+      'missing': [
+        {
+          'lessonId': sat['lessonId'],
+          'studentId': sat['studentId'],
+          'studentName': sat['studentName'],
+          'scheduledStart': sat['scheduledStart'],
+          'attendance': null,
+          'absenceReason': null,
+        },
+      ],
+    };
+  }
+
+  /// Tutor settings: the server defaults (30 min reminder, push on). A PUT
+  /// replaces them for the rest of the run.
+  Map<String, dynamic> recorderSettings = {
+    'lessonReminderMinutes': 30,
+    'reportReadyPush': true,
+  };
+
+  Map<String, dynamic> _journalLesson({
+    required String id,
+    required DateTime start,
+    required String status,
+    required int durationSec,
+    required String content,
+    required String homework,
+    required String previousHomework,
+    required int correct,
+    required int total,
+    required List<String> strengths,
+    required List<String> difficulties,
+    required double talkShare,
+    required String comment,
+    required bool aiDrafted,
+    List<Map<String, int>> quiet = const [],
+  }) => {
+    'lessonId': id,
+    'scheduledStart': _utc(start),
+    'status': status,
+    'attendance': 'present',
+    'absenceReason': null,
+    'durationSec': durationSec,
+    'content': content,
+    'homework': homework,
+    'previousHomework': previousHomework,
+    'exercisesCorrect': correct,
+    'exercisesTotal': total,
+    'strengths': strengths,
+    'difficulties': difficulties,
+    'studentTalkShare': talkShare,
+    'studentQuietStretches': quiet,
+    'comment': comment,
+    'aiDrafted': aiDrafted,
+    'editedByTutor': !aiDrafted,
+  };
+
+  /// Learning journal: Minh An, November 2026, three lessons (oldest first).
+  Map<String, dynamic> studentJournal(String studentId, String month) {
+    final has =
+        scenario == Scenario.loaded &&
+        studentId == 'stu-minh-an' &&
+        month == '2026-11';
+    return {
+      'studentId': studentId,
+      'month': month,
+      'lessons': !has
+          ? <dynamic>[]
+          : [
+              _journalLesson(
+                id: 'rec-sent',
+                start: _local(2026, 11, 2, 19),
+                status: 'sent',
+                durationSec: 89 * 60,
+                content:
+                    'Ôn hằng đẳng thức bình phương của một tổng và một hiệu.',
+                homework: 'Làm bài 1, 2 trang 11 (SGK Toán 8, tập 1).',
+                previousHomework: 'Ôn lại phép nhân đa thức.',
+                correct: 5,
+                total: 6,
+                strengths: ['Nhớ công thức'],
+                difficulties: ['Quên số hạng 2ab'],
+                talkShare: 0.36,
+                comment: 'An làm bài cẩn thận hơn tuần trước.',
+                aiDrafted: false,
+              ),
+              _journalLesson(
+                id: 'les-an-5nov',
+                start: _local(2026, 11, 5, 16, 30),
+                status: 'sent',
+                durationSec: 88 * 60,
+                content: 'Hằng đẳng thức hiệu hai bình phương.',
+                homework: 'Làm bài 3 trang 12 (SGK Toán 8, tập 1).',
+                previousHomework: 'Làm bài 1, 2 trang 11 (SGK Toán 8, tập 1).',
+                correct: 3,
+                total: 5,
+                strengths: ['Biết vẽ hình minh hoạ'],
+                difficulties: ['Nhầm dấu khi có số âm'],
+                talkShare: 0.27,
+                comment: 'Cần luyện thêm bài có số âm.',
+                aiDrafted: false,
+              ),
+              _journalLesson(
+                id: 'rec-ready',
+                start: lesson9Nov,
+                status: 'awaiting_approval',
+                durationSec: 86 * 60,
+                content:
+                    'Ôn hằng đẳng thức bình phương của một tổng và một hiệu. '
+                    'Minh An làm 6 bài khai triển, sai 2 bài do quên số hạng '
+                    '2ab.',
+                homework: 'Làm bài 4, 5 trang 12 (SGK Toán 8, tập 1).',
+                previousHomework: 'Làm bài 3 trang 12 (SGK Toán 8, tập 1).',
+                correct: 4,
+                total: 6,
+                strengths: ['Nhớ công thức', 'Biết vẽ hình minh hoạ'],
+                difficulties: ['Quên số hạng 2ab', 'Nhầm dấu khi có số âm'],
+                talkShare: 0.31,
+                quiet: [
+                  {'fromMin': 0, 'toMin': 20},
+                ],
+                comment:
+                    'An hiểu nhanh khi có hình minh hoạ. Nên cho thêm bài tự '
+                    'kiểm tra.',
+                aiDrafted: true,
+              ),
+            ],
+    };
+  }
+
+  static Map<String, dynamic> _body(RequestOptions o) {
+    final d = o.data;
+    return d is Map<String, dynamic> ? d : const <String, dynamic>{};
+  }
+
+  /// Writes of the phase-1 routes (attendance, move, settings, reschedule
+  /// proposal); null = not one of them. Cancel (DELETE) uses the generic
+  /// empty success below, like before.
+  ResponseBody? _phase1Write(RequestOptions options) {
+    final path = options.path;
+    final method = options.method;
+    final body = _body(options);
+
+    final att = RegExp(
+      r'^/recorder/lessons/([^/]+)/attendance$',
+    ).firstMatch(path);
+    if (att != null && method == 'PUT') {
+      final l = _findLesson(att.group(1)!);
+      if (l == null) return _json({'message': 'not found'}, 404);
+      final status = body['status'] as String?;
+      if (status == 'absent' && (l['durationSec'] as int) > 0) {
+        return _json({'message': 'Buổi đã có bản ghi.'}, 400);
+      }
+      return _json(
+        _ok({
+          ...l,
+          'attendance': status,
+          'attendanceSource': (l['durationSec'] as int) > 0
+              ? 'recording'
+              : 'tutor',
+          'absenceReason': status == 'absent' ? body['reason'] : null,
+        }),
+      );
+    }
+
+    final move = RegExp(
+      r'^/recorder/lessons/([^/]+)/schedule$',
+    ).firstMatch(path);
+    if (move != null && method == 'PUT') {
+      final l = _findLesson(move.group(1)!);
+      if (l == null) return _json({'message': 'not found'}, 404);
+      final following = body['scope'] == 'following';
+      return _json(
+        _ok({
+          ...l,
+          'lessonId': following ? l['lessonId'] : '${l['lessonId']}-moved',
+          'scheduledStart': body['scheduledStart'] ?? l['scheduledStart'],
+          'scheduledEnd': body['scheduledEnd'] ?? l['scheduledEnd'],
+          'status': 'scheduled',
+          'movedFromStart': following ? null : l['scheduledStart'],
+        }),
+      );
+    }
+
+    if (path == '/recorder/students/stu-khoi' && method == 'PUT') {
+      khoiRenewed = {
+        'scheduleFrom': body['scheduleFrom'],
+        'scheduleUntil': body['scheduleUntil'],
+      };
+      return _json(_ok(studentKhoi()));
+    }
+
+    if (path == '/recorder/settings' && method == 'PUT') {
+      recorderSettings = {
+        'lessonReminderMinutes': body['lessonReminderMinutes'],
+        'reportReadyPush': body['reportReadyPush'] ?? true,
+      };
+      return _json(_ok(recorderSettings));
+    }
+
+    final proposal = RegExp(
+      r'^/tutor/class-sessions/(\d+)/reschedule-proposal$',
+    ).firstMatch(path);
+    if (proposal != null && method == 'POST') {
+      final start =
+          DateTime.tryParse(
+            body['proposedScheduledStart'] as String? ?? '',
+          )?.toUtc() ??
+          now.toUtc();
+      return _json(
+        _ok({
+          'rescheduleProposalId': 1,
+          'classSessionId': int.parse(proposal.group(1)!),
+          'proposedScheduledStart': start.toIso8601String(),
+          'proposedScheduledEnd': start
+              .add(const Duration(hours: 1))
+              .toIso8601String(),
+          'reason': body['reason'],
+          'status': 'Pending',
+          'counterpartName': 'Phụ huynh',
+          'expiresAt': _utc(now.add(const Duration(days: 1))),
+        }),
+      );
+    }
+    return null;
+  }
+
   /// No booking-platform data: the pilot tutor only has off-platform pupils.
   Map<String, dynamic> dashboard() => {
     'upcomingClassSessions': 0,
@@ -532,18 +905,48 @@ class FakeBackend implements HttpClientAdapter {
       if (path == '/notifications/mine/unread-count') {
         return _json(_ok({'unreadCount': empty ? 0 : 2}));
       }
+      final journal = RegExp(
+        r'^/recorder/students/([^/]+)/journal$',
+      ).firstMatch(path);
+      if (journal != null) {
+        return _json(
+          _ok(
+            studentJournal(
+              journal.group(1)!,
+              options.queryParameters['month'] as String? ?? '',
+            ),
+          ),
+        );
+      }
+      if (path == '/recorder/weekly-recording') {
+        final w = options.queryParameters['weeks'];
+        return _json(_ok(weeklyRecording(w is int ? w : 2)));
+      }
+      if (path == '/recorder/settings') return _json(_ok(recorderSettings));
+      final insights = RegExp(
+        r'^/recording/app/([^/]+)/insights$',
+      ).firstMatch(path);
+      if (insights != null) {
+        return _json(_ok(lessonInsights(insights.group(1)!)));
+      }
       if (path == '/recorder/students') {
         return _json(
           _ok(
             empty || scenario == Scenario.oneLesson
                 ? <dynamic>[]
-                : [studentAn(), studentBao()],
+                : [studentAn(), studentBao(), studentKhoi()],
           ),
         );
       }
       if (path.startsWith('/recorder/students/')) {
         final id = path.split('/').last;
-        return _json(_ok(id == 'stu-bao' ? studentBao() : studentAn()));
+        return _json(
+          _ok(switch (id) {
+            'stu-bao' => studentBao(),
+            'stu-khoi' => studentKhoi(),
+            _ => studentAn(),
+          }),
+        );
       }
       if (path == '/recorder/lessons') {
         if (empty) return _json(_ok(<dynamic>[]));
@@ -580,6 +983,25 @@ class FakeBackend implements HttpClientAdapter {
         }
         return _json(_ok(recordingStatus(id)));
       }
+    }
+
+    final write = _phase1Write(options);
+    if (write != null) return write;
+
+    // Approve, like the backend: status "sent", off-platform → Zalo (ZNS)
+    // pending, the delivery job sends it (06:30 at the earliest).
+    final approve = RegExp(
+      r'^/recording/app/([^/]+)/approve$',
+    ).firstMatch(path);
+    if (approve != null && options.method == 'POST') {
+      return _json(
+        _ok(
+          recordingStatus(approve.group(1)!)
+            ..['status'] = 'sent'
+            ..['deliveryChannel'] = 'zns'
+            ..['deliveryStatus'] = 'pending',
+        ),
+      );
     }
 
     // Anything else (writes, unknown reads): succeed with an empty body so a
