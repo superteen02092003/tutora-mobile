@@ -9,6 +9,7 @@ import 'package:tutora/features/tutor/presentation/providers/recorder_provider.d
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/course_renew.dart';
 
 /// Tab "Học sinh" (V5.6, canvas V56-Classes): mọi học sinh gia sư tự thêm,
 /// học 1-1. Thẻ hai cột; bấm vào mở hồ sơ, "+ Thêm" mở form thêm học sinh.
@@ -20,6 +21,13 @@ class TutorStudentsScreen extends ConsumerWidget {
     final async = ref.watch(recorderStudentsProvider);
     final students = async.valueOrNull ?? const <RecorderStudentDto>[];
     final loading = async.isLoading && async.valueOrNull == null;
+    // Học sinh đã hết khóa lên đầu, kèm khối gia hạn tháng mới.
+    final ended = students
+        .where((s) => s.courseStatus() == CourseStatus.ended)
+        .toList();
+    final learning = students
+        .where((s) => s.courseStatus() != CourseStatus.ended)
+        .toList();
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
@@ -69,9 +77,23 @@ class TutorStudentsScreen extends ConsumerWidget {
                         unawaited(TutorStudentFormScreen.open(context)),
                   )
                 else ...[
-                  Text('Đang học', style: TutorType.kicker()),
-                  const SizedBox(height: 8),
-                  _Grid(students: students),
+                  if (ended.isNotEmpty) ...[
+                    Text(
+                      'Hết khóa · ${ended.length}',
+                      style: TutorType.kicker(),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final s in ended) ...[
+                      _EndedCard(student: s),
+                      const SizedBox(height: 10),
+                    ],
+                    const SizedBox(height: 12),
+                  ],
+                  if (learning.isNotEmpty) ...[
+                    Text('Đang học', style: TutorType.kicker()),
+                    const SizedBox(height: 8),
+                    _Grid(students: learning),
+                  ],
                 ],
               ],
             ),
@@ -180,6 +202,8 @@ class _StudentCard extends StatelessWidget {
                       : '${s.lessonCount} buổi đã ghi',
                   style: TutorType.caption(),
                 ),
+                const SizedBox(height: 6),
+                CourseStatusLabel(student: s),
                 if (!s.hasConsent) ...[
                   const SizedBox(height: 6),
                   const CanvasTag('Chờ phụ huynh đồng ý'),
@@ -187,6 +211,56 @@ class _StudentCard extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Học sinh đã hết khóa: tên (bấm mở hồ sơ) + khối gia hạn tháng mới.
+class _EndedCard extends StatelessWidget {
+  const _EndedCard({required this.student});
+
+  final RecorderStudentDto student;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = student;
+    return DecoratedBox(
+      decoration: TutorSurface.card(),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => unawaited(
+                TutorStudentDetailScreen.open(context, s.studentId),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 4, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.fullName, style: TutorType.body()),
+                          if (s.subtitle.isNotEmpty)
+                            Text(s.subtitle, style: TutorType.rowSub()),
+                        ],
+                      ),
+                    ),
+                    CourseStatusLabel(student: s),
+                    const SizedBox(width: 4),
+                    const CanvasChevron(),
+                  ],
+                ),
+              ),
+            ),
+            CourseRenewPanel(student: s),
+          ],
         ),
       ),
     );

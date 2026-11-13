@@ -182,11 +182,76 @@ class RecorderStudentDto {
   bool get isParentLinked =>
       parentLinkStatus == 'linked' || parentLinkStatus == 'unfollowed';
 
+  /// Trạng thái khóa học theo [scheduleUntil] so với [today] (ngày VN).
+  CourseStatus courseStatus([DateTime? today]) {
+    final left = courseDaysLeft(today);
+    if (schedule.isEmpty || left == null) return CourseStatus.open;
+    if (left < 0) return CourseStatus.ended;
+    if (left <= courseEndingSoonDays) return CourseStatus.endingSoon;
+    return CourseStatus.active;
+  }
+
+  /// Số ngày còn tới ngày kết thúc (0 = hôm nay là ngày cuối, âm = đã hết).
+  int? courseDaysLeft([DateTime? today]) {
+    final until = scheduleUntil;
+    if (until == null) return null;
+    final t = today ?? DateTime.now();
+    return DateTime.utc(
+      until.year,
+      until.month,
+      until.day,
+    ).difference(DateTime.utc(t.year, t.month, t.day)).inDays;
+  }
+
+  /// Dữ liệu sửa học sinh giữ nguyên mọi trường, chỉ đổi khoảng ngày của lịch.
+  /// Giữ đúng trạng thái đồng ý: không rút, không tự nâng phiên bản.
+  RecorderStudentInput renewInput(DateTime from, DateTime until) =>
+      RecorderStudentInput(
+        fullName: fullName,
+        grade: grade,
+        subject: subject,
+        parentName: parentName,
+        parentPhone: parentPhone,
+        parentConsent: consentStatus == 'tutor_confirmed',
+        consentVersion: consentVersion,
+        note: note,
+        schedule: schedule,
+        scheduleFrom: from,
+        scheduleUntil: until,
+      );
+
   /// "Toán · Lớp 9"
   String get subtitle => [
     if (subject != null && subject!.isNotEmpty) subject!,
     if (grade != null) 'Lớp $grade',
   ].join(' · ');
+}
+
+/// Khóa học của học sinh (theo ngày kết thúc lịch hằng tuần).
+enum CourseStatus {
+  /// Chưa đặt lịch hoặc lịch không giới hạn.
+  open,
+  active,
+
+  /// Còn ≤ [courseEndingSoonDays] ngày.
+  endingSoon,
+  ended,
+}
+
+/// Báo "sắp hết khóa" trước bao nhiêu ngày.
+const int courseEndingSoonDays = 7;
+
+/// Lịch học tối đa bao nhiêu tháng (khớp backend MaxScheduleMonths).
+const int courseMaxMonths = 6;
+
+/// Ngày cuối của khóa [months] tháng bắt đầu từ [from]: 13/11 + 1 tháng →
+/// 12/12. Tháng đích ngắn hơn thì lấy ngày cuối tháng (31/01 + 1 → 28/02).
+DateTime courseEndAfterMonths(DateTime from, int months) {
+  final y = from.year + (from.month - 1 + months) ~/ 12;
+  final m = (from.month - 1 + months) % 12 + 1;
+  final lastDay = DateTime(y, m + 1, 0).day;
+  if (from.day > lastDay) return DateTime(y, m, lastDay);
+  return DateTime(y, m, from.day - 1);
 }
 
 /// Dữ liệu form thêm / sửa học sinh.
@@ -198,6 +263,7 @@ class RecorderStudentInput {
     this.parentName,
     this.parentPhone,
     this.parentConsent = false,
+    this.consentVersion,
     this.note,
     this.schedule,
     this.scheduleFrom,
@@ -210,6 +276,10 @@ class RecorderStudentInput {
   final String? parentName;
   final String? parentPhone;
   final bool parentConsent;
+
+  /// Phiên bản nội dung đồng ý gửi kèm; null = phiên bản hiện tại của app.
+  /// Gia hạn khóa gửi lại phiên bản cũ để không tự "đồng ý lại".
+  final String? consentVersion;
   final String? note;
 
   /// null = giữ nguyên lịch trên server; rỗng = xoá lịch.
@@ -224,7 +294,7 @@ class RecorderStudentInput {
     'parentName': _n(parentName),
     'parentPhone': _n(parentPhone),
     'parentConsent': parentConsent,
-    if (parentConsent) 'consentVersion': consentTextVersion,
+    if (parentConsent) 'consentVersion': consentVersion ?? consentTextVersion,
     'note': _n(note),
     if (schedule != null) ...{
       'schedule': schedule!.map((e) => e.toJson()).toList(),

@@ -19,6 +19,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
+import 'package:tutora/features/tutor/presentation/widgets/course_renew.dart';
 import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
 
@@ -265,9 +266,22 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                                     ),
                               sub: student.schedule.isEmpty
                                   ? 'Bấm Sửa để thêm lịch — buổi học sẽ hiện trong tab Bài học'
-                                  : _range(student),
-                              warn: student.schedule.isEmpty,
+                                  : [
+                                      _range(student),
+                                      ?courseStatusText(student),
+                                    ].join(' · '),
+                              warn:
+                                  student.schedule.isEmpty ||
+                                  const {
+                                    CourseStatus.ended,
+                                    CourseStatus.endingSoon,
+                                  }.contains(student.courseStatus()),
                             ),
+                            if (student.courseStatus() ==
+                                CourseStatus.ended) ...[
+                              const SizedBox(height: 8),
+                              CourseRenewPanel(student: student),
+                            ],
                           ],
                         ),
                       ),

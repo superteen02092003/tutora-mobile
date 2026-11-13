@@ -106,6 +106,35 @@ class FakeBackend implements HttpClientAdapter {
     'inviteExpiresAt': _utc(now.add(const Duration(days: 2))),
   };
 
+  /// Khôi's course ended four days ago (Học sinh tab "Hết khóa", Home renew
+  /// panel). A PUT from the renew panel stores the new range here.
+  Map<String, dynamic>? khoiRenewed;
+
+  Map<String, dynamic> studentKhoi() => {
+    'studentId': 'stu-khoi',
+    'fullName': 'Khôi',
+    'grade': 9,
+    'subject': 'Toán',
+    'parentName': 'Mẹ của Khôi',
+    'parentPhone': '0900000003',
+    'consentStatus': 'tutor_confirmed',
+    'consentVersion': 'v1',
+    'note': null,
+    'lessonCount': 8,
+    'lastLessonAt': _utc(today.subtract(const Duration(days: 5))),
+    'schedule': [
+      {'dayOfWeek': 5, 'start': '18:00', 'end': '19:30'},
+    ],
+    'scheduleFrom': _day(today.subtract(const Duration(days: 34))),
+    'scheduleUntil': _day(today.subtract(const Duration(days: 4))),
+    'parentLinkStatus': 'none',
+    ...?khoiRenewed,
+  };
+
+  static String _day(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
   Map<String, dynamic> _lesson({
     required String id,
     required String student,
@@ -736,6 +765,14 @@ class FakeBackend implements HttpClientAdapter {
       );
     }
 
+    if (path == '/recorder/students/stu-khoi' && method == 'PUT') {
+      khoiRenewed = {
+        'scheduleFrom': body['scheduleFrom'],
+        'scheduleUntil': body['scheduleUntil'],
+      };
+      return _json(_ok(studentKhoi()));
+    }
+
     if (path == '/recorder/settings' && method == 'PUT') {
       recorderSettings = {
         'lessonReminderMinutes': body['lessonReminderMinutes'],
@@ -897,13 +934,19 @@ class FakeBackend implements HttpClientAdapter {
           _ok(
             empty || scenario == Scenario.oneLesson
                 ? <dynamic>[]
-                : [studentAn(), studentBao()],
+                : [studentAn(), studentBao(), studentKhoi()],
           ),
         );
       }
       if (path.startsWith('/recorder/students/')) {
         final id = path.split('/').last;
-        return _json(_ok(id == 'stu-bao' ? studentBao() : studentAn()));
+        return _json(
+          _ok(switch (id) {
+            'stu-bao' => studentBao(),
+            'stu-khoi' => studentKhoi(),
+            _ => studentAn(),
+          }),
+        );
       }
       if (path == '/recorder/lessons') {
         if (empty) return _json(_ok(<dynamic>[]));

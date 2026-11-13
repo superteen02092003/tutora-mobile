@@ -21,6 +21,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/course_renew.dart';
 import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
 import 'package:tutora/shared/widgets/notification_bell.dart';
 
@@ -122,6 +123,7 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
                     ),
                   ),
                 const SizedBox(height: 26),
+                _EndedCoursesSection(students: students),
                 _StudentsSection(students: students),
                 const SizedBox(height: 8),
                 Padding(
@@ -411,6 +413,40 @@ class _ReviewRow extends StatelessWidget {
   }
 }
 
+/// "Hết khóa": mỗi học sinh đã hết ngày kết thúc một khối gia hạn tháng mới
+/// (nút nhanh 1 · 2 · 3 tháng hoặc chọn ngày). Ẩn khi không có ai.
+class _EndedCoursesSection extends StatelessWidget {
+  const _EndedCoursesSection({required this.students});
+
+  final List<RecorderStudentDto> students;
+
+  @override
+  Widget build(BuildContext context) {
+    final ended = students
+        .where((s) => s.courseStatus() == CourseStatus.ended)
+        .toList();
+    if (ended.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        0,
+        TutorSurface.gutter,
+        22,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionTitle(title: 'Hết khóa', trailing: '${ended.length} em'),
+          for (var i = 0; i < ended.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            CourseRenewPanel(student: ended[i], showName: true),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// "Học sinh của bạn": thẻ cuộn ngang + thẻ thêm học sinh.
 class _StudentsSection extends StatelessWidget {
   const _StudentsSection({required this.students});
@@ -478,7 +514,15 @@ class _StudentCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!s.hasConsent)
+                  if (s.courseStatus() == CourseStatus.ended)
+                    const CanvasTag('Hết khóa', filled: true)
+                  else if (s.courseStatus() == CourseStatus.endingSoon)
+                    CanvasTag(
+                      s.courseDaysLeft() == 0
+                          ? 'Hết hôm nay'
+                          : 'Còn ${s.courseDaysLeft()} ngày',
+                    )
+                  else if (!s.hasConsent)
                     const CanvasTag('Chờ đồng ý')
                   else
                     CanvasTag(
