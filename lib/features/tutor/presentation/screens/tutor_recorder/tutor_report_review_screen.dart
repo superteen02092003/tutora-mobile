@@ -10,6 +10,7 @@ import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/ai_feedback_sheet.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
@@ -270,6 +271,15 @@ class _TutorReportReviewScreenState
                       const SizedBox(height: 8),
                       AiFeedbackButton(recordingId: widget.args.recordingId),
                     ],
+                    // V56-Review "Kế hoạch buổi sau" → T9; tự ẩn khi cờ `plan`
+                    // tắt hoặc chưa có kế hoạch.
+                    TopiNextPlanRow(
+                      args: BeforeLessonArgs(
+                        lessonId: widget.args.recordingId,
+                        studentName: _name,
+                      ),
+                      padding: const EdgeInsets.only(top: 12),
+                    ),
                     // Topi T13 "Dành cho bạn" — tự ẩn khi cờ `tips` tắt.
                     TopiTipsCard(lessonId: widget.args.recordingId),
                     // Số liệu đo từ bản ghi — cũng chỉ gia sư thấy; tự ẩn khi

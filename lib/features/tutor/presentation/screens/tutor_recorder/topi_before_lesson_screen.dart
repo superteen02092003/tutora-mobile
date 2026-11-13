@@ -666,6 +666,54 @@ class TopiStudentBeforeLessonEntry extends ConsumerWidget {
   }
 }
 
+/// Dòng "Kế hoạch buổi sau · Chỉ bạn thấy" trên màn duyệt báo cáo (V56-Review),
+/// mở Chuẩn bị buổi học. Ẩn khi cờ `plan` tắt hoặc buổi chưa có kế hoạch.
+class TopiNextPlanRow extends ConsumerWidget {
+  const TopiNextPlanRow({
+    required this.args,
+    this.padding = EdgeInsets.zero,
+    super.key,
+  });
+
+  final BeforeLessonArgs args;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(topiFlagsNowProvider).plan) return const SizedBox.shrink();
+    final plan = ref.watch(lessonTopiProvider(args.lessonId)).valueOrNull?.plan;
+    if (plan == null || plan.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: padding,
+      child: CanvasRow(
+        lastRule: true,
+        onTap: () => TopiBeforeLessonScreen.open(context, args),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.lock_outline_rounded,
+              size: 20,
+              color: TutorColors.ink,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Kế hoạch buổi sau', style: TutorType.rowTitle()),
+                  const SizedBox(height: 2),
+                  Text('Chỉ bạn thấy', style: TutorType.rowSub()),
+                ],
+              ),
+            ),
+            const CanvasChevron(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Lối vào màn "Trước buổi học" — đặt ở chi tiết buổi đã ghi, hồ sơ học sinh
 /// và thẻ buổi hôm nay. Không vẽ gì khi cờ `plan` tắt hoặc chưa có kế hoạch,
 /// nên các màn đó giữ nguyên như trước.
