@@ -618,13 +618,21 @@ void main() {
           await shot(tester, 'report-review_ready_scrolled');
           await scrollDown(tester);
           await shot(tester, 'report-review_ready_bottom');
-          await tapText(tester, 'Xem trước tin gửi phụ huynh');
+          await tapText(tester, 'Xem cả tin nhắn Zalo ›');
           await shot(tester, 'report-preview_zalo');
           await scrollDown(tester);
           await shot(tester, 'report-preview_zalo_scrolled');
-          // The fake backend accepts the send; nothing leaves the process.
-          await tapText(tester, 'Gửi cho phụ huynh');
-          await shot(tester, 'report-preview_after-send');
+          await tapText(tester, 'Quay lại báo cáo');
+          // "Trượt để gửi phụ huynh": drag the knob to the end. The fake
+          // backend accepts the send; nothing leaves the process.
+          await tester.drag(
+            find.byIcon(Icons.send_rounded),
+            const Offset(600, 0),
+          );
+          await settle(tester, 1500);
+          await shot(tester, 'report-feedback_step-2');
+          await tapText(tester, 'Tiếp tục');
+          await shot(tester, 'report-sent_step-3');
         }
         if (label == 'ai-failed') {
           await tapText(tester, 'Tự viết báo cáo');

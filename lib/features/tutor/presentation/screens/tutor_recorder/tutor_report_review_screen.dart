@@ -10,6 +10,7 @@ import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/report_after_send_screens.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/ai_feedback_sheet.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -65,7 +66,22 @@ String _dm(DateTime d) =>
 String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-/// Màn "Báo cáo của …" (V5.6 board V56-Review): chờ AI → sửa → xem trước → gửi.
+/// Giờ Việt Nam của [utc] (UTC+7, không đổi giờ mùa hè).
+DateTime _vn(DateTime utc) => utc.toUtc().add(const Duration(hours: 7));
+
+/// Tin Zalo không gửi 21:30–06:30 giờ VN (backend RecorderReportDeliveryJob:
+/// Zalo chặn mẫu ban đêm); trả về "sáng mai" / "sáng nay" khi đang trong
+/// khung đó, null khi gửi được ngay.
+String? zaloQuietMorning([DateTime? nowUtc]) {
+  final t = _vn(nowUtc ?? DateTime.now().toUtc());
+  final m = t.hour * 60 + t.minute;
+  if (m >= 21 * 60 + 30) return 'sáng mai';
+  if (m < 6 * 60 + 30) return 'sáng nay';
+  return null;
+}
+
+/// Màn "Báo cáo của …" (V5.6 V56-Review, bước 1/3): chờ AI → sửa → trượt để
+/// gửi; rồi "Nhận xét buổi dạy" (2/3) và "Đã lên lịch gửi" / "Đã gửi" (3/3).
 class TutorReportReviewScreen extends ConsumerStatefulWidget {
   const TutorReportReviewScreen({required this.args, super.key});
 
@@ -94,6 +110,8 @@ class _TutorReportReviewScreenState
 
   /// Gia sư tự viết khi AI hỏng.
   bool _manual = false;
+
+  bool _sending = false;
 
   @override
   void initState() {
@@ -146,34 +164,90 @@ class _TutorReportReviewScreenState
     return n.isNotEmpty ? n : widget.args.studentName;
   }
 
-  void _openPreview() {
+  /// Nội dung đã sửa hợp lệ để gửi; null (và báo lỗi) khi chưa.
+  ({String content, String homework, String notes})? _validated() {
     final content = _content.text.trim();
     final homework = _homework.text.trim();
     final notes = _notes.text.trim();
     if (content.isEmpty) {
       _snack('Hãy viết nội dung buổi học trước khi gửi.');
-      return;
+      return null;
     }
     if ([content, homework, notes].any((v) => v.characters.length > _zaloMax)) {
       _snack('Mỗi mục tối đa $_zaloMax ký tự.');
-      return;
+      return null;
     }
-    final s = _status!;
+    return (content: content, homework: homework, notes: notes);
+  }
+
+  /// "Xem cả tin nhắn Zalo ›": đúng những gì phụ huynh nhận (chỉ xem).
+  void _openPreview() {
+    final v = _validated();
+    if (v == null) return;
     unawaited(
       Navigator.of(context).push<void>(
         MaterialPageRoute(
           builder: (_) => _PreviewScreen(
-            status: s,
+            status: _status!,
             studentName: _name,
             subtitle: widget.args.subtitle,
-            content: content,
-            homework: homework,
-            notes: notes,
+            content: v.content,
+            homework: v.homework,
+            notes: v.notes,
             aiDrafted: !_manual,
           ),
         ),
       ),
     );
+  }
+
+  /// Trượt để gửi: duyệt báo cáo (backend gửi Zalo ngay, hoặc 06:30 khi đang
+  /// trong giờ yên lặng) rồi sang "Nhận xét buổi dạy".
+  Future<void> _send() async {
+    final v = _validated();
+    if (v == null) return;
+    final s = _status!;
+    setState(() => _sending = true);
+    final navigator = Navigator.of(context);
+    try {
+      final r = await ref
+          .read(appRecordingDatasourceProvider)
+          .approve(
+            s.recordingId,
+            lessonContent: v.content,
+            homework: v.homework.isEmpty ? null : v.homework,
+            tutorNotes: v.notes.isEmpty ? null : v.notes,
+            zaloContent: v.content,
+            zaloHomework: v.homework,
+            zaloNotes: v.notes,
+          );
+      ref.invalidate(recorderPendingReviewsProvider);
+      if (r.studentId != null) {
+        ref.invalidate(recorderStudentLessonsProvider(r.studentId!));
+      }
+      final sent = ReportSentArgs(
+        lessonId: s.recordingId,
+        studentName: _name,
+        offPlatform: (r.studentId ?? s.studentId) != null,
+        lessonDay: s.startedAt ?? s.scheduledStart,
+        deliveryChannel: r.deliveryChannel,
+        deliveryStatus: r.deliveryStatus,
+        aiDrafted: !_manual,
+        approvedAtUtc: DateTime.now().toUtc(),
+      );
+      unawaited(
+        navigator.pushReplacement<void, void>(
+          MaterialPageRoute(builder: (_) => ReportFeedbackScreen(args: sent)),
+        ),
+      );
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      final msg = e is DioException && e.response?.data is Map
+          ? ((e.response!.data as Map)['message'] as String?)
+          : null;
+      _snack(msg ?? 'Chưa gửi được. Kiểm tra mạng rồi thử lại.');
+    }
   }
 
   void _snack(String m) => ScaffoldMessenger.of(context)
@@ -253,7 +327,7 @@ class _TutorReportReviewScreenState
                     24,
                   ),
                   children: [
-                    _TopBar(right: editable ? 'Bước 1/2' : null),
+                    _TopBar(right: editable ? 'Bước 1/3' : null),
                     if (!sent) ...[
                       const SizedBox(height: 16),
                       _Heading(
@@ -266,6 +340,21 @@ class _TutorReportReviewScreenState
                     ],
                     SizedBox(height: sent ? 30 : 18),
                     body,
+                    if (editable)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: _openPreview,
+                          style: TextButton.styleFrom(
+                            foregroundColor: TutorColors.ink,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          child: Text(
+                            'Xem cả tin nhắn Zalo ›',
+                            style: TutorType.action(),
+                          ),
+                        ),
+                      ),
                     // Nội dung do AI viết → cho gia sư báo sai (yêu cầu của Google Play).
                     if (s != null && ((editable && !_manual) || s.isSent)) ...[
                       const SizedBox(height: 8),
@@ -280,24 +369,24 @@ class _TutorReportReviewScreenState
                       ),
                       padding: const EdgeInsets.only(top: 12),
                     ),
-                    // Topi T13 "Dành cho bạn" — tự ẩn khi cờ `tips` tắt.
-                    TopiTipsCard(lessonId: widget.args.recordingId),
-                    // Số liệu đo từ bản ghi — cũng chỉ gia sư thấy; tự ẩn khi
-                    // chưa có.
-                    LessonInsightsCard(
-                      lessonId: widget.args.recordingId,
-                      kicker: 'Buổi học qua bản ghi · chỉ bạn thấy',
-                      padding: const EdgeInsets.only(top: 20),
-                    ),
+                    // Buổi đã gửi mở lại: T13 "Dành cho bạn" và số liệu bản ghi
+                    // (lúc duyệt, hai phần này ở bước 2/3 "Nhận xét buổi dạy").
+                    if (sent) ...[
+                      TopiTipsCard(lessonId: widget.args.recordingId),
+                      LessonInsightsCard(
+                        lessonId: widget.args.recordingId,
+                        kicker: 'Buổi học qua bản ghi · chỉ bạn thấy',
+                        padding: const EdgeInsets.only(top: 20),
+                      ),
+                    ],
                   ],
                 ),
               ),
               if (editable)
-                _BottomBar(
-                  primary: 'Xem trước tin gửi phụ huynh',
-                  onPrimary: _openPreview,
-                  secondary: 'Để sau, gửi sau',
-                  onSecondary: () => Navigator.of(context).maybePop(),
+                _SendBar(
+                  busy: _sending,
+                  onSend: () => unawaited(_send()),
+                  caption: _sendCaption(s),
                 )
               else if (s != null && !s.isFailed)
                 _BottomBar(
@@ -310,6 +399,16 @@ class _TutorReportReviewScreenState
         ),
       ),
     );
+  }
+
+  /// "Gửi lúc 06:30 · AI soạn, bạn đã duyệt" (V56-Review).
+  String _sendCaption(AppRecordingStatusDto s) {
+    final who = _manual ? 'Bạn tự viết' : 'AI soạn, bạn đã duyệt';
+    // Buổi có booking: phụ huynh xem trên TopTutor, không qua Zalo.
+    if (s.studentId == null) return 'Gửi ngay qua TopTutor · $who';
+    return zaloQuietMorning() == null
+        ? 'Gửi ngay qua Zalo · $who'
+        : 'Gửi lúc 06:30 · $who';
   }
 
   /// "Toán · Lớp 8 · 09/11 · 86 phút".
@@ -348,55 +447,7 @@ class _PreviewScreen extends ConsumerStatefulWidget {
 }
 
 class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
-  bool _sending = false;
-
   bool get _offPlatform => widget.status.studentId != null;
-
-  Future<void> _send() async {
-    setState(() => _sending = true);
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final r = await ref
-          .read(appRecordingDatasourceProvider)
-          .approve(
-            widget.status.recordingId,
-            lessonContent: widget.content,
-            homework: widget.homework.isEmpty ? null : widget.homework,
-            tutorNotes: widget.notes.isEmpty ? null : widget.notes,
-            zaloContent: widget.content,
-            zaloHomework: widget.homework,
-            zaloNotes: widget.notes,
-          );
-      ref.invalidate(recorderPendingReviewsProvider);
-      if (r.studentId != null) {
-        ref.invalidate(recorderStudentLessonsProvider(r.studentId!));
-      }
-      navigator.popUntil((route) => route.isFirst);
-      messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(
-            r.deliveryChannel == 'zns' && r.deliveryStatus != 'sent'
-                ? 'Đã duyệt. Tin Zalo sẽ gửi cho phụ huynh khi kênh ZNS sẵn sàng.'
-                : 'Đã gửi báo cáo cho phụ huynh.',
-          ),
-        ),
-      );
-    } on Object catch (e) {
-      if (!mounted) return;
-      setState(() => _sending = false);
-      final msg = e is DioException && e.response?.data is Map
-          ? ((e.response!.data as Map)['message'] as String?)
-          : null;
-      messenger.showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text(msg ?? 'Chưa gửi được. Kiểm tra mạng rồi thử lại.'),
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -428,7 +479,7 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                     24,
                   ),
                   children: [
-                    const _TopBar(right: 'Bước 2/2'),
+                    const _TopBar(),
                     const SizedBox(height: 16),
                     _Heading(
                       kicker: 'Xem trước tin gửi phụ huynh',
@@ -484,8 +535,9 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
                 ),
               ),
               _BottomBar(
-                primary: _sending ? 'Đang gửi…' : 'Gửi cho phụ huynh',
-                onPrimary: _sending ? null : _send,
+                primary: 'Quay lại báo cáo',
+                onPrimary: () => Navigator.of(context).maybePop(),
+                outlined: true,
                 caption: 'Sửa và gửi lại được sau khi gửi',
               ),
             ],
@@ -1119,20 +1171,58 @@ class _RecipientCard extends StatelessWidget {
 }
 
 /// Thanh dưới: nút viên thuốc chính (hoặc sage), liên kết chữ phụ, chú thích.
+/// Đáy màn duyệt (V56-Review): "Trượt để gửi phụ huynh" + giờ gửi.
+class _SendBar extends StatelessWidget {
+  const _SendBar({
+    required this.busy,
+    required this.onSend,
+    required this.caption,
+  });
+
+  final bool busy;
+  final VoidCallback onSend;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      TutorSurface.gutter,
+      10,
+      TutorSurface.gutter,
+      16,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CanvasSlideAction(
+          label: 'Trượt để gửi phụ huynh',
+          semanticsLabel: 'Gửi báo cáo cho phụ huynh',
+          knobIcon: Icons.send_rounded,
+          busy: busy,
+          onDone: onSend,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          caption,
+          textAlign: TextAlign.center,
+          style: TutorType.caption(color: TutorColors.ink3),
+        ),
+      ],
+    ),
+  );
+}
+
 class _BottomBar extends StatelessWidget {
   const _BottomBar({
     required this.primary,
     required this.onPrimary,
-    this.secondary,
-    this.onSecondary,
     this.caption,
     this.outlined = false,
   });
 
   final String primary;
   final VoidCallback? onPrimary;
-  final String? secondary;
-  final VoidCallback? onSecondary;
   final String? caption;
 
   /// Nút phụ (nền sage) thay cho nút chính xanh rêu.
@@ -1152,10 +1242,6 @@ class _BottomBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CanvasCta(label: primary, onPressed: onPrimary, secondary: outlined),
-          if (secondary != null && onSecondary != null) ...[
-            const SizedBox(height: 4),
-            CanvasGhostLink(label: secondary!, onTap: onSecondary!),
-          ],
           if (caption != null) ...[
             const SizedBox(height: 10),
             Text(

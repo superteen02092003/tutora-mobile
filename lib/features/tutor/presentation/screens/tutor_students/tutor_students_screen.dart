@@ -12,15 +12,52 @@ import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/course_renew.dart';
 
 /// Tab "Học sinh" (V5.6, canvas V56-Classes): mọi học sinh gia sư tự thêm,
-/// học 1-1. Thẻ hai cột; bấm vào mở hồ sơ, "+ Thêm" mở form thêm học sinh.
-class TutorStudentsScreen extends ConsumerWidget {
+/// học 1-1. Ô "Tìm theo tên hoặc lớp", thẻ hai cột (tên, "Lớp 8 · T2, T5");
+/// bấm vào mở hồ sơ, "+ Thêm" mở form thêm học sinh.
+class TutorStudentsScreen extends ConsumerStatefulWidget {
   const TutorStudentsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TutorStudentsScreen> createState() =>
+      _TutorStudentsScreenState();
+}
+
+/// Khớp "tìm theo tên hoặc lớp": tên (không phân biệt hoa thường, dấu) hoặc
+/// lớp ("8", "lớp 8", "lop 8").
+bool studentMatchesQuery(RecorderStudentDto s, String query) {
+  final q = foldVietnamese(query.trim());
+  if (q.isEmpty) return true;
+  if (foldVietnamese(s.fullName).contains(q)) return true;
+  final grade = s.grade;
+  if (grade == null) return false;
+  return q == '$grade' || q == 'lop $grade' || q == 'lop$grade';
+}
+
+/// Chữ thường, bỏ dấu tiếng Việt ("Bảo" → "bao", "Lớp" → "lop").
+String foldVietnamese(String s) {
+  const from =
+      'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ';
+  const to =
+      'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd';
+  final lower = s.toLowerCase();
+  final b = StringBuffer();
+  for (final r in lower.runes) {
+    final c = String.fromCharCode(r);
+    final i = from.indexOf(c);
+    b.write(i < 0 ? c : to[i]);
+  }
+  return b.toString();
+}
+
+class _TutorStudentsScreenState extends ConsumerState<TutorStudentsScreen> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(recorderStudentsProvider);
-    final students = async.valueOrNull ?? const <RecorderStudentDto>[];
+    final all = async.valueOrNull ?? const <RecorderStudentDto>[];
     final loading = async.isLoading && async.valueOrNull == null;
+    final students = all.where((s) => studentMatchesQuery(s, _query)).toList();
     // Học sinh đã hết khóa lên đầu, kèm khối gia hạn tháng mới.
     final ended = students
         .where((s) => s.courseStatus() == CourseStatus.ended)
@@ -28,6 +65,9 @@ class TutorStudentsScreen extends ConsumerWidget {
     final learning = students
         .where((s) => s.courseStatus() != CourseStatus.ended)
         .toList();
+    final learningAll = all
+        .where((s) => s.courseStatus() != CourseStatus.ended)
+        .length;
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
@@ -58,7 +98,7 @@ class TutorStudentsScreen extends ConsumerWidget {
                           Text(
                             loading
                                 ? 'Đang tải…'
-                                : '${students.length} em · học 1-1',
+                                : '$learningAll em đang học · học 1-1',
                             style: TutorType.rowSub(),
                           ),
                         ],
@@ -70,11 +110,24 @@ class TutorStudentsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                if (!loading && students.isEmpty)
+                if (all.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _SearchField(onChanged: (v) => setState(() => _query = v)),
+                ],
+                const SizedBox(height: 16),
+                if (!loading && all.isEmpty)
                   _Empty(
                     onAdd: () =>
                         unawaited(TutorStudentFormScreen.open(context)),
+                  )
+                else if (students.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Text(
+                      'Không có học sinh nào khớp "${_query.trim()}".',
+                      textAlign: TextAlign.center,
+                      style: TutorType.rowSub(),
+                    ),
                   )
                 else ...[
                   if (ended.isNotEmpty) ...[
@@ -151,7 +204,7 @@ class _Grid extends StatelessWidget {
             for (final s in students)
               SizedBox(
                 width: w,
-                child: _StudentCard(student: s),
+                child: _StudentCard(student: s, glyph: studentGlyph(s)),
               ),
           ],
         );
@@ -160,10 +213,29 @@ class _Grid extends StatelessWidget {
   }
 }
 
+/// Ký hiệu chìm góc thẻ (V56-Classes): x², √ hoặc π, cố định theo học sinh
+/// (không đổi khi lọc tìm kiếm).
+String studentGlyph(RecorderStudentDto s) {
+  const glyphs = ['x²', '√', 'π'];
+  final sum = s.studentId.codeUnits.fold<int>(0, (a, c) => a + c);
+  return glyphs[sum % glyphs.length];
+}
+
+/// "Lớp 8 · T2, T5" — lớp và các ngày học trong tuần (V56-Classes).
+String studentCardLine(RecorderStudentDto s) {
+  final days = {for (final x in s.schedule) x.dayOfWeek}.toList()..sort();
+  return [
+    if (s.grade != null) 'Lớp ${s.grade}',
+    if (days.isNotEmpty)
+      days.map((d) => RecorderScheduleSlot.dayLabels[d - 1]).join(', '),
+  ].join(' · ');
+}
+
 class _StudentCard extends StatelessWidget {
-  const _StudentCard({required this.student});
+  const _StudentCard({required this.student, required this.glyph});
 
   final RecorderStudentDto student;
+  final String glyph;
 
   @override
   Widget build(BuildContext context) {
@@ -177,39 +249,52 @@ class _StudentCard extends StatelessWidget {
         child: InkWell(
           onTap: () =>
               unawaited(TutorStudentDetailScreen.open(context, s.studentId)),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.fullName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TutorType.body(),
-                ),
-                if (s.subtitle.isNotEmpty)
-                  Text(
-                    s.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TutorType.rowSub(),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -2,
+                bottom: -16,
+                child: ExcludeSemantics(
+                  child: Text(
+                    glyph,
+                    style: TutorType.display(
+                      size: 72,
+                      weight: FontWeight.w500,
+                      color: const Color(0x122E4A3A),
+                      height: 1,
+                    ),
                   ),
-                const SizedBox(height: 10),
-                Text(
-                  s.lessonCount == 0
-                      ? 'Chưa có buổi ghi âm'
-                      : '${s.lessonCount} buổi đã ghi',
-                  style: TutorType.caption(),
                 ),
-                const SizedBox(height: 6),
-                CourseStatusLabel(student: s),
-                if (!s.hasConsent) ...[
-                  const SizedBox(height: 6),
-                  const CanvasTag('Chờ phụ huynh đồng ý'),
-                ],
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TutorType.body(),
+                    ),
+                    Text(
+                      studentCardLine(s).isEmpty
+                          ? 'Học 1-1'
+                          : studentCardLine(s),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TutorType.rowSub(),
+                    ),
+                    const SizedBox(height: 10),
+                    CourseStatusLabel(student: s),
+                    if (!s.hasConsent) ...[
+                      const SizedBox(height: 6),
+                      const CanvasTag('Chờ phụ huynh đồng ý'),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -265,6 +350,45 @@ class _EndedCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Ô "Tìm theo tên hoặc lớp" (V56-Classes): viên thuốc sáng, viền mảnh.
+class _SearchField extends StatelessWidget {
+  const _SearchField({required this.onChanged});
+
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    onChanged: onChanged,
+    textInputAction: TextInputAction.search,
+    style: TutorType.body(),
+    decoration: InputDecoration(
+      isDense: true,
+      hintText: 'Tìm theo tên hoặc lớp',
+      hintStyle: TutorType.rowSub(),
+      prefixIcon: const Icon(
+        Icons.search_rounded,
+        size: 20,
+        color: TutorColors.ink3,
+      ),
+      filled: true,
+      fillColor: TutorColors.surface,
+      contentPadding: const EdgeInsets.symmetric(vertical: 11),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(21),
+        borderSide: const BorderSide(color: Color(0x0F1F2A24)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(21),
+        borderSide: const BorderSide(color: Color(0x0F1F2A24)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(21),
+        borderSide: const BorderSide(color: TutorColors.ink3),
+      ),
+    ),
+  );
 }
 
 class _Empty extends StatelessWidget {

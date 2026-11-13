@@ -589,3 +589,124 @@ class CanvasStatRow extends StatelessWidget {
     ),
   );
 }
+
+/// Thanh trượt xanh rêu (V5.6 "slide control"): kéo núm sang phải quá 85% mới
+/// chạy [onDone] — dùng cho thao tác không nên bấm nhầm ("Trượt để gửi phụ
+/// huynh"). Trình đọc màn hình bấm thẳng được qua [semanticsLabel].
+class CanvasSlideAction extends StatefulWidget {
+  const CanvasSlideAction({
+    required this.label,
+    required this.semanticsLabel,
+    required this.onDone,
+    this.busy = false,
+    this.busyLabel = 'Đang gửi…',
+    this.enabled = true,
+    this.knobIcon = Icons.arrow_forward_rounded,
+    super.key,
+  });
+
+  final String label;
+  final String semanticsLabel;
+  final VoidCallback onDone;
+  final bool busy;
+  final String busyLabel;
+  final bool enabled;
+  final IconData knobIcon;
+
+  @override
+  State<CanvasSlideAction> createState() => _CanvasSlideActionState();
+}
+
+class _CanvasSlideActionState extends State<CanvasSlideAction> {
+  static const double _h = 56;
+  static const double _knob = 46;
+  static const double _inset = 5;
+  double _dx = 0;
+
+  bool get _active => widget.enabled && !widget.busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final max = c.maxWidth - _knob - _inset * 2;
+        final t = max <= 0 ? 0.0 : (_dx / max).clamp(0.0, 1.0);
+        return Semantics(
+          button: true,
+          label: widget.semanticsLabel,
+          onTap: _active ? widget.onDone : null,
+          child: Container(
+            height: _h,
+            decoration: BoxDecoration(
+              color: widget.enabled
+                  ? TutorColors.ink
+                  : TutorColors.ink.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(_h / 2),
+            ),
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: _knob),
+                    child: Opacity(
+                      opacity: 1 - t,
+                      child: Text(
+                        widget.busy ? widget.busyLabel : widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TutorType.action(color: const Color(0xFFC8CEC8)),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: _inset + _dx,
+                  child: GestureDetector(
+                    onHorizontalDragUpdate: _active
+                        ? (d) => setState(
+                            () => _dx = (_dx + d.delta.dx).clamp(0.0, max),
+                          )
+                        : null,
+                    onHorizontalDragEnd: _active
+                        ? (_) {
+                            final done = t > 0.85;
+                            setState(() => _dx = 0);
+                            if (done) widget.onDone();
+                          }
+                        : null,
+                    child: Container(
+                      width: _knob,
+                      height: _knob,
+                      decoration: BoxDecoration(
+                        color: widget.enabled
+                            ? TutorColors.surface
+                            : TutorColors.surface.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: widget.busy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: TutorColors.ink,
+                              ),
+                            )
+                          : Icon(
+                              widget.knobIcon,
+                              size: 20,
+                              color: TutorColors.ink,
+                            ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
