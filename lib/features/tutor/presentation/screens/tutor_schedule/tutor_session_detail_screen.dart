@@ -410,9 +410,12 @@ class TutorSessionDetailScreen extends ConsumerWidget {
     RecorderLessonDto? recorder,
   ) async {
     final navigator = Navigator.of(context);
-    final done = lesson.isOffPlatform
-        ? await moveRecorderLesson(context, ref, lesson, recorder: recorder)
-        : await proposeBookedReschedule(context, ref, lesson);
+    final bool done;
+    if (lesson.isOffPlatform) {
+      done = await moveRecorderLesson(context, ref, lesson, recorder: recorder);
+    } else {
+      done = await proposeBookedReschedule(context, ref, lesson);
+    }
     // Buổi recorder đã dời: giờ trên màn này đã cũ → quay lại lịch.
     if (done && lesson.isOffPlatform && navigator.mounted) navigator.pop();
   }
