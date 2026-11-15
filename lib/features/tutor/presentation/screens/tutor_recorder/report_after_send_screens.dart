@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/data/models/recorder_insights_models.dart';
+import 'package:tutora/features/tutor/data/models/topi_models.dart';
+import 'package:tutora/features/tutor/presentation/providers/recorder_insights_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
-import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
-import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
-import 'package:tutora/features/tutor/presentation/widgets/topi_tips_card.dart';
 
-/// Kết quả "Trượt để gửi phụ huynh" — dữ liệu cho bước 2/3 và 3/3.
+/// Kết quả "Trượt để gửi phụ huynh" — dữ liệu cho màn "Đã gửi" (V57-Done).
 class ReportSentArgs {
   const ReportSentArgs({
     required this.lessonId,
@@ -78,24 +82,6 @@ String _dm(DateTime d) =>
   );
 }
 
-class _Top extends StatelessWidget {
-  const _Top({required this.step});
-
-  final String step;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      // Báo cáo đã gửi: quay lại là về trang trước luồng duyệt.
-      CanvasBackButton(
-        onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
-      ),
-      const Spacer(),
-      Text(step, style: TutorType.rowSub()),
-    ],
-  );
-}
-
 class _Frame extends StatelessWidget {
   const _Frame({required this.children, required this.bottom});
 
@@ -137,136 +123,387 @@ class _Frame extends StatelessWidget {
   );
 }
 
-/// Bước 2/3 "Nhận xét buổi dạy" (V56-Feedback): T13 "Dành cho bạn" (tự ẩn
-/// khi cờ Topi `tips` tắt) và chất lượng bản ghi; chỉ gia sư thấy.
-class ReportFeedbackScreen extends StatelessWidget {
-  const ReportFeedbackScreen({required this.args, super.key});
+/// Số liệu ô "Buổi này" (V57-Done). null = chưa có dữ liệu, không hiện ô đó.
+class ReportDoneStats {
+  const ReportDoneStats({
+    this.minutesRecorded,
+    this.minutesPlanned,
+    this.newGaps,
+    this.improvedGaps,
+    this.stars = 0,
+  });
 
-  final ReportSentArgs args;
-
-  @override
-  Widget build(BuildContext context) {
-    final day = args.lessonDay;
-    return _Frame(
-      bottom: CanvasCta(
-        label: 'Tiếp tục',
-        onPressed: () => Navigator.of(context).pushReplacement<void, void>(
-          MaterialPageRoute(builder: (_) => ReportSentScreen(args: args)),
-        ),
-      ),
-      children: [
-        const _Top(step: 'Bước 2/3'),
-        const SizedBox(height: 16),
-        Text(
-          [
-            'Dành cho bạn',
-            if (day != null) 'buổi ${_dm(day)}',
-            if (args.studentName.isNotEmpty) args.studentName,
-          ].join(' · '),
-          style: TutorType.caption(color: TutorColors.ink3),
-        ),
-        const SizedBox(height: 4),
-        Text('Nhận xét buổi dạy', style: TutorType.display(size: 26)),
-        TopiTipsCard(lessonId: args.lessonId),
-        LessonInsightsCard(
-          lessonId: args.lessonId,
-          kicker: 'Buổi học qua bản ghi · chỉ bạn thấy',
-          padding: const EdgeInsets.only(top: 20),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'Chất lượng buổi dạy hiện sau khi thẩm định',
-          style: TutorType.caption(color: TutorColors.ink3),
-        ),
-      ],
+  /// Từ chỉ số bản ghi (insights) và kết quả Topi của buổi.
+  factory ReportDoneStats.from(LessonInsightsDto? insights, LessonTopi? topi) {
+    final ok = insights != null && insights.available;
+    final gaps = topi?.plan?.gaps;
+    final changes = topi?.skills?.proposedChanges;
+    return ReportDoneStats(
+      minutesRecorded: ok ? insights.minutesRecorded : null,
+      minutesPlanned: ok ? insights.minutesPlanned : null,
+      // Lỗ hổng mới: lần đầu gặp ở buổi này.
+      newGaps: gaps?.where((g) => (g.seenInLessons ?? 1) <= 1).length,
+      // Lỗ hổng tiến bộ: kỹ năng lên mức so với trước buổi.
+      improvedGaps: changes
+          ?.where(
+            (c) =>
+                c.from != null && c.to != null && c.to!.index > c.from!.index,
+          )
+          .length,
+      stars: changes?.where((c) => c.star).length ?? 0,
     );
   }
+
+  final int? minutesRecorded;
+  final int? minutesPlanned;
+  final int? newGaps;
+  final int? improvedGaps;
+  final int stars;
+
+  bool get isEmpty =>
+      minutesRecorded == null && newGaps == null && improvedGaps == null;
 }
 
-/// Bước 3/3 "Đã lên lịch gửi" / "Đã gửi" (V56-Sent): giờ phụ huynh nhận, thẻ
-/// báo cáo đã duyệt, tiến bộ kỹ năng (Topi, tự ẩn khi cờ `skills` tắt).
-class ReportSentScreen extends StatelessWidget {
-  const ReportSentScreen({required this.args, super.key});
+/// "31:05" từ số giây.
+String reportClock(int seconds) {
+  final m = seconds ~/ 60;
+  final s = seconds % 60;
+  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+}
+
+/// Chữ lớn hơn một bậc trên màn này (Michael 13/11: chữ quá nhỏ).
+TextStyle _big() => TutorType.body().copyWith(fontSize: 16.5);
+TextStyle _sub() => TutorType.rowSub().copyWith(fontSize: 14.5);
+
+/// Màn duy nhất sau "Trượt để gửi" (V57-Done, góp ý Michael 13/11): đã gửi →
+/// ô "Buổi này" (phút ghi âm, lỗ hổng mới / tiến bộ, sao) → hôm nay bạn dạy
+/// thế nào (kèm phút) → lần sau thử + kế hoạch buổi sau → chi tiết ở cuối.
+/// Điểm và sao chỉ hiện sau khi gửi. Phần Topi tự ẩn khi chưa có kết quả.
+class ReportDoneScreen extends ConsumerWidget {
+  const ReportDoneScreen({required this.args, super.key});
 
   final ReportSentArgs args;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final copy = reportSentCopy(args);
-    final day = args.lessonDay;
-    final channel = switch (args.deliveryChannel) {
-      'zns' => 'Zalo',
-      'booking' => 'TopTutor',
-      _ => args.offPlatform ? 'Chưa gửi' : 'TopTutor',
-    };
-    final shownChannel = args.offPlatform && !args.hasParentPhone
-        ? 'Chưa gửi'
-        : channel;
-    final rows = <(String, String)>[
-      (
-        day == null ? 'Báo cáo buổi học' : 'Báo cáo buổi ${_dm(day)}',
-        'Đã duyệt',
-      ),
-      ('Kênh', shownChannel),
-      ('Ghi chú', args.aiDrafted ? 'AI soạn, bạn đã duyệt' : 'Bạn tự viết'),
+    final flags = ref.watch(topiFlagsNowProvider);
+    final insights = ref
+        .watch(lessonInsightsProvider(args.lessonId))
+        .valueOrNull;
+    final topi = flags.any
+        ? ref.watch(lessonTopiProvider(args.lessonId)).valueOrNull
+        : null;
+    final stats = ReportDoneStats.from(insights, topi);
+    final tips = flags.tips ? topi?.tips : null;
+    final plan = flags.plan ? topi?.plan : null;
+    TopiGap? focus;
+    for (final g in plan?.gaps ?? const <TopiGap>[]) {
+      if (g.role == 'focus') focus ??= g;
+    }
+    focus ??= plan?.gaps.firstOrNull;
+
+    final today = <(String?, String)>[
+      if (tips?.didWell != null)
+        (_clock(tips!.didWell!.ts), 'Làm tốt: ${tips.didWell!.text}'),
+      if (tips?.talkMore != null)
+        (_clock(tips!.talkMore!.ts), tips.talkMore!.text),
+      for (final q in insights?.studentQuietStretches ?? const <QuietStretch>[])
+        (
+          '${q.fromMin}–${q.toMin}',
+          '${args.studentName.isEmpty ? 'Học sinh' : args.studentName} '
+              'gần như không nói trong ${q.toMin - q.fromMin} phút.',
+        ),
     ];
+
     return _Frame(
       bottom: CanvasCta(
         label: 'Về trang chủ',
         onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
       ),
       children: [
-        const _Top(step: 'Bước 3/3'),
+        Row(
+          children: [
+            CanvasBackButton(
+              onTap: () => Navigator.of(context).popUntil((r) => r.isFirst),
+            ),
+            const Spacer(),
+            Text(
+              [
+                if (args.lessonDay != null) 'Buổi ${_dm(args.lessonDay!)}',
+                if (args.studentName.isNotEmpty) args.studentName,
+              ].join(' · '),
+              style: _sub(),
+            ),
+          ],
+        ),
         const SizedBox(height: 22),
-        Text(copy.title, style: TutorType.display(size: 32, height: 1.05)),
-        const SizedBox(height: 8),
-        Text(copy.text, style: TutorType.body()),
-        const SizedBox(height: 22),
-        DecoratedBox(
-          decoration: TutorSurface.card(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Column(
-              children: [
-                for (var i = 0; i < rows.length; i++)
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: i == 0
-                        ? null
-                        : const BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: TutorColors.line),
+        Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: TutorColors.ink,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(copy.title, style: TutorType.display(size: 26)),
+                  const SizedBox(height: 2),
+                  Text(copy.text, style: _sub()),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (!stats.isEmpty) ...[
+          const SizedBox(height: 22),
+          _StatsBox(stats: stats),
+        ],
+        if (today.isNotEmpty) ...[
+          const SizedBox(height: 26),
+          Text('Hôm nay bạn dạy thế nào', style: TutorType.sectionTitle()),
+          const SizedBox(height: 4),
+          for (var i = 0; i < today.length; i++)
+            _Moment(clock: today[i].$1, text: today[i].$2, first: i == 0),
+        ],
+        if (tips?.tryNext != null || focus != null) ...[
+          const SizedBox(height: 20),
+          DecoratedBox(
+            decoration: TutorSurface.sage(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Expanded(
+                        child: CanvasKicker(
+                          'Lần sau thử',
+                          color: TutorColors.ink,
+                        ),
+                      ),
+                      CanvasAiDraftTag(onSage: true),
+                    ],
+                  ),
+                  if (tips?.tryNext != null) ...[
+                    const SizedBox(height: 8),
+                    Text(tips!.tryNext!.text, style: _big()),
+                  ],
+                  if (focus?.title != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Luyện ngay: ${focus!.title}'
+                      '${(focus.seenInLessons ?? 0) > 1 ? ' (gặp ${focus.seenInLessons} buổi)' : ''}.',
+                      style: _big(),
+                    ),
+                  ],
+                  if (plan != null && !plan.isEmpty)
+                    CanvasRow(
+                      onTap: () => TopiBeforeLessonScreen.open(
+                        context,
+                        BeforeLessonArgs(
+                          lessonId: args.lessonId,
+                          studentName: args.studentName,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Kế hoạch 15 phút đầu buổi sau',
+                              style: _big(),
                             ),
                           ),
-                    child: Row(
+                          const CanvasChevron(),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 28),
+        Text('Chi tiết', style: TutorType.caption(color: TutorColors.ink3)),
+        const SizedBox(height: 4),
+        _DetailRow(
+          title: 'Bài đã làm và kỹ năng',
+          onTap: () => _openDetail(context),
+        ),
+        _DetailRow(
+          title: insights?.bothVoices ?? false
+              ? 'Ghi âm · nghe rõ cả hai giọng'
+              : 'Ghi âm',
+          trailing: insights?.studentTalkShare == null
+              ? null
+              : '${args.studentName.isEmpty ? 'Học sinh' : args.studentName} '
+                    'nói ${(insights!.studentTalkShare! * 100).round()}%',
+          onTap: () => _openDetail(context),
+        ),
+      ],
+    );
+  }
+
+  void _openDetail(BuildContext context) => TutorRecordingDetailScreen.open(
+    context,
+    RecordingDetailArgs(
+      recordingId: args.lessonId,
+      studentName: args.studentName,
+    ),
+  );
+
+  static String? _clock(int? ts) => ts == null ? null : reportClock(ts);
+}
+
+/// Ô "Buổi này": phút ghi âm, lỗ hổng mới, lỗ hổng tiến bộ, sao.
+class _StatsBox extends StatelessWidget {
+  const _StatsBox({required this.stats});
+
+  final ReportDoneStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = <(String, String?, String)>[
+      if (stats.minutesRecorded != null)
+        (
+          '${stats.minutesRecorded}',
+          stats.minutesPlanned == null ? null : ' / ${stats.minutesPlanned}',
+          'phút ghi âm',
+        ),
+      if (stats.newGaps != null) ('${stats.newGaps}', null, 'lỗ hổng mới'),
+      if (stats.improvedGaps != null)
+        ('${stats.improvedGaps}', null, 'lỗ hổng tiến bộ'),
+    ];
+    return DecoratedBox(
+      decoration: TutorSurface.card(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: CanvasKicker('Buổi này', color: TutorColors.ink),
+                ),
+                if (stats.stars > 0)
+                  Text(
+                    '${List.filled(stats.stars, '★').join(' ')}  +${stats.stars} sao',
+                    style: _sub().copyWith(color: TutorColors.ink),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 14,
+              children: [
+                for (final c in cells)
+                  SizedBox(
+                    width: 140,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            rows[i].$1,
-                            style: i == 0
-                                ? TutorType.rowTitle()
-                                : TutorType.rowSub(),
+                        Text.rich(
+                          TextSpan(
+                            text: c.$1,
+                            style: TutorType.display(size: 30),
+                            children: [
+                              if (c.$2 != null)
+                                TextSpan(text: c.$2, style: _sub()),
+                            ],
                           ),
                         ),
-                        if (i == 0)
-                          CanvasTag(rows[i].$2)
-                        else
-                          Text(rows[i].$2, style: TutorType.rowTitle()),
+                        const SizedBox(height: 2),
+                        Text(c.$3, style: _sub()),
                       ],
                     ),
                   ),
               ],
             ),
-          ),
+            const SizedBox(height: 14),
+            Text(
+              'Mỗi lỗ hổng toán tiến bộ = 1 sao cho học sinh và cho bạn.',
+              style: TutorType.caption(color: TutorColors.ink3),
+            ),
+          ],
         ),
-        TopiSkillsSection(
-          lessonId: args.lessonId,
-          title: args.studentName.isEmpty
-              ? 'Tiến bộ của học sinh'
-              : 'Tiến bộ của ${args.studentName}',
-          padding: const EdgeInsets.only(top: 24),
-        ),
-      ],
+      ),
     );
   }
+}
+
+/// Một khoảnh khắc trong buổi: nhãn phút (nếu có) + câu nhận xét.
+class _Moment extends StatelessWidget {
+  const _Moment({required this.clock, required this.text, required this.first});
+
+  final String? clock;
+  final String text;
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    decoration: first
+        ? null
+        : const BoxDecoration(
+            border: Border(top: BorderSide(color: TutorColors.line)),
+          ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (clock != null) ...[
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAEAE4),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              clock!,
+              style: TutorType.caption(color: TutorColors.ink),
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
+        Expanded(child: Text(text, style: _big())),
+      ],
+    ),
+  );
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.title, required this.onTap, this.trailing});
+
+  final String title;
+  final String? trailing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => CanvasRow(
+    onTap: onTap,
+    child: Row(
+      children: [
+        Expanded(child: Text(title, style: _big())),
+        if (trailing != null) ...[
+          Text(trailing!, style: _sub()),
+          const SizedBox(width: 6),
+        ],
+        const CanvasChevron(),
+      ],
+    ),
+  );
 }

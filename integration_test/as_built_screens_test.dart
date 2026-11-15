@@ -630,9 +630,9 @@ void main() {
             const Offset(600, 0),
           );
           await settle(tester, 1500);
-          await shot(tester, 'report-feedback_step-2');
-          await tapText(tester, 'Tiếp tục');
-          await shot(tester, 'report-sent_step-3');
+          await shot(tester, 'report-done');
+          await scrollDown(tester);
+          await shot(tester, 'report-done_scrolled');
         }
         if (label == 'ai-failed') {
           await tapText(tester, 'Tự viết báo cáo');

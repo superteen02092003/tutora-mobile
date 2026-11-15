@@ -238,7 +238,7 @@ class _TutorReportReviewScreenState
       );
       unawaited(
         navigator.pushReplacement<void, void>(
-          MaterialPageRoute(builder: (_) => ReportFeedbackScreen(args: sent)),
+          MaterialPageRoute(builder: (_) => ReportDoneScreen(args: sent)),
         ),
       );
     } on Object catch (e) {
@@ -328,7 +328,7 @@ class _TutorReportReviewScreenState
                     24,
                   ),
                   children: [
-                    _TopBar(right: editable ? 'Bước 1/3' : null),
+                    _TopBar(right: editable ? 'Bước 1/2' : null),
                     if (!sent) ...[
                       const SizedBox(height: 16),
                       _Heading(

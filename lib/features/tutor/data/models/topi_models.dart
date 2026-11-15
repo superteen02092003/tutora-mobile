@@ -198,18 +198,26 @@ class TopiPlan {
 // ── Gợi ý cho gia sư (tips) ──────────────────────────────────────────────────
 
 class TopiTip {
-  const TopiTip({required this.text, this.seg, this.quote});
+  const TopiTip({required this.text, this.seg, this.quote, this.ts});
 
   final String text;
   final int? seg;
   final String? quote;
+
+  /// Giây tính từ đầu buổi của câu trích (`ts`), để hiện "31:05".
+  final int? ts;
 
   static TopiTip? fromJson(Object? v) {
     final j = _map(v);
     if (j == null) return null;
     final text = _str(j, 'text');
     if (text == null) return null;
-    return TopiTip(text: text, seg: _int(j, 'seg'), quote: _str(j, 'quote'));
+    return TopiTip(
+      text: text,
+      seg: _int(j, 'seg'),
+      quote: _str(j, 'quote'),
+      ts: _int(j, 'ts'),
+    );
   }
 }
 
