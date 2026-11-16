@@ -8,6 +8,7 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/report_after_send_screens.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -26,7 +27,8 @@ String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
 /// Chi tiết một buổi đã ghi (V5.6 board V56-LessonDetail): báo cáo gửi phụ
-/// huynh (Báo cáo) và tóm tắt buổi (Tóm tắt buổi).
+/// huynh (Báo cáo), tóm tắt buổi (Tóm tắt buổi) và nhận xét buổi dạy chỉ gia
+/// sư thấy (Nhận xét, V57-Done).
 /// Gia sư không nghe lại âm thanh và không xem lời thoại đầy đủ.
 class TutorRecordingDetailScreen extends ConsumerStatefulWidget {
   const TutorRecordingDetailScreen({required this.args, super.key});
@@ -171,6 +173,12 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                           selected: _tab == 1,
                           onTap: () => setState(() => _tab = 1),
                         ),
+                        const SizedBox(width: 22),
+                        _TabPill(
+                          label: 'Nhận xét',
+                          selected: _tab == 2,
+                          onTap: () => setState(() => _tab = 2),
+                        ),
                       ],
                     ),
                   ),
@@ -179,13 +187,29 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                   child: RefreshIndicator(
                     color: TutorColors.primary,
                     onRefresh: _load,
-                    child: _tab == 0
-                        ? _SummaryTab(
-                            status: s,
-                            name: name,
-                            onEdit: _openEditor,
-                          )
-                        : _MinutesTab(status: s),
+                    child: switch (_tab) {
+                      0 => _SummaryTab(
+                        status: s,
+                        name: name,
+                        onEdit: _openEditor,
+                      ),
+                      1 => _MinutesTab(status: s),
+                      // Nhận xét buổi dạy (V57-Done) — chỉ gia sư thấy.
+                      _ => ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          TutorSurface.gutter,
+                          0,
+                          TutorSurface.gutter,
+                          32,
+                        ),
+                        children: [
+                          LessonFeedbackSections(
+                            lessonId: s.recordingId,
+                            studentName: name,
+                          ),
+                        ],
+                      ),
+                    },
                   ),
                 ),
               ],

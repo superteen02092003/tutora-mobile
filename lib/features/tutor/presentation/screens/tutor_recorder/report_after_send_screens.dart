@@ -187,35 +187,9 @@ class ReportDoneScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final copy = reportSentCopy(args);
-    final flags = ref.watch(topiFlagsNowProvider);
     final insights = ref
         .watch(lessonInsightsProvider(args.lessonId))
         .valueOrNull;
-    final topi = flags.any
-        ? ref.watch(lessonTopiProvider(args.lessonId)).valueOrNull
-        : null;
-    final stats = ReportDoneStats.from(insights, topi);
-    final tips = flags.tips ? topi?.tips : null;
-    final plan = flags.plan ? topi?.plan : null;
-    TopiGap? focus;
-    for (final g in plan?.gaps ?? const <TopiGap>[]) {
-      if (g.role == 'focus') focus ??= g;
-    }
-    focus ??= plan?.gaps.firstOrNull;
-
-    final today = <(String?, String)>[
-      if (tips?.didWell != null)
-        (_clock(tips!.didWell!.ts), 'Làm tốt: ${tips.didWell!.text}'),
-      if (tips?.talkMore != null)
-        (_clock(tips!.talkMore!.ts), tips.talkMore!.text),
-      for (final q in insights?.studentQuietStretches ?? const <QuietStretch>[])
-        (
-          '${q.fromMin}–${q.toMin}',
-          '${args.studentName.isEmpty ? 'Học sinh' : args.studentName} '
-              'gần như không nói trong ${q.toMin - q.fromMin} phút.',
-        ),
-    ];
-
     return _Frame(
       bottom: CanvasCta(
         label: 'Về trang chủ',
@@ -266,6 +240,97 @@ class ReportDoneScreen extends ConsumerWidget {
             ),
           ],
         ),
+        LessonFeedbackSections(
+          lessonId: args.lessonId,
+          studentName: args.studentName,
+        ),
+        const SizedBox(height: 28),
+        Text('Chi tiết', style: TutorType.caption(color: TutorColors.ink3)),
+        const SizedBox(height: 4),
+        _DetailRow(
+          title: 'Bài đã làm và kỹ năng',
+          onTap: () => _openDetail(context),
+        ),
+        _DetailRow(
+          title: insights?.bothVoices ?? false
+              ? 'Ghi âm · nghe rõ cả hai giọng'
+              : 'Ghi âm',
+          trailing: insights?.studentTalkShare == null
+              ? null
+              : '${args.studentName.isEmpty ? 'Học sinh' : args.studentName} '
+                    'nói ${(insights!.studentTalkShare! * 100).round()}%',
+          onTap: () => _openDetail(context),
+        ),
+      ],
+    );
+  }
+
+  void _openDetail(BuildContext context) => TutorRecordingDetailScreen.open(
+    context,
+    RecordingDetailArgs(
+      recordingId: args.lessonId,
+      studentName: args.studentName,
+    ),
+  );
+}
+
+/// Nhận xét một buổi (V57-Done, Michael 13/11): ô "Buổi này", "Hôm nay bạn
+/// dạy thế nào" (kèm phút), "Lần sau thử" + kế hoạch buổi sau. Dùng ở màn
+/// "Đã gửi" và tab "Nhận xét" của chi tiết buổi. Phần Topi tự ẩn khi chưa có.
+class LessonFeedbackSections extends ConsumerWidget {
+  const LessonFeedbackSections({
+    required this.lessonId,
+    required this.studentName,
+    super.key,
+  });
+
+  final String lessonId;
+  final String studentName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final flags = ref.watch(topiFlagsNowProvider);
+    final insights = ref.watch(lessonInsightsProvider(lessonId)).valueOrNull;
+    final topi = flags.any
+        ? ref.watch(lessonTopiProvider(lessonId)).valueOrNull
+        : null;
+    final stats = ReportDoneStats.from(insights, topi);
+    final tips = flags.tips ? topi?.tips : null;
+    final plan = flags.plan ? topi?.plan : null;
+    TopiGap? focus;
+    for (final g in plan?.gaps ?? const <TopiGap>[]) {
+      if (g.role == 'focus') focus ??= g;
+    }
+    focus ??= plan?.gaps.firstOrNull;
+
+    final today = <(String?, String)>[
+      if (tips?.didWell != null)
+        (_clock(tips!.didWell!.ts), 'Làm tốt: ${tips.didWell!.text}'),
+      if (tips?.talkMore != null)
+        (_clock(tips!.talkMore!.ts), tips.talkMore!.text),
+      for (final q in insights?.studentQuietStretches ?? const <QuietStretch>[])
+        (
+          '${q.fromMin}–${q.toMin}',
+          '${studentName.isEmpty ? 'Học sinh' : studentName} '
+              'gần như không nói trong ${q.toMin - q.fromMin} phút.',
+        ),
+    ];
+
+    if (stats.isEmpty &&
+        today.isEmpty &&
+        tips?.tryNext == null &&
+        focus == null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 22),
+        child: Text(
+          'Buổi này chưa có nhận xét. Nhận xét có sau khi AI đọc xong bản ghi.',
+          style: _sub(),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         if (!stats.isEmpty) ...[
           const SizedBox(height: 22),
           _StatsBox(stats: stats),
@@ -314,8 +379,8 @@ class ReportDoneScreen extends ConsumerWidget {
                       onTap: () => TopiBeforeLessonScreen.open(
                         context,
                         BeforeLessonArgs(
-                          lessonId: args.lessonId,
-                          studentName: args.studentName,
+                          lessonId: lessonId,
+                          studentName: studentName,
                         ),
                       ),
                       child: Row(
@@ -335,34 +400,9 @@ class ReportDoneScreen extends ConsumerWidget {
             ),
           ),
         ],
-        const SizedBox(height: 28),
-        Text('Chi tiết', style: TutorType.caption(color: TutorColors.ink3)),
-        const SizedBox(height: 4),
-        _DetailRow(
-          title: 'Bài đã làm và kỹ năng',
-          onTap: () => _openDetail(context),
-        ),
-        _DetailRow(
-          title: insights?.bothVoices ?? false
-              ? 'Ghi âm · nghe rõ cả hai giọng'
-              : 'Ghi âm',
-          trailing: insights?.studentTalkShare == null
-              ? null
-              : '${args.studentName.isEmpty ? 'Học sinh' : args.studentName} '
-                    'nói ${(insights!.studentTalkShare! * 100).round()}%',
-          onTap: () => _openDetail(context),
-        ),
       ],
     );
   }
-
-  void _openDetail(BuildContext context) => TutorRecordingDetailScreen.open(
-    context,
-    RecordingDetailArgs(
-      recordingId: args.lessonId,
-      studentName: args.studentName,
-    ),
-  );
 
   static String? _clock(int? ts) => ts == null ? null : reportClock(ts);
 }
