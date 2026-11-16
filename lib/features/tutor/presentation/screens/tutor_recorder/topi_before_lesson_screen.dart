@@ -210,7 +210,9 @@ class _PlanView extends StatelessWidget {
     final shown = gaps.where((g) => g.role != 'watch').toList()
       ..sort((a, b) => rank(a).compareTo(rank(b)));
     final watched = gaps.where((g) => g.role == 'watch').toList();
-    final steps = [...plan.steps]
+    // Bước không có câu hỏi nào (Topi để trống "Nhớ lại", "Khởi động") thì
+    // không hiện: một dòng tên bước trơn không giúp gia sư.
+    final steps = plan.steps.where((s) => s.asks.isNotEmpty).toList()
       ..sort((a, b) {
         int i(TopiStep s) {
           final k = _stepOrder.indexOf(s.name.replaceAll(RegExp('[-_ ]'), ''));

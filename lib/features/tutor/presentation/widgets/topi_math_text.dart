@@ -24,7 +24,7 @@ final RegExp _power = RegExp(r'\s*(?:\*\*|\^)\s*(-?\d+)');
 
 // Dấu nhân trước chữ hoặc ngoặc mở thì bỏ: `2*x` → `2x`, `)*(` → `)(`.
 final RegExp _impliedTimes = RegExp(
-  r'([0-9A-Za-z)²³¹⁰-⁹])\s*\*\s*(?=[A-Za-z(])',
+  r'([0-9A-Za-z)²³¹⁰-⁹])\s*\*\s*(?=[A-Za-z(π√])',
 );
 
 // Dấu nhân còn lại (giữa hai số) → `·`.
@@ -33,10 +33,22 @@ final RegExp _times = RegExp(r'\s*\*\s*');
 // Topi đôi khi tự viết "Hỏi:" ở đầu câu, trong khi màn đã có nhãn "Hỏi:".
 final RegExp _askPrefix = RegExp(r'^\s*hỏi\s*:\s*', caseSensitive: false);
 
+// Hàm sympy mà gia sư không đọc được: `Rational(135,100)` → `135/100`,
+// `sqrt(3)` → `√3`, `sqrt(x + 1)` → `√(x + 1)`, `pi` → `π`.
+final RegExp _rational = RegExp(r'Rational\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)');
+final RegExp _sqrtSimple = RegExp(r'sqrt\(\s*([0-9A-Za-z]+)\s*\)');
+final RegExp _sqrt = RegExp(r'sqrt\(');
+final RegExp _pi = RegExp(r'\bpi\b');
+
 /// `(x - 4)**2` → `(x - 4)²`; `(3*x - 2)*(3*x + 2)` → `(3x - 2)(3x + 2)`;
-/// `3 * 2**3` → `3 · 2³`.
+/// `3 * 2**3` → `3 · 2³`; `Rational(135,100)` → `135/100`; `sqrt(3)` → `√3`.
 String topiMathText(String s) {
-  var t = s.replaceAllMapped(
+  var t = s
+      .replaceAllMapped(_rational, (m) => '${m[1]}/${m[2]}')
+      .replaceAllMapped(_sqrtSimple, (m) => '√${m[1]}')
+      .replaceAll(_sqrt, '√(')
+      .replaceAll(_pi, 'π');
+  t = t.replaceAllMapped(
     _power,
     (m) => m[1]!.split('').map((c) => _superscript[c]!).join(),
   );
