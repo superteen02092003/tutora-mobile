@@ -21,7 +21,8 @@ import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/consent_text_dialog.dart';
 import 'package:tutora/features/tutor/presentation/widgets/course_renew.dart';
 import 'package:tutora/features/tutor/presentation/widgets/recorded_lesson_tile.dart';
-import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_pupil_skills.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_ui.dart';
 
 /// Hồ sơ một học sinh ngoài nền tảng (canvas V5.6 Pupil): tên + lớp, kỹ năng,
 /// lỗ hổng, từng buổi học, phụ huynh + lịch, đồng ý ghi âm và nút ghi âm.
@@ -163,10 +164,10 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                             if (latestReported != null)
                               Padding(
                                 padding: gutter,
-                                child: TopiSkillsSection(
-                                  lessonId: latestReported.lessonId,
-                                  title: 'Kỹ năng ở buổi gần nhất',
-                                  padding: const EdgeInsets.only(top: 16),
+                                child: PupilSkillsCard(
+                                  studentId: student.studentId,
+                                  studentName: student.fullName,
+                                  fallbackLessonId: latestReported.lessonId,
                                 ),
                               ),
                             // Gợi ý trước buổi luôn hiện khi đã có buổi có báo
@@ -179,6 +180,14 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                                   nextLessonAt: upcoming.firstOrNull?.when,
                                 ),
                               ),
+                            // Chuẩn → Vững: kỹ năng đến hạn kiểm tra lại.
+                            Padding(
+                              padding: gutter,
+                              child: PupilReviewRow(
+                                studentId: student.studentId,
+                                studentName: student.fullName,
+                              ),
+                            ),
                             if (upcoming.isNotEmpty) ...[
                               const _SectionTitle('Sắp tới'),
                               Padding(
@@ -450,9 +459,9 @@ class _SectionTitle extends StatelessWidget {
 }
 
 String _gapLabel(String? role, int number) => switch (role) {
-  'focus' => 'Lỗ hổng $number · luyện ngay',
-  'next' => 'Lỗ hổng $number · tiếp theo',
-  _ => 'Lỗ hổng $number',
+  'focus' => 'Ưu tiên $number · luyện ngay',
+  'next' => 'Ưu tiên $number · tiếp theo',
+  _ => 'Ưu tiên $number',
 };
 
 int _dots(TopiLevel l) => switch (l) {
@@ -462,7 +471,8 @@ int _dots(TopiLevel l) => switch (l) {
   TopiLevel.mastered => 4,
 };
 
-/// "Lỗ hổng": thẻ sage dẫn sang Chuẩn bị buổi học, rồi các lỗ hổng tiếp theo.
+/// "Cần luyện tập" (V57-Pupil): thẻ sage dẫn sang Chuẩn bị buổi học, rồi các
+/// kỹ năng tiếp theo (mức bằng chữ cạnh chấm), rồi "Ôn lại để lên Vững".
 /// Ẩn cả khối khi cờ `plan` tắt hoặc buổi gần nhất chưa có kế hoạch.
 class _GapsBlock extends ConsumerWidget {
   const _GapsBlock({required this.args});
@@ -488,7 +498,7 @@ class _GapsBlock extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionTitle(
-          plan.gaps.isEmpty ? 'Chuẩn bị buổi tới' : 'Lỗ hổng',
+          plan.gaps.isEmpty ? 'Chuẩn bị buổi tới' : 'Cần luyện tập',
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -511,10 +521,6 @@ class _GapsBlock extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      if (shown[i].level != null) ...[
-                        CanvasSkillDots(level: _dots(shown[i].level!)),
-                        const SizedBox(width: 12),
-                      ],
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,12 +530,27 @@ class _GapsBlock extends ConsumerWidget {
                               style: TutorType.body(),
                             ),
                             Text(
-                              _gapLabel(shown[i].role, i + 1),
+                              [
+                                _gapLabel(shown[i].role, i + 1),
+                                if (shown[i].level != null)
+                                  topiLevelPlain(shown[i].level!),
+                              ].join(' · '),
                               style: TutorType.rowSub(),
                             ),
                           ],
                         ),
                       ),
+                      if (shown[i].level != null) ...[
+                        const SizedBox(width: 10),
+                        CanvasSkillDots(level: _dots(shown[i].level!)),
+                        const SizedBox(width: 6),
+                        Text(
+                          topiLevelLabel(shown[i].level!),
+                          style: TutorType.caption(
+                            color: const Color(0xFF4A514C),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

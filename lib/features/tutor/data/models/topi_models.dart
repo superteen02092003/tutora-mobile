@@ -380,3 +380,61 @@ class LessonTopi {
   final TopiTips? tips;
   final TopiSkills? skills;
 }
+
+// ── Mọi kỹ năng của một học sinh (hồ sơ học sinh, V57-Skills) ───────────────
+
+/// Một kỹ năng toán Topi đã thấy ở học sinh, mức hiện tại và ngày ôn lại
+/// (`GET /recording/app/topi/students/{id}/skills`, camelCase).
+class TopiPupilSkill {
+  const TopiPupilSkill({
+    required this.node,
+    required this.level,
+    this.name,
+    this.grade,
+    this.firstSeen,
+    this.lastChange,
+    this.standardSince,
+    this.reviewFrom,
+    this.lessonsSeen = 0,
+  });
+
+  static TopiPupilSkill? fromJson(Map<String, dynamic> j) {
+    final node = _str(j, 'node');
+    final level = TopiLevel.parse(_str(j, 'level'));
+    if (node == null || level == null) return null;
+    DateTime? d(String k) => DateTime.tryParse(_str(j, k) ?? '');
+    return TopiPupilSkill(
+      node: node,
+      level: level,
+      name: _str(j, 'nameVi'),
+      grade: _int(j, 'grade'),
+      firstSeen: d('firstSeen'),
+      lastChange: d('lastChange'),
+      standardSince: d('standardSince'),
+      reviewFrom: d('reviewFrom'),
+      lessonsSeen: _int(j, 'lessonsSeen') ?? 0,
+    );
+  }
+
+  final String node;
+  final TopiLevel level;
+  final String? name;
+  final int? grade;
+  final DateTime? firstSeen;
+  final DateTime? lastChange;
+  final DateTime? standardSince;
+
+  /// Chuẩn: ngày sớm nhất kiểm tra lại để lên Vững.
+  final DateTime? reviewFrom;
+  final int lessonsSeen;
+
+  /// Chuẩn và đã đến hạn kiểm tra lại (tính theo ngày [today]).
+  bool reviewDue(DateTime today) =>
+      level == TopiLevel.standard &&
+      reviewFrom != null &&
+      !reviewFrom!.isAfter(DateTime(today.year, today.month, today.day));
+}
+
+List<TopiPupilSkill> parsePupilSkills(Map<String, dynamic> j) => _list(
+  _get(j, 'skills'),
+).map(TopiPupilSkill.fromJson).whereType<TopiPupilSkill>().toList();

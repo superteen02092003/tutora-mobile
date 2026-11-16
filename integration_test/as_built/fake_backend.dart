@@ -106,6 +106,90 @@ class FakeBackend implements HttpClientAdapter {
     'inviteExpiresAt': _utc(now.add(const Duration(days: 2))),
   };
 
+  /// Every maths skill Topi has seen for Minh An (canvas V57-Skills): 2 to
+  /// practise, 5 Chuẩn (2 due for the 3-week re-check), 2 Vững.
+  Map<String, dynamic> studentSkills(String studentId) {
+    String day(int ago) => _day(today.subtract(Duration(days: ago)));
+    Map<String, dynamic> sk(
+      String node,
+      String name,
+      String level, {
+      int seen = 1,
+      int? standardAgo,
+      int changedAgo = 7,
+    }) => {
+      'node': node,
+      'nameVi': name,
+      'grade': 8,
+      'level': level,
+      'firstSeen': day(40),
+      'lastChange': day(changedAgo),
+      'standardSince': standardAgo == null ? null : day(standardAgo),
+      'reviewFrom': level == 'standard' && standardAgo != null
+          ? day(standardAgo - 21)
+          : null,
+      'lessonsSeen': seen,
+    };
+    return {
+      'studentId': studentId,
+      'skills': studentId != 'stu-minh-an'
+          ? <dynamic>[]
+          : [
+              sk('N8.03', 'Bỏ ngoặc sau dấu trừ', 'improving', seen: 3),
+              sk('N8.05', 'Đặt nhân tử chung có dấu trừ', 'to_do'),
+              sk(
+                'N8.07',
+                'Hiệu hai bình phương',
+                'standard',
+                seen: 4,
+                standardAgo: 24,
+              ),
+              sk(
+                'N8.09',
+                'Chia đa thức cho đơn thức',
+                'standard',
+                seen: 3,
+                standardAgo: 22,
+              ),
+              sk(
+                'N8.02',
+                'Nhân đa thức với đa thức',
+                'standard',
+                seen: 2,
+                standardAgo: 14,
+              ),
+              sk(
+                'N8.06',
+                'Bình phương của một hiệu',
+                'standard',
+                seen: 2,
+                standardAgo: 10,
+              ),
+              sk(
+                'N8.01',
+                'Thu gọn đa thức',
+                'standard',
+                seen: 2,
+                standardAgo: 5,
+              ),
+              sk(
+                'N8.04',
+                'Bình phương của một tổng',
+                'mastered',
+                seen: 5,
+                changedAgo: 4,
+              ),
+              sk(
+                'N8.08',
+                'Nhân đơn thức với đa thức',
+                'mastered',
+                seen: 4,
+                changedAgo: 11,
+              ),
+            ],
+    };
+  }
+
   /// Khôi's course ended four days ago (Học sinh tab "Hết khóa", Home renew
   /// panel). A PUT from the renew panel stores the new range here.
   Map<String, dynamic>? khoiRenewed;
@@ -968,6 +1052,12 @@ class FakeBackend implements HttpClientAdapter {
         return _json(
           _ok({'report': true, 'plan': true, 'tips': true, 'skills': true}),
         );
+      }
+      final pupilSkills = RegExp(
+        r'^/recording/app/topi/students/([^/]+)/skills$',
+      ).firstMatch(path);
+      if (pupilSkills != null) {
+        return _json(_ok(studentSkills(pupilSkills.group(1)!)));
       }
       final topi = RegExp(r'^/recording/app/([^/]+)/topi$').firstMatch(path);
       if (topi != null) {

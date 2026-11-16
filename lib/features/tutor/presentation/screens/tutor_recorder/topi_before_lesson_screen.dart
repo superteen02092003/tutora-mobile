@@ -229,7 +229,7 @@ class _PlanView extends StatelessWidget {
           if (shown.isNotEmpty) _FocusGapCard(gap: shown.first),
           if (shown.length > 1) ...[
             const SizedBox(height: 18),
-            const _SectionHead('Lỗ hổng tiếp theo'),
+            const _SectionHead('Cần luyện tiếp'),
             const SizedBox(height: 2),
             for (var i = 1; i < shown.length; i++)
               _GapRow(gap: shown[i], number: i + 1, first: i == 1),
@@ -305,10 +305,10 @@ class _SectionHead extends StatelessWidget {
 }
 
 String _roleLabel(String? role, int number) => switch (role) {
-  'focus' => 'Lỗ hổng $number · luyện ngay',
-  'next' => 'Lỗ hổng $number · tiếp theo',
-  'watch' => 'Lỗ hổng $number · chỉ theo dõi',
-  _ => 'Lỗ hổng $number',
+  'focus' => 'Ưu tiên $number · luyện ngay',
+  'next' => 'Ưu tiên $number · tiếp theo',
+  'watch' => 'Ưu tiên $number · chỉ theo dõi',
+  _ => 'Ưu tiên $number',
 };
 
 /// Thẻ sage nổi: lỗ hổng số 1, Sai / Đúng trong ô sáng, số buổi đã gặp.

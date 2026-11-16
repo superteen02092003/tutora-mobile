@@ -5,6 +5,7 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/topi_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_pupil_skills.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_ui.dart';
 
 /// Thẻ "Kỹ năng" (canvas V5.6 Pupil): số kỹ năng tìm thấy, lưới bốn mức với
@@ -16,12 +17,16 @@ class TopiSkillsSection extends ConsumerWidget {
     required this.lessonId,
     this.title = 'Kỹ năng tìm thấy trong buổi',
     this.padding = const EdgeInsets.only(top: 20),
+    this.showHelp = false,
     super.key,
   });
 
   final String lessonId;
   final String title;
   final EdgeInsets padding;
+
+  /// Nút "?" giải thích bốn mức (hồ sơ học sinh).
+  final bool showHelp;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,7 +39,7 @@ class TopiSkillsSection extends ConsumerWidget {
 
     return Padding(
       padding: padding,
-      child: TopiSkillsView(items: items, title: title),
+      child: TopiSkillsView(items: items, title: title, showHelp: showHelp),
     );
   }
 }
@@ -47,10 +52,16 @@ int _dots(TopiLevel l) => switch (l) {
 };
 
 class TopiSkillsView extends StatelessWidget {
-  const TopiSkillsView({required this.items, required this.title, super.key});
+  const TopiSkillsView({
+    required this.items,
+    required this.title,
+    this.showHelp = false,
+    super.key,
+  });
 
   final List<TopiSkillItem> items;
   final String title;
+  final bool showHelp;
 
   /// Thứ tự hiển thị: mức cao trước (như lưới trên canvas).
   static const List<TopiLevel> _order = [
@@ -75,7 +86,17 @@ class TopiSkillsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TutorType.caption(color: TutorColors.ink3)),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TutorType.caption(color: TutorColors.ink3),
+                ),
+              ),
+              if (showHelp) const TopiLevelsHelpButton(),
+            ],
+          ),
           const SizedBox(height: 4),
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
