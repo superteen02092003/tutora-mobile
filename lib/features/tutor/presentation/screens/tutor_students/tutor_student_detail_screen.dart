@@ -461,6 +461,7 @@ class _SectionTitle extends StatelessWidget {
 String _gapLabel(String? role, int number) => switch (role) {
   'focus' => 'Ưu tiên $number · luyện ngay',
   'next' => 'Ưu tiên $number · tiếp theo',
+  'watch' => 'Ưu tiên $number · chỉ theo dõi',
   _ => 'Ưu tiên $number',
 };
 
@@ -491,14 +492,16 @@ class _GapsBlock extends ConsumerWidget {
       'next' => 1,
       _ => 2,
     };
-    final shown = plan.gaps.where((g) => g.role != 'watch').toList()
-      ..sort((a, b) => rank(a).compareTo(rank(b)));
+    // Mọi kỹ năng cần luyện (kể cả "chỉ theo dõi"), đánh số liên tục.
+    final shown = [...plan.gaps]..sort((a, b) => rank(a).compareTo(rank(b)));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionTitle(
-          plan.gaps.isEmpty ? 'Chuẩn bị buổi tới' : 'Cần luyện tập',
+          plan.gaps.isEmpty
+              ? 'Chuẩn bị buổi tới'
+              : 'Cần luyện tập · ${shown.length}',
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -511,7 +514,7 @@ class _GapsBlock extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TopiBeforeLessonEntry(args: args),
-              for (var i = 1; i < shown.length && i < 3; i++)
+              for (var i = 1; i < shown.length; i++)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   decoration: BoxDecoration(
