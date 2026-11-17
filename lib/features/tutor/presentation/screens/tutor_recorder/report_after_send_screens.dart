@@ -407,7 +407,9 @@ class LessonFeedbackSections extends ConsumerWidget {
   static String? _clock(int? ts) => ts == null ? null : reportClock(ts);
 }
 
-/// Ô "Buổi này": phút ghi âm, lỗ hổng mới, lỗ hổng tiến bộ, sao.
+/// Ô "Kết quả buổi này" (A3, Michael 16/11: "thành công ở đâu?"): số kỹ năng
+/// lên mức đứng đầu, chữ lớn; kỹ năng mới phát hiện và thời lượng ghi âm là
+/// hai dòng nhỏ bên dưới.
 class _StatsBox extends StatelessWidget {
   const _StatsBox({required this.stats});
 
@@ -415,28 +417,33 @@ class _StatsBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cells = <(String, String?, String)>[
-      if (stats.minutesRecorded != null)
+    final improved = stats.improvedGaps;
+    final minutes = stats.minutesRecorded;
+    final rows = <(String, String)>[
+      if (stats.newGaps != null)
+        ('Mới phát hiện', '${stats.newGaps} kỹ năng cần luyện'),
+      if (minutes != null)
         (
-          '${stats.minutesRecorded}',
-          stats.minutesPlanned == null ? null : ' / ${stats.minutesPlanned}',
-          'phút ghi âm',
+          'Thời lượng ghi âm',
+          stats.minutesPlanned == null
+              ? '$minutes phút'
+              : '$minutes phút · lịch ${stats.minutesPlanned} phút',
         ),
-      if (stats.newGaps != null) ('${stats.newGaps}', null, 'lỗ hổng mới'),
-      if (stats.improvedGaps != null)
-        ('${stats.improvedGaps}', null, 'lỗ hổng tiến bộ'),
     ];
     return DecoratedBox(
       decoration: TutorSurface.card(),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 const Expanded(
-                  child: CanvasKicker('Buổi này', color: TutorColors.ink),
+                  child: CanvasKicker(
+                    'Kết quả buổi này',
+                    color: TutorColors.ink,
+                  ),
                 ),
                 if (stats.stars > 0)
                   Text(
@@ -445,39 +452,58 @@ class _StatsBox extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 12,
-              runSpacing: 14,
-              children: [
-                for (final c in cells)
-                  SizedBox(
-                    width: 140,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text.rich(
-                          TextSpan(
-                            text: c.$1,
-                            style: TutorType.display(size: 30),
-                            children: [
-                              if (c.$2 != null)
-                                TextSpan(text: c.$2, style: _sub()),
-                            ],
+            if (improved != null) ...[
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$improved', style: TutorType.display(size: 40)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('kỹ năng lên mức', style: _big()),
+                          const SizedBox(height: 2),
+                          Text(
+                            improved == 0
+                                ? 'Chưa ghi nhận tiến bộ trong buổi này. '
+                                      'Mỗi kỹ năng lên mức = 1 sao cho con và '
+                                      'cho bạn.'
+                                : 'Mỗi kỹ năng lên mức = 1 sao cho con và '
+                                      'cho bạn.',
+                            style: _sub(),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(c.$3, style: _sub()),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Mỗi lỗ hổng toán tiến bộ = 1 sao cho học sinh và cho bạn.',
-              style: TutorType.caption(color: TutorColors.ink3),
-            ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 10),
+            for (final r in rows)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: TutorColors.line)),
+                ),
+                child: Row(
+                  children: [
+                    Text(r.$1, style: _sub()),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        r.$2,
+                        textAlign: TextAlign.end,
+                        style: _sub().copyWith(color: TutorColors.ink),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

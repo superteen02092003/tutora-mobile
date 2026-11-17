@@ -121,11 +121,13 @@ class TopiSkillsView extends StatelessWidget {
                 spacing: 14,
                 runSpacing: 10,
                 children: [
+                  // A1: mức chưa có kỹ năng nào thì không hiện.
                   for (final l in _order)
-                    SizedBox(
-                      width: w,
-                      child: _Legend(level: l, count: byLevel[l]!.length),
-                    ),
+                    if (byLevel[l]!.isNotEmpty)
+                      SizedBox(
+                        width: w,
+                        child: _Legend(level: l, count: byLevel[l]!.length),
+                      ),
                 ],
               );
             },

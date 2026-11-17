@@ -29,6 +29,19 @@ String topiLevelPlain(TopiLevel l) => switch (l) {
   TopiLevel.mastered => 'vững sau nhiều tuần',
 };
 
+/// Mức của một lỗ hổng trong kế hoạch: khi lỗ hổng có mã kỹ năng trùng với
+/// một kỹ năng của học sinh thì lấy mức của thẻ kỹ năng, để một kỹ năng không
+/// hiện hai mức khác nhau trên cùng màn (A2, Michael 16/11).
+TopiLevel? gapLevel(TopiGap gap, List<TopiPupilSkill> skills) {
+  final node = gap.node;
+  if (node != null) {
+    for (final s in skills) {
+      if (s.node == node) return s.level;
+    }
+  }
+  return gap.level;
+}
+
 /// Tiêu chí của từng mức (skills-detector.md, bản nháp chưa kiểm chứng).
 const _criteria = <TopiLevel, String>{
   TopiLevel.toDo: 'Đã gặp nhưng phần lớn làm sai, hoặc sai lặp lại ở 2 buổi.',
@@ -198,12 +211,16 @@ class PupilSkillsCard extends ConsumerWidget {
     void open() => unawaited(
       TopiPupilSkillsScreen.open(context, studentId, studentName),
     );
-    const order = [
-      TopiLevel.mastered,
-      TopiLevel.standard,
-      TopiLevel.improving,
-      TopiLevel.toDo,
-    ];
+    // A1 (Michael 16/11): chỉ hiện mức có kỹ năng; mỗi dòng nói mức nghĩa là gì.
+    final rows = [
+      for (final l in const [
+        TopiLevel.mastered,
+        TopiLevel.standard,
+        TopiLevel.improving,
+        TopiLevel.toDo,
+      ])
+        (l, skills.where((s) => s.level == l).length),
+    ].where((r) => r.$2 > 0).toList();
     return Padding(
       padding: padding,
       child: Container(
@@ -217,50 +234,52 @@ class PupilSkillsCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${skills.length} kỹ năng toán, tìm thấy trong các buổi',
-                    style: TutorType.caption(color: TutorColors.ink3),
+                    'Topi đã gặp ${skills.length} kỹ năng toán',
+                    style: TutorType.body(),
                   ),
                 ),
                 const TopiLevelsHelpButton(),
               ],
             ),
-            const SizedBox(height: 10),
-            LayoutBuilder(
-              builder: (context, c) {
-                final w = (c.maxWidth - 14) / 2;
-                return Wrap(
-                  spacing: 14,
-                  runSpacing: 6,
-                  children: [
-                    for (final l in order)
-                      SizedBox(
-                        width: w,
-                        child: InkWell(
-                          onTap: open,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                CanvasSkillDots(level: topiDots(l)),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    '${topiLevelLabel(l)} · '
-                                    '${skills.where((s) => s.level == l).length}',
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TutorType.rowSub(),
-                                  ),
-                                ),
-                              ],
-                            ),
+            Text(
+              'qua các buổi đã ghi âm. Mức của từng kỹ năng:',
+              style: TutorType.rowSub(),
+            ),
+            const SizedBox(height: 6),
+            for (var i = 0; i < rows.length; i++)
+              InkWell(
+                onTap: open,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: i == 0 ? BorderSide.none : TutorSurface.rule,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CanvasSkillDots(level: topiDots(rows[i].$1)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            text:
+                                '${topiLevelLabel(rows[i].$1)} · ${rows[i].$2}',
+                            style: TutorType.body(),
+                            children: [
+                              TextSpan(
+                                text: ' · ${topiLevelPlain(rows[i].$1)}',
+                                style: TutorType.rowSub(),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
+                      const CanvasChevron(),
+                    ],
+                  ),
+                ),
+              ),
             const SizedBox(height: 4),
             InkWell(
               onTap: open,

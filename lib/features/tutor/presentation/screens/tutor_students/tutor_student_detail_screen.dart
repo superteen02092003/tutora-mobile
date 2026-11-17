@@ -174,6 +174,8 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                             // cáo — kể cả khi chưa lên lịch buổi tới.
                             if (latestReported != null)
                               _GapsBlock(
+                                studentId: student.studentId,
+                                planFrom: latestReported.when,
                                 args: BeforeLessonArgs(
                                   lessonId: latestReported.lessonId,
                                   studentName: student.fullName,
@@ -476,9 +478,17 @@ int _dots(TopiLevel l) => switch (l) {
 /// kỹ năng tiếp theo (mức bằng chữ cạnh chấm), rồi "Ôn lại để lên Vững".
 /// Ẩn cả khối khi cờ `plan` tắt hoặc buổi gần nhất chưa có kế hoạch.
 class _GapsBlock extends ConsumerWidget {
-  const _GapsBlock({required this.args});
+  const _GapsBlock({
+    required this.args,
+    required this.studentId,
+    this.planFrom,
+  });
 
   final BeforeLessonArgs args;
+  final String studentId;
+
+  /// Ngày của buổi đã sinh ra kế hoạch (buổi có báo cáo gần nhất).
+  final DateTime? planFrom;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -494,6 +504,12 @@ class _GapsBlock extends ConsumerWidget {
     };
     // Mọi kỹ năng cần luyện (kể cả "chỉ theo dõi"), đánh số liên tục.
     final shown = [...plan.gaps]..sort((a, b) => rank(a).compareTo(rank(b)));
+    // A2 (Michael 16/11): cùng một kỹ năng thì cùng một mức với thẻ kỹ năng.
+    final skills =
+        ref.watch(pupilSkillsProvider(studentId)).valueOrNull ??
+        const <TopiPupilSkill>[];
+    TopiLevel? levelOf(TopiGap g) => gapLevel(g, skills);
+    final from = planFrom;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -503,6 +519,20 @@ class _GapsBlock extends ConsumerWidget {
               ? 'Chuẩn bị buổi tới'
               : 'Cần luyện tập · ${shown.length}',
         ),
+        // A2: nói rõ danh sách này lấy từ đâu, khác thẻ kỹ năng ở trên.
+        if (plan.gaps.isNotEmpty && from != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              TutorSurface.gutter,
+              2,
+              TutorSurface.gutter,
+              0,
+            ),
+            child: Text(
+              'Theo kế hoạch sau buổi ${from.day}/${from.month}',
+              style: TutorType.rowSub(),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
             TutorSurface.gutter,
@@ -513,7 +543,7 @@ class _GapsBlock extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TopiBeforeLessonEntry(args: args),
+              TopiBeforeLessonEntry(args: args, levelOf: levelOf),
               for (var i = 1; i < shown.length; i++)
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 13),
@@ -535,20 +565,20 @@ class _GapsBlock extends ConsumerWidget {
                             Text(
                               [
                                 _gapLabel(shown[i].role, i + 1),
-                                if (shown[i].level != null)
-                                  topiLevelPlain(shown[i].level!),
+                                if (levelOf(shown[i]) != null)
+                                  topiLevelPlain(levelOf(shown[i])!),
                               ].join(' · '),
                               style: TutorType.rowSub(),
                             ),
                           ],
                         ),
                       ),
-                      if (shown[i].level != null) ...[
+                      if (levelOf(shown[i]) != null) ...[
                         const SizedBox(width: 10),
-                        CanvasSkillDots(level: _dots(shown[i].level!)),
+                        CanvasSkillDots(level: _dots(levelOf(shown[i])!)),
                         const SizedBox(width: 6),
                         Text(
-                          topiLevelLabel(shown[i].level!),
+                          topiLevelLabel(levelOf(shown[i])!),
                           style: TutorType.caption(
                             color: const Color(0xFF4A514C),
                           ),

@@ -723,11 +723,15 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
   const TopiBeforeLessonEntry({
     required this.args,
     this.padding = EdgeInsets.zero,
+    this.levelOf,
     super.key,
   });
 
   final BeforeLessonArgs args;
   final EdgeInsets padding;
+
+  /// Mức hiện cạnh lỗ hổng; mặc định là mức trong kế hoạch.
+  final TopiLevel? Function(TopiGap gap)? levelOf;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -740,6 +744,7 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
       if (g.role == 'focus') focus = g;
     }
     focus ??= plan.gaps.firstOrNull;
+    final level = focus == null ? null : (levelOf ?? (g) => g.level)(focus);
     final head = focus == null
         ? 'Trước buổi học'
         : _roleLabel(focus.role == 'watch' ? null : focus.role, 1);
@@ -775,8 +780,8 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
                             Expanded(
                               child: CanvasKicker(head, color: TutorColors.ink),
                             ),
-                            if (focus?.level != null) ...[
-                              TopiLevelChip(level: focus!.level!),
+                            if (level != null) ...[
+                              TopiLevelChip(level: level),
                               const SizedBox(width: 8),
                             ],
                             const CanvasAiDraftTag(onSage: true),
