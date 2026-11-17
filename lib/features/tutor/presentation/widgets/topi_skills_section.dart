@@ -186,22 +186,11 @@ class _SkillRow extends StatelessWidget {
         CanvasSkillDots(level: _dots(item.level)),
         const SizedBox(width: 10),
         Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                if (item.name != null)
-                  TextSpan(
-                    text: '${item.name}  ',
-                    style: TutorType.rowTitle().copyWith(fontSize: 14),
-                  ),
-                TextSpan(
-                  text: item.node,
-                  style: item.name == null
-                      ? TutorType.rowTitle().copyWith(fontSize: 14)
-                      : TutorType.caption(),
-                ),
-              ],
-            ),
+          // Gia sư chỉ thấy tên kỹ năng, không thấy mã (N10.01…); mã chỉ
+          // hiện khi backend chưa trả tên.
+          child: Text(
+            item.name ?? item.node,
+            style: TutorType.rowTitle().copyWith(fontSize: 14),
           ),
         ),
         TopiStars(count: item.stars),
