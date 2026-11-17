@@ -131,6 +131,8 @@ class ReportDoneStats {
     this.newGaps,
     this.improvedGaps,
     this.stars = 0,
+    this.newSkills = 0,
+    this.newSkillsCanDo = 0,
   });
 
   /// Từ chỉ số bản ghi (insights) và kết quả Topi của buổi.
@@ -138,7 +140,16 @@ class ReportDoneStats {
     final ok = insights != null && insights.available;
     final gaps = topi?.plan?.gaps;
     final changes = topi?.skills?.proposedChanges;
+    final first = (topi?.skills?.firstSeen ?? const <TopiFirstSeen>[])
+        .where((f) => f.level != null)
+        .toList();
     return ReportDoneStats(
+      // Kỹ năng Topi gặp lần đầu ở buổi này, và bao nhiêu trong số đó học
+      // sinh đã làm được (từ mức Tiến bộ trở lên).
+      newSkills: first.length,
+      newSkillsCanDo: first
+          .where((f) => f.level!.index >= TopiLevel.improving.index)
+          .length,
       minutesRecorded: ok ? insights.minutesRecorded : null,
       minutesPlanned: ok ? insights.minutesPlanned : null,
       // Lỗ hổng mới: lần đầu gặp ở buổi này.
@@ -159,9 +170,19 @@ class ReportDoneStats {
   final int? newGaps;
   final int? improvedGaps;
   final int stars;
+  final int newSkills;
+  final int newSkillsCanDo;
+
+  /// Buổi mở chương mới: không kỹ năng nào lên mức vì kỹ năng nào cũng mới gặp,
+  /// nhưng học sinh đã làm được một phần. Khi đó ô đứng đầu là số kỹ năng mới
+  /// thay cho "0 kỹ năng lên mức" (buổi 28/10: 8/11 bài tự làm đúng mà ô ghi 0).
+  bool get leadWithNewSkills => (improvedGaps ?? 0) == 0 && newSkillsCanDo > 0;
 
   bool get isEmpty =>
-      minutesRecorded == null && newGaps == null && improvedGaps == null;
+      minutesRecorded == null &&
+      newGaps == null &&
+      improvedGaps == null &&
+      newSkills == 0;
 }
 
 /// "31:05" từ số giây.
@@ -452,7 +473,37 @@ class _StatsBox extends StatelessWidget {
                   ),
               ],
             ),
-            if (improved != null) ...[
+            if (stats.leadWithNewSkills) ...[
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${stats.newSkills}',
+                    style: TutorType.display(size: 40),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('kỹ năng mới học', style: _big()),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${stats.newSkillsCanDo == stats.newSkills ? 'Cả ${stats.newSkills}' : '${stats.newSkillsCanDo}'} '
+                            'kỹ năng con đã làm được. Lên mức ở buổi sau = '
+                            '1 sao cho con và cho bạn.',
+                            style: _sub(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ] else if (improved != null) ...[
               const SizedBox(height: 14),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

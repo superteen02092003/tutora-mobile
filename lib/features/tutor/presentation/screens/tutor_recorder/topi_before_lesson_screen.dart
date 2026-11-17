@@ -730,13 +730,15 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
   final BeforeLessonArgs args;
   final EdgeInsets padding;
 
-  /// Mức hiện cạnh lỗ hổng; mặc định là mức trong kế hoạch.
+  /// Mức hiện cạnh lỗ hổng; mặc định là mức của cùng kỹ năng trong chính buổi
+  /// đó (ô "Kỹ năng tìm thấy trong buổi"), không có thì mức trong kế hoạch.
   final TopiLevel? Function(TopiGap gap)? levelOf;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(topiFlagsNowProvider).plan) return const SizedBox.shrink();
-    final plan = ref.watch(lessonTopiProvider(args.lessonId)).valueOrNull?.plan;
+    final topi = ref.watch(lessonTopiProvider(args.lessonId)).valueOrNull;
+    final plan = topi?.plan;
     if (plan == null || plan.isEmpty) return const SizedBox.shrink();
 
     TopiGap? focus;
@@ -744,7 +746,10 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
       if (g.role == 'focus') focus = g;
     }
     focus ??= plan.gaps.firstOrNull;
-    final level = focus == null ? null : (levelOf ?? (g) => g.level)(focus);
+    final lessonSkills = topi?.skills?.items ?? const <TopiSkillItem>[];
+    final level = focus == null
+        ? null
+        : (levelOf ?? (g) => gapLevelInLesson(g, lessonSkills))(focus);
     final head = focus == null
         ? 'Trước buổi học'
         : _roleLabel(focus.role == 'watch' ? null : focus.role, 1);
@@ -811,4 +816,19 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Mức của lỗ hổng theo kỹ năng của chính buổi đã sinh kế hoạch: trên màn
+/// chi tiết buổi, thẻ "Ưu tiên 1" và ô "Kỹ năng tìm thấy trong buổi" nằm cạnh
+/// nhau, nên một kỹ năng chỉ hiện một mức (A2, Michael 16/11; buổi 28/10 hiện
+/// "Cần học" ở thẻ và "Tiến bộ" ở ô dưới). Không có kỹ năng trùng mã thì giữ
+/// mức trong kế hoạch.
+TopiLevel? gapLevelInLesson(TopiGap gap, List<TopiSkillItem> lessonSkills) {
+  final node = gap.node;
+  if (node != null) {
+    for (final s in lessonSkills) {
+      if (s.node == node) return s.level;
+    }
+  }
+  return gap.level;
 }
