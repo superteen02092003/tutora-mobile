@@ -10,6 +10,7 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorded_well_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -343,6 +344,16 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
                         const SizedBox(height: 36),
                         _Waveform(levels: _levels, paused: paused),
                         const SizedBox(height: 26),
+
+                        // ── Kế hoạch 15 phút (V510): mở tấm, không dừng ghi ──
+                        if (widget.target.studentId != null) ...[
+                          TopiBriefEntry(
+                            studentId: widget.target.studentId!,
+                            studentName: widget.target.studentName,
+                            recording: true,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
 
                         // ── Âm thanh · lưu · màn hình tắt ───────────────
                         Container(

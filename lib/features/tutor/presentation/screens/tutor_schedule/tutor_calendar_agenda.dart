@@ -10,6 +10,7 @@ import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/lesson_attendance.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_session_detail_screen.dart';
@@ -1107,6 +1108,14 @@ class _NextCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                // V510: "Kế hoạch trước giờ học" → tấm brief 15 phút.
+                if (lesson.recorderStudentId != null && !lesson.isFinished)
+                  TopiBriefEntry(
+                    studentId: lesson.recorderStudentId!,
+                    studentName: lesson.studentName,
+                    style: TopiBriefStyle.box,
+                    nextLessonAt: lesson.startDt?.toLocal(),
+                  ),
                 if (canRecord) ...[
                   const SizedBox(height: 10),
                   SizedBox(

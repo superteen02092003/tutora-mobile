@@ -33,3 +33,12 @@ https://claude.ai/artifact/2srTp55xc9WYYtxBPYJVgu, row 7 (V510-*), approved by K
 - Topi watch rule: an error seen in one lesson must stay "theo dõi"; `plan.py` `rank_gaps` still promotes
   the top watch to focus (scoring-model.md, process 07).
 - Never record or tap send/approve in the .dev app: it uses the production server.
+
+## Progress 2026-11-18 (second pass)
+- Done: shared `showTopiBriefSheet` + `TopiBriefEntry` (card / box / pill) in `topi_before_lesson_screen.dart`;
+  recording screen card (shows only when `RecordingTarget.studentId` is set); Lịch `_NextCard` box
+  "Kế hoạch trước giờ học"; quick-record student rows get the "Brief 15 phút" pill.
+- Left: `RecordingTarget.fromRecorderLesson` and `fromSession` carry no student id, so the recording-screen
+  card does not show for scheduled lessons. Add a separate `briefStudentId` (do NOT reuse `studentId`:
+  `lesson_recorder_provider.dart:185` starts a new lesson when `studentId` is set). Same for the quick-record
+  session rows (`TutorTodaySessionDto` has no student id). Then widget tests, PR, phone check.

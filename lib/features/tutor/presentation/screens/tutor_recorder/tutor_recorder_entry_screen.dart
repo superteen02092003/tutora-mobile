@@ -12,6 +12,7 @@ import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -767,6 +768,12 @@ class _StudentRow extends StatelessWidget {
                 ],
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          TopiBriefEntry(
+            studentId: student.studentId,
+            studentName: student.fullName,
+            style: TopiBriefStyle.pill,
           ),
           const SizedBox(width: 8),
           _RecordPill(

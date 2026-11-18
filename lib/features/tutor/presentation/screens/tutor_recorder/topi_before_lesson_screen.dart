@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -843,4 +845,271 @@ TopiLevel? gapLevelInLesson(TopiGap gap, List<TopiSkillItem> lessonSkills) {
     }
   }
   return gap.level;
+}
+
+/// Kế hoạch Topi cho buổi tới của một học sinh: lấy từ buổi có báo cáo gần
+/// nhất. Null khi cờ `plan` tắt, chưa có buổi có báo cáo hoặc kế hoạch trống.
+({String lessonId, TopiPlan plan})? _nextPlan(WidgetRef ref, String studentId) {
+  if (!ref.watch(topiFlagsNowProvider).plan) return null;
+  final lessons =
+      ref.watch(recorderStudentLessonsProvider(studentId)).valueOrNull ??
+      const <RecorderLessonDto>[];
+  final now = DateTime.now();
+  final recorded = lessons.where((l) => l.status != 'scheduled').toList()
+    ..sort((a, b) => (b.when ?? now).compareTo(a.when ?? now));
+  final latest = latestReportedLesson(recorded);
+  if (latest == null) return null;
+  final plan = ref.watch(lessonTopiProvider(latest.lessonId)).valueOrNull?.plan;
+  if (plan == null || plan.isEmpty) return null;
+  return (lessonId: latest.lessonId, plan: plan);
+}
+
+String? _focusTitle(TopiPlan plan) {
+  TopiGap? focus;
+  for (final g in plan.gaps) {
+    if (g.role == 'focus') focus ??= g;
+  }
+  focus ??= plan.gaps.firstOrNull;
+  return focus?.title ?? focus?.node;
+}
+
+/// Tấm "Kế hoạch 15 phút" (canvas V510): mở đè lên màn hiện tại, không rời
+/// màn đó; trên màn ghi âm việc ghi vẫn chạy (`recording` = true hiện chip đỏ).
+Future<void> showTopiBriefSheet(
+  BuildContext context, {
+  required String studentId,
+  required String studentName,
+  bool recording = false,
+  DateTime? nextLessonAt,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  backgroundColor: TutorColors.bg,
+  shape: const RoundedRectangleBorder(
+    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  ),
+  builder: (ctx) => DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: 0.85,
+    maxChildSize: 0.95,
+    builder: (ctx, scroll) => Consumer(
+      builder: (ctx, ref, _) {
+        final next = _nextPlan(ref, studentId);
+        return ListView(
+          controller: scroll,
+          padding: const EdgeInsets.fromLTRB(
+            TutorSurface.gutter,
+            12,
+            TutorSurface.gutter,
+            24,
+          ),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0x2E1F2A24),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    [
+                      if (nextLessonAt != null) _when(nextLessonAt),
+                      studentName,
+                    ].join(' · '),
+                    style: TutorType.caption(),
+                  ),
+                ),
+                if (recording)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E3E0),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Text(
+                      'Vẫn đang ghi âm',
+                      style: TutorType.caption(color: const Color(0xFF8A2C1F)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Kế hoạch 15 phút đầu buổi',
+              style: TutorType.display(size: 24),
+            ),
+            const SizedBox(height: 14),
+            if (next == null)
+              Text(
+                'Chưa có kế hoạch. Kế hoạch có sau khi buổi trước được ghi âm '
+                'và xử lý xong.',
+                style: TutorType.rowSub(),
+              )
+            else
+              _PlanView(plan: next.plan),
+            const SizedBox(height: 18),
+            CanvasCta(
+              label: recording ? 'Đóng, tiếp tục buổi học' : 'Đóng',
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ],
+        );
+      },
+    ),
+  ),
+);
+
+/// Kiểu ô mở tấm brief: `card` thẻ sage trên màn ghi âm; `box` ô "Kế hoạch
+/// trước giờ học" trong thẻ buổi học (tab Lịch); `pill` nút "Brief 15 phút"
+/// cạnh "Ghi âm".
+enum TopiBriefStyle { card, box, pill }
+
+/// Ô mở tấm brief 15 phút. Không vẽ gì khi học sinh chưa có kế hoạch.
+class TopiBriefEntry extends ConsumerWidget {
+  const TopiBriefEntry({
+    required this.studentId,
+    required this.studentName,
+    this.style = TopiBriefStyle.card,
+    this.recording = false,
+    this.nextLessonAt,
+    super.key,
+  });
+
+  final String studentId;
+  final String studentName;
+  final TopiBriefStyle style;
+  final bool recording;
+  final DateTime? nextLessonAt;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final next = _nextPlan(ref, studentId);
+    if (next == null) return const SizedBox.shrink();
+    void open() => unawaited(
+      showTopiBriefSheet(
+        context,
+        studentId: studentId,
+        studentName: studentName,
+        recording: recording,
+        nextLessonAt: nextLessonAt,
+      ),
+    );
+    final focus = _focusTitle(next.plan);
+    switch (style) {
+      case TopiBriefStyle.pill:
+        return Semantics(
+          button: true,
+          label: 'Brief 15 phút',
+          child: InkWell(
+            onTap: open,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE6EAE2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Brief 15 phút',
+                style: TutorType.caption(color: TutorColors.ink),
+              ),
+            ),
+          ),
+        );
+      case TopiBriefStyle.box:
+        return InkWell(
+          onTap: open,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDDE3D8),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const CanvasKicker(
+                        'Kế hoạch trước giờ học',
+                        color: TutorColors.ink,
+                      ),
+                      if (focus != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Ưu tiên 1: $focus',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TutorType.rowSub(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const CanvasChevron(),
+              ],
+            ),
+          ),
+        );
+      case TopiBriefStyle.card:
+        return DecoratedBox(
+          decoration: TutorSurface.sage(),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(TutorSurface.radius),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: open,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Kế hoạch 15 phút', style: TutorType.body()),
+                          if (focus != null)
+                            Text(
+                              'Ưu tiên 1: $focus',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TutorType.rowSub(),
+                            ),
+                          if (recording)
+                            Text(
+                              'Mở kế hoạch không dừng ghi âm.',
+                              style: TutorType.caption(
+                                color: TutorColors.ink3,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const CanvasChevron(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+    }
+  }
 }
