@@ -357,7 +357,7 @@ void main() {
       await shot(tester, 'tab-path_loaded');
       await scrollDown(tester);
       await shot(tester, 'tab-path_loaded_scrolled');
-      await tapTab(tester, 'Bài học');
+      await tapTab(tester, 'Lịch');
       await shot(tester, 'tab-lessons_loaded');
       await tapTab(tester, 'Học sinh');
       await shot(tester, 'tab-students_loaded');
