@@ -338,10 +338,6 @@ class _FocusGapCard extends StatelessWidget {
                   color: TutorColors.ink,
                 ),
               ),
-              if (gap.level != null) ...[
-                TopiLevelChip(level: gap.level!),
-                const SizedBox(width: 8),
-              ],
               const CanvasAiDraftTag(onSage: true),
             ],
           ),
@@ -351,9 +347,21 @@ class _FocusGapCard extends StatelessWidget {
             const SizedBox(height: 10),
             _WrongRight(gap: gap, color: const Color(0xBFF8F7F4)),
           ],
-          if (seen != null) ...[
+          // Mức kỹ năng ở dòng cuối: dòng đầu chỉ còn tiêu đề và nhãn
+          // "Gợi ý của Topi" (nhãn dài hơn "Nháp AI", 2026-11-18).
+          if (seen != null || gap.level != null) ...[
             const SizedBox(height: 8),
-            Text(seen, style: TutorType.caption(color: TutorColors.ink3)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    seen ?? '',
+                    style: TutorType.caption(color: TutorColors.ink3),
+                  ),
+                ),
+                if (gap.level != null) TopiLevelChip(level: gap.level!),
+              ],
+            ),
           ],
         ],
       ),
@@ -785,10 +793,6 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
                             Expanded(
                               child: CanvasKicker(head, color: TutorColors.ink),
                             ),
-                            if (level != null) ...[
-                              TopiLevelChip(level: level),
-                              const SizedBox(width: 8),
-                            ],
                             const CanvasAiDraftTag(onSage: true),
                           ],
                         ),
@@ -799,9 +803,17 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
                               'Kế hoạch 15 phút đầu buổi',
                           style: TutorType.body(),
                         ),
-                        if (sub.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(sub, style: TutorType.rowSub()),
+                        // Mức kỹ năng ở dòng cuối, cạnh "Gặp trong N buổi".
+                        if (sub.isNotEmpty || level != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(sub, style: TutorType.rowSub()),
+                              ),
+                              if (level != null) TopiLevelChip(level: level),
+                            ],
+                          ),
                         ],
                       ],
                     ),
