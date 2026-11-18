@@ -281,7 +281,7 @@ class _TabPill extends StatelessWidget {
 Widget _lbl(String text, {Color color = TutorColors.ink3}) =>
     Text(text, style: TutorType.caption(color: color));
 
-/// Tiêu đề nhóm Bricolage, tuỳ chọn nhãn "Nháp AI" bên phải.
+/// Tiêu đề nhóm Bricolage, tuỳ chọn nhãn "Gợi ý của Topi" bên phải.
 class _SectionHead extends StatelessWidget {
   const _SectionHead(this.text, {this.ai = false});
 
@@ -754,7 +754,7 @@ class _MinutesTab extends StatelessWidget {
   }
 }
 
-/// Gợi ý cách dạy (board V56-Feedback): thẻ có bóng đèn + "Nháp AI"; thẻ đầu
+/// Gợi ý cách dạy (board V56-Feedback): thẻ có bóng đèn + "Gợi ý của Topi"; thẻ đầu
 /// là sage nổi ("thử lần sau").
 class _TeachingNoteCard extends StatelessWidget {
   const _TeachingNoteCard({required this.note, this.sage = false});

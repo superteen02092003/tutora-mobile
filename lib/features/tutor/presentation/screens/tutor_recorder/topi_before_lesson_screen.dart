@@ -30,7 +30,7 @@ class BeforeLessonArgs {
 
 /// V5.6 "Chuẩn bị buổi học": lỗ hổng đang luyện (thẻ sage, Sai / Đúng), rồi
 /// 15 phút đầu buổi theo bốn bước Kiểm tra · Bài về nhà · Nhớ lại · Khởi động
-/// trên một đường thời gian. Mọi khối do Topi soạn mang nhãn "Nháp AI".
+/// trên một đường thời gian. Mọi khối do Topi soạn mang nhãn "Gợi ý của Topi".
 class TopiBeforeLessonScreen extends ConsumerWidget {
   const TopiBeforeLessonScreen({required this.args, super.key});
 
@@ -291,7 +291,7 @@ class _PlanView extends StatelessWidget {
   }
 }
 
-/// Tiêu đề nhóm + nhãn "Nháp AI" bên phải (khối do Topi soạn).
+/// Tiêu đề nhóm + nhãn "Gợi ý của Topi" bên phải (khối do Topi soạn).
 class _SectionHead extends StatelessWidget {
   const _SectionHead(this.title);
 

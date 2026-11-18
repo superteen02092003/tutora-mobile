@@ -440,7 +440,7 @@ class _PreviewScreen extends ConsumerStatefulWidget {
   final String homework;
   final String notes;
 
-  /// Bản do AI soạn (không phải gia sư tự viết) → gắn nhãn "Nháp AI".
+  /// Bản do AI soạn (không phải gia sư tự viết) → gắn nhãn "Gợi ý của Topi".
   final bool aiDrafted;
 
   @override
@@ -706,7 +706,7 @@ class _Editor extends StatelessWidget {
   }
 }
 
-/// Thẻ mức 1: nhãn + "Nháp AI" (hoặc "Bạn đã sửa") + ô sửa không viền.
+/// Thẻ mức 1: nhãn + "Gợi ý của Topi" (hoặc "Bạn đã sửa") + ô sửa không viền.
 class _FieldCard extends StatelessWidget {
   const _FieldCard({
     required this.heading,
