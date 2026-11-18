@@ -99,7 +99,7 @@ void main() {
     expect(find.text('Tự làm trước'), findsOneWidget);
     expect(find.text('Nói 31%'), findsOneWidget);
     expect(find.text('Ít nói phút 0–20'), findsOneWidget);
-    expect(find.text('Nháp AI'), findsOneWidget);
+    expect(find.text('Gợi ý của Topi'), findsOneWidget);
     expect(find.text('Tự nhận ra hằng đẳng thức.'), findsOneWidget);
     // Buổi trước: vắng có lý do, buổi có bản ghi có dòng ngắn.
     expect(find.text('Vắng · học sinh nghỉ'), findsOneWidget);
