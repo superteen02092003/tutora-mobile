@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tutora/core/constants/app_colors.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/tutor/data/models/tutor_profile_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_profile_provider.dart';
-import 'package:tutora/features/tutor/presentation/widgets/tutor_form_widgets.dart';
-import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
+/// Thông tin cá nhân (design V5.6): nút tròn quay lại, thẻ bo 20, nút viên
+/// thuốc. Tên, SĐT, giới tính chỉ xem; ngày sinh và địa chỉ sửa được.
 class TutorEditPersonalInfoScreen extends ConsumerStatefulWidget {
   const TutorEditPersonalInfoScreen({super.key});
 
@@ -108,73 +110,242 @@ class _TutorEditPersonalInfoScreenState
     final phone = ref.watch(tutorProfileProvider).user?.phone ?? '';
 
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: Column(
-          children: [
-            TutorChildHeader(
-              title: 'Thông tin cá nhân',
-              onBack: () => Navigator.of(context).pop(),
-            ),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(20, 24, 20, bottomPad + 40),
-                  children: [
-                    // Đổi tên, SĐT, giới tính phải qua web — mobile chỉ xem.
-                    TutorReadOnlyField(
-                      label: 'Họ và tên',
-                      value: _fullName,
-                      hint: 'Chưa cập nhật',
-                    ),
-                    const SizedBox(height: 16),
-                    TutorReadOnlyField(
-                      label: 'Số điện thoại',
-                      value: phone,
-                      hint: 'Chưa cập nhật',
-                    ),
-                    const SizedBox(height: 16),
-                    TutorReadOnlyField(
-                      label: 'Giới tính',
-                      value: switch (_gender) {
-                        'Male' => 'Nam',
-                        'Female' => 'Nữ',
-                        'Other' => 'Khác',
-                        _ => '',
-                      },
-                      hint: 'Chưa cập nhật',
-                    ),
-                    const SizedBox(height: 16),
-                    TutorFormField(
-                      label: 'Ngày sinh',
-                      controller: _birthdateCtrl,
-                      hint: 'Chọn ngày sinh',
-                      readOnly: true,
-                      onTap: _pickBirthdate,
-                      suffixIcon: const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 18,
-                        color: AppColors.ink4,
-                      ),
-                      validator: (v) =>
-                          validateBirthdate(v, minAge: tutorMinAge),
-                    ),
-                    const SizedBox(height: 16),
-                    TutorFormField(
-                      label: 'Địa chỉ',
-                      controller: _addressCtrl,
-                      validator: validateAddress,
-                    ),
-                    const SizedBox(height: 32),
-                    TutorSaveButton(saving: _saving, onSave: _save),
-                  ],
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: EdgeInsets.only(bottom: bottomPad + 40),
+              children: [
+                CanvasHeader(
+                  title: 'Thông tin cá nhân',
+                  titleSize: 24,
+                  onBack: () => Navigator.of(context).pop(),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    18,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Đổi tên, SĐT, giới tính phải qua web — mobile chỉ xem.
+                      Text(
+                        'Chỉ đổi được trên web',
+                        style: TutorType.caption(color: TutorColors.ink3),
+                      ),
+                      const SizedBox(height: 6),
+                      DecoratedBox(
+                        decoration: TutorSurface.card(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _ReadOnlyRow(label: 'Họ và tên', value: _fullName),
+                            const _Rule(),
+                            _ReadOnlyRow(label: 'Số điện thoại', value: phone),
+                            const _Rule(),
+                            _ReadOnlyRow(
+                              label: 'Giới tính',
+                              value: switch (_gender) {
+                                'Male' => 'Nam',
+                                'Female' => 'Nữ',
+                                'Other' => 'Khác',
+                                _ => '',
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      DecoratedBox(
+                        decoration: TutorSurface.card(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _Field(
+                                label: 'Ngày sinh',
+                                controller: _birthdateCtrl,
+                                hint: 'Chọn ngày sinh',
+                                readOnly: true,
+                                onTap: _pickBirthdate,
+                                suffixIcon: const Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 18,
+                                  color: TutorColors.ink3,
+                                ),
+                                validator: (v) =>
+                                    validateBirthdate(v, minAge: tutorMinAge),
+                              ),
+                              const SizedBox(height: 14),
+                              _Field(
+                                label: 'Địa chỉ',
+                                controller: _addressCtrl,
+                                validator: validateAddress,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _PillButton(
+                        label: 'Lưu thay đổi',
+                        busy: _saving,
+                        onPressed: _save,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _Rule extends StatelessWidget {
+  const _Rule();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 16),
+    child: Divider(height: 1, thickness: 1, color: TutorColors.line),
+  );
+}
+
+/// Hàng chỉ xem: nhãn xám bên trái, giá trị bên phải ("Chưa cập nhật" nếu trống).
+class _ReadOnlyRow extends StatelessWidget {
+  const _ReadOnlyRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+    child: Row(
+      children: [
+        Text(label, style: TutorType.rowSub()),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value.isNotEmpty ? value : 'Chưa cập nhật',
+            textAlign: TextAlign.right,
+            style: TutorType.body(
+              color: value.isNotEmpty ? TutorColors.ink : TutorColors.ink4,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Ô nhập V5.6: nhãn nhỏ thường, nền lõm bo 12, viền mực khi đang nhập.
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.label,
+    required this.controller,
+    this.hint,
+    this.validator,
+    this.readOnly = false,
+    this.onTap,
+    this.suffixIcon,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final String? hint;
+  final String? Function(String?)? validator;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final Widget? suffixIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+      borderSide: BorderSide(color: c, width: w),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TutorType.caption(color: TutorColors.ink3)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          readOnly: readOnly,
+          onTap: onTap,
+          style: TutorType.body(),
+          cursorColor: TutorColors.ink,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TutorType.body(color: TutorColors.ink4),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: TutorColors.surfaceSunken,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 13,
+            ),
+            border: border(Colors.transparent),
+            enabledBorder: border(Colors.transparent),
+            focusedBorder: border(TutorColors.ink, 1.2),
+            errorBorder: border(TutorColors.danger),
+            focusedErrorBorder: border(TutorColors.danger, 1.2),
+            errorStyle: TutorType.caption(color: TutorColors.danger),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Nút chính dạng viên thuốc, hiện vòng quay khi đang lưu.
+class _PillButton extends StatelessWidget {
+  const _PillButton({
+    required this.label,
+    required this.busy,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool busy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 48,
+    width: double.infinity,
+    child: FilledButton(
+      onPressed: busy ? null : onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: TutorColors.primary,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: TutorColors.primary.withValues(alpha: 0.6),
+        shape: const StadiumBorder(),
+        textStyle: TutorType.action().copyWith(fontSize: 15),
+      ),
+      child: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Text(label),
+    ),
+  );
 }

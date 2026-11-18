@@ -13,14 +13,20 @@ import 'package:tutora/features/auth/presentation/pages/register_page.dart';
 import 'package:tutora/features/auth/presentation/pages/splash_page.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_home_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_notifications_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_path_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_profile/tutor_profile_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorded_well_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorder_entry_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_tips_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recordings_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/tutor_schedule_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_students_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_welcome_screen.dart';
 import 'package:tutora/features/tutor/presentation/shell/v2/tutor_shell_v2.dart';
 
 // Auth-only routes — no role guard needed
@@ -61,6 +67,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // App chỉ dành cho gia sư: vai trò khác về trang đăng nhập (splash và
       // login tự xoá token + báo dùng web tutora.vn).
       if (claims.role != UserRole.tutor) return AppRoutes.login;
+
+      // T1: lần đầu vào Trang chủ trên máy này → màn chào mừng trước.
+      if (path == AppRoutes.tutorHome && !await storage.getWelcomeSeen()) {
+        return AppRoutes.tutorWelcome;
+      }
       return null;
     },
     routes: [
@@ -141,16 +152,34 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             TutorReportReviewScreen(args: state.extra! as ReportReviewArgs),
       ),
       GoRoute(
+        path: AppRoutes.tutorRecordedWell,
+        builder: (context, state) =>
+            TutorRecordedWellScreen(args: state.extra! as RecordedWellArgs),
+      ),
+      GoRoute(
         path: AppRoutes.tutorBeforeLesson,
         builder: (context, state) =>
             TopiBeforeLessonScreen(args: state.extra! as BeforeLessonArgs),
       ),
       GoRoute(
+        path: AppRoutes.tutorRecordingTips,
+        builder: (context, _) => const TutorRecordingTipsScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.tutorProfile,
         builder: (context, _) => const TutorProfileScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.tutorWelcome,
+        builder: (context, _) => const TutorWelcomeScreen(),
+      ),
+      // Danh sách bản ghi âm — màn con (V5.6), mở từ Lộ trình.
+      GoRoute(
+        path: AppRoutes.tutorRecordings,
+        builder: (context, _) => const TutorRecordingsScreen(),
+      ),
 
-      // Tutor shell (2 tab + nút ghi âm ở giữa)
+      // Tutor shell V5.6 — 4 tab: Trang chủ · Lộ trình · Bài học · Học sinh
       StatefulShellRoute.indexedStack(
         builder: (context, _, shell) => TutorShellV2(navigationShell: shell),
         branches: [
@@ -165,8 +194,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: AppRoutes.tutorPath,
+                builder: (context, _) => const TutorPathScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: AppRoutes.tutorSchedule,
                 builder: (context, _) => const TutorScheduleScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.tutorStudents,
+                builder: (context, _) => const TutorStudentsScreen(),
               ),
             ],
           ),

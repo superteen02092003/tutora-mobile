@@ -4,18 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/router/app_routes.dart';
-import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/shell/tutor_shell.dart';
+import 'package:tutora/features/tutor/presentation/shell/v2/tutor_tab_bar.dart';
 import 'package:tutora/shared/widgets/auth_listener.dart';
-import 'package:tutora/shared/widgets/floating_pill_nav_bar.dart';
-import 'package:tutora/shared/widgets/tutor_nav_bar.dart';
 
-/// Shell gia sư — 2 tab: Trang chủ · Lịch, cộng nút ghi âm nổi ở giữa.
-///
-/// v0.1 cố tình rút gọn: việc chính của gia sư trong app này là bấm ghi âm
-/// buổi học, nên nút đó phải là thứ to nhất và ở chỗ ngón cái chạm tới.
-/// Thông báo và Tôi (hồ sơ) là màn con vào từ header Trang chủ. Ví, tin nhắn,
-/// đặt lịch... chỉ có trên web tutora.vn.
+/// Shell gia sư V5.6 (canvas "TopTutor tutor app V5.6", 2026-11-12):
+/// 4 tab Trang chủ · Lộ trình · Bài học · Học sinh trong viên thuốc nổi, và nút
+/// tròn bên phải để ghi âm (mở sheet chọn học sinh / buổi). Danh sách bản ghi
+/// âm là màn con mở từ Lộ trình. Thông báo và Cài đặt mở từ header Trang chủ.
 class TutorShellV2 extends ConsumerStatefulWidget {
   const TutorShellV2({required this.navigationShell, super.key});
 
@@ -26,95 +22,45 @@ class TutorShellV2 extends ConsumerStatefulWidget {
 }
 
 class _TutorShellV2State extends ConsumerState<TutorShellV2> {
-  /// Đang có buổi ghi dở (đã thu nhỏ về trang chủ) → mở lại màn "Đang ghi";
-  /// chưa ghi → mở màn chọn buổi.
-  void _onRecordTap() {
-    final recording = ref.read(lessonRecordingProvider);
-    final target = ref.read(lessonRecordingProvider.notifier).target;
-    if (recording.isRecording && target != null) {
-      unawaited(context.push(AppRoutes.tutorRecording, extra: target));
-    } else {
-      unawaited(context.push(AppRoutes.tutorRecorder));
-    }
-  }
+  static const _items = [
+    TutorTabItem(label: 'Trang chủ', icon: Icons.home_outlined),
+    TutorTabItem(label: 'Lộ trình', icon: Icons.route_outlined),
+    TutorTabItem(label: 'Bài học', icon: Icons.calendar_today_outlined),
+    TutorTabItem(label: 'Học sinh', icon: Icons.people_outline_rounded),
+  ];
 
   final GlobalKey _bodyKey = GlobalKey();
-  final _navVisible = ValueNotifier<bool>(true);
-
-  @override
-  void dispose() {
-    _navVisible.dispose();
-    super.dispose();
-  }
 
   void _onTap(int index) {
-    _navVisible.value = true;
-    final current = widget.navigationShell.currentIndex;
-    if (index == current) {
+    if (index == widget.navigationShell.currentIndex) {
       scrollVisibleTutorContentToTop(_bodyKey.currentContext);
     } else {
       widget.navigationShell.goBranch(index);
     }
   }
 
-  bool _onPopInvoked() {
-    if (widget.navigationShell.currentIndex != 0) {
-      widget.navigationShell.goBranch(0);
-      return false;
-    }
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final items = [
-      const TutorNavItem(
-        index: 0,
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home_rounded,
-        label: 'Trang chủ',
-      ),
-      const TutorNavItem(
-        index: 1,
-        icon: Icons.calendar_today_outlined,
-        activeIcon: Icons.calendar_month_rounded,
-        label: 'Lịch',
-      ),
-    ];
-
+    // Tab khác: Back về Trang chủ. Trang chủ: để hệ thống xử lý Back (thoát app).
+    // Trước đây canPop luôn false và Trang chủ gọi maybePop(), lệnh này lại gọi
+    // PopScope này -> vòng lặp vô hạn, app treo 100% CPU rồi báo ANR (18/11).
+    final atHome = widget.navigationShell.currentIndex == 0;
     return PopScope(
-      canPop: false,
+      canPop: atHome,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        final canExit = _onPopInvoked();
-        if (canExit) {
-          unawaited(Navigator.of(context).maybePop());
-        }
+        if (didPop || atHome) return;
+        widget.navigationShell.goBranch(0);
       },
       child: Scaffold(
-        // Thanh tab trong suốt → nội dung phải chạy xuống dưới nó.
-        extendBody: true,
-        body: HideOnScroll(
-          visible: _navVisible,
-          child: KeyedSubtree(
-            key: _bodyKey,
-            child: AuthListener(child: widget.navigationShell),
-          ),
+        body: KeyedSubtree(
+          key: _bodyKey,
+          child: AuthListener(child: widget.navigationShell),
         ),
-        bottomNavigationBar: ValueListenableBuilder<bool>(
-          valueListenable: _navVisible,
-          builder: (context, visible, _) => AnimatedSlide(
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-            offset: visible ? Offset.zero : const Offset(0, 1.6),
-            child: TutorNavBar(
-              items: items,
-              currentIndex: widget.navigationShell.currentIndex,
-              onTap: _onTap,
-              centerTooltip: 'Ghi âm buổi học',
-              onCenterTap: _onRecordTap,
-            ),
-          ),
+        bottomNavigationBar: TutorTabBar(
+          items: _items,
+          currentIndex: widget.navigationShell.currentIndex,
+          onTap: _onTap,
+          onRecord: () => unawaited(context.push(AppRoutes.tutorRecorder)),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tutora/core/network/api_client.dart';
+import 'package:tutora/features/tutor/data/models/recorder_insights_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 
 class TutorLessonDatasource {
@@ -76,6 +77,28 @@ class TutorLessonDatasource {
           .whereType<Map<String, dynamic>>()
           .map((j) => TutorLessonDto.fromJson(j, calendarDate: date));
     }).toList();
+  }
+
+  /// POST /api/tutor/class-sessions/{id}/reschedule-proposal — đề xuất dời
+  /// buổi booking; phụ huynh phải đồng ý, gửi trước giờ học ≥ 2 giờ (400 nếu
+  /// không). Buổi booking không huỷ lẻ được.
+  Future<RescheduleProposalDto> proposeReschedule(
+    int classSessionId,
+    DateTime proposedStart,
+    String? reason,
+  ) async {
+    final r = reason?.trim();
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/tutor/class-sessions/$classSessionId/reschedule-proposal',
+      data: {
+        'proposedScheduledStart': proposedStart.toUtc().toIso8601String(),
+        'reason': r == null || r.isEmpty ? null : r,
+      },
+    );
+    final content = res.data?['content'];
+    return RescheduleProposalDto.fromJson(
+      content is Map<String, dynamic> ? content : const {},
+    );
   }
 
   // GET /api/tutor/availabilities

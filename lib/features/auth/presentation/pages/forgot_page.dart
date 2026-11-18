@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/auth/presentation/controllers/forgot_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
-import 'package:tutora/shared/widgets/app_logo.dart';
+import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class ForgotPage extends ConsumerStatefulWidget {
@@ -62,159 +62,78 @@ class _ForgotPageState extends ConsumerState<ForgotPage> {
     final isLoading = ref.watch(forgotControllerProvider) is ForgotLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.cream2,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Container(
-              color: AppColors.cream2,
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 14,
-                          color: AppColors.ink3,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Quay lại đăng nhập',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.ink3,
-                          ),
-                        ),
-                      ],
-                    ),
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthTopDeco(
+                  onBack: () => context.pop(),
+                  hand: 'Không sao cả',
+                  title: 'Quên mật khẩu?',
+                  lead: const Text(
+                    'Nhập số điện thoại đã đăng ký — TopTutor sẽ gửi mã OTP qua Zalo để đặt lại mật khẩu.',
+                    style: TextStyle(height: 1.55),
                   ),
-                  const SizedBox(height: 18),
-                  const AppLogo(),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.line),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0E3CA),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.key_rounded,
-                        color: AppColors.oxblood,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Quên mật khẩu?\n',
-                            style: AppTextStyles.h2(),
-                          ),
-                          TextSpan(
-                            text: 'Không sao cả.',
-                            style: AppTextStyles.serifItalic(
-                              color: AppColors.oxblood,
-                              fontSize: 22,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Nhập số điện thoại đã đăng ký — TopTutor sẽ gửi mã OTP qua Zalo để đặt lại mật khẩu.',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: AppColors.ink3,
-                        height: 1.6,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-
-                    AuthInput(
-                      label: 'Số điện thoại',
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.done,
-                      hint: '09x xxx xxxx',
-                      enabled: !isLoading,
-                      onSubmitted: (_) {
-                        if (_phoneCtrl.text.trim().isNotEmpty) {
-                          unawaited(_onSend());
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ink,
-                        foregroundColor: AppColors.cream,
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: const StadiumBorder(),
-                        textStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      onPressed: isLoading || _phoneCtrl.text.trim().isEmpty
-                          ? null
-                          : _onSend,
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.cream,
-                              ),
-                            )
-                          : const Text('Gửi mã OTP'),
-                    ),
-                    const SizedBox(height: 10),
-
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: const StadiumBorder(),
-                        side: const BorderSide(
-                          color: AppColors.line,
-                          width: 1.5,
-                        ),
-                        foregroundColor: AppColors.ink,
-                        textStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      onPressed: isLoading ? null : () => context.pop(),
-                      child: const Text('Tôi nhớ ra rồi'),
-                    ),
-                  ],
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    28,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AuthInput(
+                        label: 'Số điện thoại',
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.done,
+                        hint: '09x xxx xxxx',
+                        enabled: !isLoading,
+                        onSubmitted: (_) {
+                          if (_phoneCtrl.text.trim().isNotEmpty) {
+                            unawaited(_onSend());
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      CanvasCta(
+                        label: 'Gửi mã OTP',
+                        onPressed: isLoading || _phoneCtrl.text.trim().isEmpty
+                            ? null
+                            : _onSend,
+                        icon: isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: TutorColors.ink3,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+
+                      CanvasCta(
+                        label: 'Tôi nhớ ra rồi',
+                        secondary: true,
+                        onPressed: isLoading ? null : () => context.pop(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

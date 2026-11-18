@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_profile_datasource.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 /// Bảng xác nhận xoá tài khoản (Google Play yêu cầu xoá được ngay trong app).
+/// Design V5.6: nền giấy, góc trên bo 20, ô nhập lõm, nút viên thuốc.
 Future<void> showDeleteAccountSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.paper,
+    backgroundColor: TutorColors.paperTop,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(TutorSurface.radius),
+      ),
     ),
     builder: (_) => const _DeleteAccountSheet(),
   );
@@ -72,34 +75,70 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
 
   @override
   Widget build(BuildContext context) {
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+      borderSide: BorderSide(color: c, width: w),
+    );
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        20,
-        20,
-        20,
+        TutorSurface.gutter,
+        12,
+        TutorSurface.gutter,
         20 + MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Xoá tài khoản', style: AppTextStyles.h2()),
-          const SizedBox(height: 12),
+          // Tay cầm của bảng.
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0x241F2A24),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text('Xoá tài khoản', style: TutorType.display(size: 24)),
+          const SizedBox(height: 10),
           Text(
             'Tài khoản sẽ bị khoá ngay và không thể khôi phục. Sau 30 ngày, '
             'TopTutor xoá vĩnh viễn thông tin cá nhân, danh sách học sinh, báo '
             'cáo và bản ghi âm của bạn. Báo cáo chưa gửi sẽ bị huỷ.',
-            style: AppTextStyles.body(),
+            style: TutorType.rowSub().copyWith(fontSize: 14),
           ),
           const SizedBox(height: 16),
+          Text(
+            'Mật khẩu hiện tại',
+            style: TutorType.caption(color: TutorColors.ink3),
+          ),
+          const SizedBox(height: 6),
           TextField(
             controller: _password,
             obscureText: true,
             enabled: !_busy,
+            style: TutorType.body(),
+            cursorColor: TutorColors.ink,
             decoration: InputDecoration(
-              labelText: 'Mật khẩu hiện tại',
               errorText: _error,
-              border: const OutlineInputBorder(),
+              errorStyle: TutorType.caption(color: TutorColors.danger),
+              errorMaxLines: 3,
+              filled: true,
+              fillColor: TutorColors.surfaceSunken,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 13,
+              ),
+              border: border(Colors.transparent),
+              enabledBorder: border(Colors.transparent),
+              disabledBorder: border(Colors.transparent),
+              focusedBorder: border(TutorColors.ink, 1.2),
+              errorBorder: border(TutorColors.danger),
+              focusedErrorBorder: border(TutorColors.danger, 1.2),
             ),
           ),
           const SizedBox(height: 8),
@@ -110,10 +149,14 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
                 : (v) => setState(() => _confirmed = v ?? false),
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
-            activeColor: AppColors.oxblood,
+            activeColor: TutorColors.danger,
+            side: const BorderSide(color: Color(0xFFA3A8A2), width: 1.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+            ),
             title: Text(
               'Tôi hiểu tài khoản và dữ liệu sẽ bị xoá vĩnh viễn.',
-              style: AppTextStyles.bodySmall(),
+              style: TutorType.rowSub(color: TutorColors.ink),
             ),
           ),
           const SizedBox(height: 12),
@@ -123,8 +166,12 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
             child: FilledButton(
               onPressed: _confirmed && !_busy ? _delete : null,
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.error,
-                foregroundColor: AppColors.paper,
+                backgroundColor: TutorColors.danger,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: TutorColors.surfaceSunken,
+                disabledForegroundColor: TutorColors.ink4,
+                shape: const StadiumBorder(),
+                textStyle: TutorType.action().copyWith(fontSize: 15),
               ),
               child: _busy
                   ? const SizedBox(
@@ -132,17 +179,23 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppColors.paper,
+                        color: Colors.white,
                       ),
                     )
                   : const Text('Xoá tài khoản'),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           SizedBox(
             width: double.infinity,
+            height: 44,
             child: TextButton(
               onPressed: _busy ? null : () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: TutorColors.ink3,
+                shape: const StadiumBorder(),
+                textStyle: TutorType.action(),
+              ),
               child: const Text('Huỷ'),
             ),
           ),

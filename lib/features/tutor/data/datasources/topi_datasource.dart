@@ -38,6 +38,20 @@ class TopiDatasource {
       rethrow;
     }
   }
+
+  // GET /recording/app/topi/students/{studentId}/skills — rỗng khi cờ skills
+  // tắt hoặc backend cũ chưa có endpoint (404).
+  Future<List<TopiPupilSkill>> getPupilSkills(String studentId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/recording/app/topi/students/$studentId/skills',
+      );
+      return parsePupilSkills(_body(res.data));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return const [];
+      rethrow;
+    }
+  }
 }
 
 final topiDatasourceProvider = Provider<TopiDatasource>(

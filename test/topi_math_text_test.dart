@@ -20,6 +20,13 @@ void main() {
       'x**12': 'x¹²',
       'x = -10': 'x = -10',
       '60': '60',
+      // Hàm sympy trong kết quả Topi thật (buổi 28/10, gia sư Long).
+      'Rational(135,100)': '135/100',
+      'Rational(-3, 4)': '-3/4',
+      'sqrt(3)/2': '√3/2',
+      '-sqrt(3)/2': '-√3/2',
+      'sqrt(x + 1)': '√(x + 1)',
+      '2*pi': '2π',
     };
     for (final MapEntry(key: input, value: expected) in cases.entries) {
       test(input, () => expect(topiMathText(input), expected));

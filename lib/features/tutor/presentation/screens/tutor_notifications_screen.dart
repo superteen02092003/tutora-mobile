@@ -2,13 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
-import 'package:tutora/features/tutor/presentation/widgets/tutor_ui.dart';
+import 'package:go_router/go_router.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/models/notification_models.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
+import 'package:tutora/shared/services/fcm_notification_handler.dart';
 
+/// Thông báo (design V5.6): nút tròn quay lại, tab gạch chân, hàng kẻ mảnh,
+/// ô biểu tượng lõm màu mực, chấm chưa đọc màu rêu.
 class TutorNotificationsScreen extends ConsumerStatefulWidget {
   const TutorNotificationsScreen({super.key});
 
@@ -38,97 +41,106 @@ class _TutorNotificationsScreenState
     super.dispose();
   }
 
+  /// Đánh dấu đã đọc; thông báo nhắc buổi học mở luồng ghi âm.
+  void _open(NotificationDto item) {
+    unawaited(ref.read(notificationProvider.notifier).markRead(item.id));
+    if (item.type == recorderLessonReminderType) {
+      openRecorderForReminder(GoRouter.of(context));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(notificationProvider);
     final hasUnread = state.unreadCount > 0;
 
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: SafeArea(
-        child: Column(
-          children: [
-            TutorChildHeader(
-              title: 'Thông báo',
-              action: hasUnread
-                  ? IconButton(
-                      onPressed: () =>
-                          ref.read(notificationProvider.notifier).markAllRead(),
-                      tooltip: 'Đánh dấu tất cả đã đọc',
-                      icon: const Icon(Icons.done_all_rounded, size: 21),
-                      color: AppColors.oxblood,
-                    )
-                  : null,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.cream2,
-                  borderRadius: BorderRadius.circular(10),
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CanvasHeader(
+                title: 'Thông báo',
+                titleSize: 24,
+                onBack: () => Navigator.of(context).pop(),
+                trailing: hasUnread
+                    ? CanvasCircleButton(
+                        tooltip: 'Đánh dấu tất cả đã đọc',
+                        onTap: () => ref
+                            .read(notificationProvider.notifier)
+                            .markAllRead(),
+                        child: const Icon(
+                          Icons.done_all_rounded,
+                          size: 20,
+                          color: TutorColors.ink,
+                        ),
+                      )
+                    : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  16,
+                  TutorSurface.gutter,
+                  0,
                 ),
-                child: TabBar(
-                  controller: _tabs,
-                  indicator: BoxDecoration(
-                    color: AppColors.paper,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.ink.withValues(alpha: 0.08),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Color(0x141F2A24)),
+                    ),
+                  ),
+                  child: TabBar(
+                    controller: _tabs,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    padding: EdgeInsets.zero,
+                    labelPadding: const EdgeInsets.only(right: 22),
+                    indicatorColor: TutorColors.ink,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    dividerColor: Colors.transparent,
+                    labelStyle: TutorType.action(),
+                    unselectedLabelStyle: TutorType.action(
+                      color: const Color(0xFF8A8F89),
+                    ),
+                    labelColor: TutorColors.ink,
+                    unselectedLabelColor: const Color(0xFF8A8F89),
+                    overlayColor: const WidgetStatePropertyAll(
+                      Colors.transparent,
+                    ),
+                    tabs: const [
+                      Tab(text: 'Tất cả', height: 40),
+                      Tab(text: 'Chưa đọc', height: 40),
                     ],
                   ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicatorPadding: const EdgeInsets.all(3),
-                  dividerColor: Colors.transparent,
-                  labelStyle: AppTextStyles.label(),
-                  unselectedLabelStyle: AppTextStyles.label(
-                    color: AppColors.ink4,
-                  ),
-                  labelColor: AppColors.ink,
-                  unselectedLabelColor: AppColors.ink4,
-                  tabs: const [
-                    Tab(text: 'Tất cả'),
-                    Tab(text: 'Chưa đọc'),
-                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: state.isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.oxblood,
+              Expanded(
+                child: state.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: TutorColors.primary,
+                        ),
+                      )
+                    : state.error != null
+                    ? _ErrorState(
+                        onRetry: () =>
+                            ref.read(notificationProvider.notifier).load(),
+                      )
+                    : TabBarView(
+                        controller: _tabs,
+                        children: [
+                          _NotiList(items: state.items, onTap: _open),
+                          _NotiList(items: state.unread, onTap: _open),
+                        ],
                       ),
-                    )
-                  : state.error != null
-                  ? _ErrorState(
-                      onRetry: () =>
-                          ref.read(notificationProvider.notifier).load(),
-                    )
-                  : TabBarView(
-                      controller: _tabs,
-                      children: [
-                        _NotiList(
-                          items: state.items,
-                          onTap: (id) => ref
-                              .read(notificationProvider.notifier)
-                              .markRead(id),
-                        ),
-                        _NotiList(
-                          items: state.unread,
-                          onTap: (id) => ref
-                              .read(notificationProvider.notifier)
-                              .markRead(id),
-                        ),
-                      ],
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -139,90 +151,78 @@ class _NotiList extends StatelessWidget {
   const _NotiList({required this.items, required this.onTap});
 
   final List<NotificationDto> items;
-  final void Function(int id) onTap;
+  final void Function(NotificationDto item) onTap;
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/images/common/empty_notification.png',
-              width: 180,
-            ),
-            const SizedBox(height: 16),
-            Text('Không có thông báo', style: AppTextStyles.h3()),
-            const SizedBox(height: 6),
-            Text(
-              'Bạn đã đọc hết rồi!',
-              style: AppTextStyles.bodySmall(color: AppColors.ink4),
-            ),
-          ],
+        child: Padding(
+          padding: TutorSurface.screenPadding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Không có thông báo', style: TutorType.sectionTitle()),
+              const SizedBox(height: 14),
+              const CanvasHand('Bạn đã đọc hết rồi!', size: 18),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const Divider(
-        height: 1,
-        color: AppColors.line,
-        indent: 52,
+    return ListView.builder(
+      padding: EdgeInsets.fromLTRB(
+        TutorSurface.gutter,
+        4,
+        TutorSurface.gutter,
+        MediaQuery.of(context).padding.bottom + 24,
       ),
+      itemCount: items.length,
       itemBuilder: (_, i) => _NotiTile(
         item: items[i],
-        onTap: () => onTap(items[i].id),
+        first: i == 0,
+        onTap: () => onTap(items[i]),
       ),
     );
   }
 }
 
 class _NotiTile extends StatelessWidget {
-  const _NotiTile({required this.item, required this.onTap});
+  const _NotiTile({
+    required this.item,
+    required this.first,
+    required this.onTap,
+  });
 
   final NotificationDto item;
+  final bool first;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          border: Border(top: first ? BorderSide.none : TutorSurface.rule),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: item.iconBg,
-                  ),
-                  child: Icon(item.icon, size: 20, color: item.iconColor),
-                ),
-                if (!item.isRead)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.oxblood,
-                        border: Border.all(color: AppColors.cream),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: item.isRead
+                  ? TutorSurface.well()
+                  : BoxDecoration(
+                      color: TutorColors.sage,
+                      borderRadius: BorderRadius.circular(
+                        TutorSurface.radiusSmall,
                       ),
                     ),
-                  ),
-              ],
+              child: Icon(item.icon, size: 18, color: TutorColors.ink),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -231,31 +231,34 @@ class _NotiTile extends StatelessWidget {
                 children: [
                   Text(
                     item.title,
-                    style: item.isRead
-                        ? AppTextStyles.label(color: AppColors.ink3)
-                        : AppTextStyles.label(),
+                    style: TutorType.body(
+                      color: item.isRead ? TutorColors.ink3 : TutorColors.ink,
+                    ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     item.message,
-                    style: AppTextStyles.bodySmall(color: AppColors.ink4),
+                    style: TutorType.rowSub(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Text(item.timeAgo, style: AppTextStyles.eyebrow()),
+                  Text(item.timeAgo, style: TutorType.caption()),
                 ],
               ),
             ),
             if (!item.isRead)
               Padding(
-                padding: const EdgeInsets.only(top: 2, left: 8),
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.oxblood,
+                padding: const EdgeInsets.only(top: 6, left: 8),
+                child: Semantics(
+                  label: 'Chưa đọc',
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: TutorColors.ink,
+                    ),
                   ),
                 ),
               ),
@@ -274,24 +277,32 @@ class _ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.wifi_off_outlined, size: 48, color: AppColors.ink4),
-          const SizedBox(height: 12),
-          Text(
-            'Không tải được thông báo',
-            style: AppTextStyles.body(color: AppColors.ink3),
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: onRetry,
-            child: Text(
-              'Thử lại',
-              style: AppTextStyles.label(color: AppColors.oxblood),
+      child: Padding(
+        padding: TutorSurface.screenPadding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.wifi_off_outlined,
+              size: 36,
+              color: TutorColors.ink3,
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              'Không tải được thông báo',
+              style: TutorType.body(color: TutorColors.ink3),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: 160,
+              child: CanvasCta(
+                label: 'Thử lại',
+                secondary: true,
+                onPressed: onRetry,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
