@@ -103,7 +103,10 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                   onRefresh: () async {
                     ref
                       ..invalidate(recorderStudentsProvider)
-                      ..invalidate(recorderStudentLessonsProvider(studentId));
+                      ..invalidate(recorderStudentLessonsProvider(studentId))
+                      // Topi có thể đã chạy lại: tải lại kế hoạch và kỹ năng.
+                      ..invalidate(lessonTopiProvider)
+                      ..invalidate(pupilSkillsProvider(studentId));
                   },
                   child: ListView(
                     padding: const EdgeInsets.only(bottom: 24),

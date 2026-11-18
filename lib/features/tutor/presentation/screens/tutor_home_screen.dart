@@ -10,6 +10,7 @@ import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_booking_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
@@ -47,7 +48,12 @@ class _TutorHomeScreenState extends ConsumerState<TutorHomeScreen> {
       ..invalidate(tutorClassesProvider)
       ..invalidate(recorderStudentsProvider)
       ..invalidate(recorderPendingReviewsProvider)
-      ..invalidate(recorderTodayLessonsProvider);
+      ..invalidate(recorderTodayLessonsProvider)
+      // Kế hoạch và kỹ năng Topi: Topi có thể đã chạy lại (gia sư thấy kế hoạch
+      // cũ cho tới khi tắt app — test điện thoại 2026-11-18).
+      ..invalidate(topiFlagsProvider)
+      ..invalidate(lessonTopiProvider)
+      ..invalidate(pupilSkillsProvider);
     await ref.read(tutorDashboardProvider.notifier).load();
   }
 
