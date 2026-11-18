@@ -25,7 +25,7 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
   static const _items = [
     TutorTabItem(label: 'Trang chủ', icon: Icons.home_outlined),
     TutorTabItem(label: 'Lộ trình', icon: Icons.route_outlined),
-    TutorTabItem(label: 'Bài học', icon: Icons.calendar_today_outlined),
+    TutorTabItem(label: 'Lịch', icon: Icons.calendar_today_outlined),
     TutorTabItem(label: 'Học sinh', icon: Icons.people_outline_rounded),
   ];
 
