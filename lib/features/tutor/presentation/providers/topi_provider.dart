@@ -27,3 +27,17 @@ final AutoDisposeFutureProviderFamily<LessonTopi?, String> lessonTopiProvider =
       (ref, lessonId) =>
           ref.read(topiDatasourceProvider).getLessonTopi(lessonId),
     );
+
+/// Mọi kỹ năng Topi đã thấy của một học sinh (hồ sơ, danh sách theo mức).
+/// Rỗng khi cờ `skills` tắt, backend cũ, hoặc lỗi mạng (thẻ cũ thay thế).
+final AutoDisposeFutureProviderFamily<List<TopiPupilSkill>, String>
+pupilSkillsProvider = FutureProvider.autoDispose
+    .family<List<TopiPupilSkill>, String>((ref, studentId) async {
+      if (!ref.watch(topiFlagsNowProvider).skills) return const [];
+      try {
+        return await ref.read(topiDatasourceProvider).getPupilSkills(studentId);
+      } on Object catch (e) {
+        debugPrint('Pupil skills unavailable: $e');
+        return const [];
+      }
+    });

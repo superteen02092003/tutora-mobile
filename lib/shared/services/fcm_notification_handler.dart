@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +12,17 @@ import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/shared/providers/notification_provider.dart';
+
+/// Push nhắc trước buổi học recorder (phase1-api E), referenceId = lessonId.
+const recorderLessonReminderType = 'RecorderLessonReminder';
+
+/// Mở luồng ghi âm cho thông báo nhắc buổi: sheet chọn buổi (liệt kê buổi hôm
+/// nay, tự chọn buổi gần giờ nhất) đè lên Trang chủ. Dùng chung cho push và
+/// khi chạm thông báo trong danh sách.
+void openRecorderForReminder(GoRouter router, {bool resetToHome = false}) {
+  if (resetToHome) router.go(AppRoutes.tutorHome);
+  unawaited(router.push(AppRoutes.tutorRecorder));
+}
 
 const _androidChannel = AndroidNotificationChannel(
   'high_importance_channel',
@@ -115,6 +128,11 @@ class FcmNotificationHandler {
     final context = _navigatorKey.currentContext;
     if (context == null || !context.mounted) return;
 
+    if (type == recorderLessonReminderType) {
+      // Sheet ghi âm là route trong suốt — phải nằm trên Trang chủ.
+      openRecorderForReminder(GoRouter.of(context), resetToHome: true);
+      return;
+    }
     GoRouter.of(context).go(path);
   }
 
@@ -134,6 +152,9 @@ class FcmNotificationHandler {
 
       case 'warning':
         return AppRoutes.tutorProfile;
+
+      case recorderLessonReminderType:
+        return AppRoutes.tutorRecorder;
 
       default:
         return null;

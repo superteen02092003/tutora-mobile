@@ -85,7 +85,7 @@ class _TipRow extends StatelessWidget {
         child: Icon(
           Icons.lightbulb_outline_rounded,
           size: 20,
-          color: TutorColors.warning,
+          color: TutorColors.ink,
         ),
       ),
       const SizedBox(width: 12),

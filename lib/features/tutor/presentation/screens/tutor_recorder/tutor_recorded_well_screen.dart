@@ -25,7 +25,7 @@ class RecordedWellArgs {
   final double quietShare;
 }
 
-/// T11 "Ghi âm tốt" (canvas H3-AfterRec): ngay sau khi kết thúc buổi, báo bản ghi
+/// T11 "Ghi âm tốt" (design V5.6, board V56-AfterRec): ngay sau khi kết thúc buổi, báo bản ghi
 /// có ổn không, một mẹo cho lần sau, rồi mở bản nháp báo cáo.
 class TutorRecordedWellScreen extends StatelessWidget {
   const TutorRecordedWellScreen({required this.args, super.key});
@@ -58,139 +58,250 @@ class TutorRecordedWellScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: ListView(
-                children: [
-                  CanvasHeader(
-                    left: kicker,
-                    title: _good ? 'Ghi âm tốt' : 'Đã ghi xong',
-                    lead: _good
-                        ? '$_minutesLine · nghe rõ phần lớn buổi'
-                        : '$_minutesLine · máy nghe nhỏ khoảng $quietPct% thời gian',
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    28,
+                    TutorSurface.gutter,
+                    16,
                   ),
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: TutorSurface.screenPadding,
-                    child: Column(
-                      children: [
-                        _Check(
-                          ok: true,
-                          text:
-                              'Đã ghi ${args.recordedMin} phút và lưu lên máy chủ',
-                        ),
-                        _Check(
-                          ok: _good,
-                          text: _good
-                              ? 'Âm thanh rõ'
-                              : 'Âm thanh nhỏ khoảng $quietPct% thời gian',
-                          trailing: _good
-                              ? null
-                              : InkWell(
-                                  onTap: () => unawaited(
-                                    context.push(AppRoutes.tutorRecordingTips),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
+                  children: [
+                    // ── Dấu kết quả + tiêu đề ────────────────────────────
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _ResultRing(ok: _good),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      _good ? 'Ghi âm tốt' : 'Đã ghi xong',
+                      style: TutorType.display(size: 32, height: 1.05),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(kicker, style: TutorType.rowSub()),
+                    const SizedBox(height: 22),
+
+                    // ── Kiểm tra bản ghi ─────────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: TutorSurface.card(),
+                      child: Column(
+                        children: [
+                          _Check(
+                            ok: true,
+                            first: true,
+                            text:
+                                'Đã ghi ${args.recordedMin} phút và lưu lên máy chủ',
+                          ),
+                          _Check(
+                            ok: _good,
+                            text: _good
+                                ? 'Âm thanh rõ'
+                                : 'Âm thanh nhỏ khoảng $quietPct% thời gian',
+                            link: _good
+                                ? null
+                                : InkWell(
+                                    onTap: () => unawaited(
+                                      context.push(
+                                        AppRoutes.tutorRecordingTips,
+                                      ),
                                     ),
-                                    child: Text(
-                                      'Xem mẹo',
-                                      style: TutorType.action(
-                                        color: TutorColors.warning,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 4,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Xem mẹo',
+                                            style: TutorType.rowSub(
+                                              color: TutorColors.ink,
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.chevron_right_rounded,
+                                            size: 16,
+                                            color: TutorColors.ink,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
-                                ),
-                          last: true,
-                        ),
-                        const SizedBox(height: 18),
-                        CanvasTipBox(
-                          _good
-                              ? 'giữ điện thoại ở giữa bàn như hôm nay.'
-                              : 'đặt điện thoại ở giữa bàn ngay từ đầu buổi.',
-                          bold: 'Lần sau:',
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 22),
+
+                    // ── Mẹo lần sau: chữ tay ở khoảng trống ──────────────
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: CanvasHand(
+                          _good
+                              ? 'Lần sau: giữ điện thoại\ngiữa bàn như hôm nay'
+                              : 'Lần sau: đặt điện thoại\ngiữa bàn ngay từ đầu',
+                          size: 18,
+                          swash: false,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+
+                    // ── Báo cáo đang soạn (sage) ─────────────────────────
+                    const _DraftingCard(),
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                TutorSurface.gutter,
-                12,
-                TutorSurface.gutter,
-                20,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  8,
+                  TutorSurface.gutter,
+                  24,
+                ),
+                child: CanvasCta(
+                  label: 'Mở bản nháp',
+                  onPressed: () => _openDraft(context),
+                ),
               ),
-              child: Column(
-                children: [
-                  Text(
-                    'Báo cáo đang được soạn, khoảng 5 phút. Điện thoại sẽ báo '
-                    'khi xong.',
-                    textAlign: TextAlign.center,
-                    style: TutorType.rowSub().copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 12),
-                  CanvasCta(
-                    label: 'Mở bản nháp',
-                    onPressed: () => _openDraft(context),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+/// Vòng tròn 44 px: tô mực với dấu ✓ khi nghe rõ, viền xám với "!" khi nhỏ.
+class _ResultRing extends StatelessWidget {
+  const _ResultRing({required this.ok});
+
+  final bool ok;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 44,
+    height: 44,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: ok ? TutorColors.ink : Colors.transparent,
+      border: ok
+          ? null
+          : Border.all(color: const Color(0xFFA3A8A2), width: 1.6),
+    ),
+    child: Icon(
+      ok ? Icons.check_rounded : Icons.priority_high_rounded,
+      size: 22,
+      color: ok ? Colors.white : TutorColors.ink,
+    ),
+  );
+}
+
+/// "Đang soạn báo cáo" — server soạn trong nền; không có tiến độ thật nên
+/// thanh chạy không xác định.
+class _DraftingCard extends StatelessWidget {
+  const _DraftingCard();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    decoration: TutorSurface.sage(lifted: false),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F7F4),
+            borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+          ),
+          child: const Icon(
+            Icons.edit_note_rounded,
+            size: 20,
+            color: TutorColors.ink,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Đang soạn báo cáo', style: TutorType.body()),
+              Text(
+                'Khoảng 5 phút. Điện thoại sẽ báo khi xong.',
+                style: TutorType.rowSub(),
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  minHeight: 4,
+                  backgroundColor: TutorColors.ink.withValues(alpha: 0.12),
+                  color: TutorColors.ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _Check extends StatelessWidget {
   const _Check({
     required this.ok,
     required this.text,
-    this.trailing,
-    this.last = false,
+    this.link,
+    this.first = false,
   });
 
   final bool ok;
   final String text;
-  final Widget? trailing;
-  final bool last;
+
+  /// Liên kết nhỏ dưới dòng chữ ("Xem mẹo ›").
+  final Widget? link;
+  final bool first;
 
   @override
-  Widget build(BuildContext context) => CanvasRow(
-    lastRule: last,
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 13),
+    decoration: BoxDecoration(
+      border: Border(top: first ? BorderSide.none : TutorSurface.rule),
+    ),
     child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 40,
-          child: Text(
-            ok ? '✓' : '!',
-            style: TutorType.display(
-              size: 26,
-              weight: FontWeight.w300,
-              color: ok ? TutorColors.success : TutorColors.warning,
-            ),
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(
+            ok
+                ? Icons.check_circle_outline_rounded
+                : Icons.error_outline_rounded,
+            size: 20,
+            color: ok ? TutorColors.ink : TutorColors.warning,
           ),
         ),
+        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.35,
-              fontWeight: FontWeight.w500,
-              color: TutorColors.ink,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(text, style: TutorType.body()),
+              ?link,
+            ],
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 10), trailing!],
       ],
     ),
   );

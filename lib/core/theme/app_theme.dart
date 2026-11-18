@@ -20,6 +20,74 @@ abstract final class AppTheme {
       onError: Colors.white,
     ),
     scaffoldBackgroundColor: AppColors.cream,
+    // V5.6: snackbar xanh rêu bo tròn, hộp thoại bo 20, nút dạng viên thuốc.
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.ink,
+      contentTextStyle: GoogleFonts.inter(
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      actionTextColor: AppColors.sage,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppColors.paper,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      titleTextStyle: GoogleFonts.bricolageGrotesque(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: AppColors.ink,
+      ),
+      contentTextStyle: GoogleFonts.inter(
+        fontSize: 14,
+        height: 1.45,
+        color: AppColors.ink3,
+      ),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: AppColors.paper,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.ink,
+        foregroundColor: Colors.white,
+        shape: const StadiumBorder(),
+        textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.ink,
+        shape: const StadiumBorder(),
+        textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 14),
+      ),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? AppColors.ink : null,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? Colors.white : null,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? AppColors.ink : null,
+      ),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.ink,
+    ),
     textTheme: GoogleFonts.interTextTheme().copyWith(
       displayLarge: GoogleFonts.bricolageGrotesque(
         fontSize: 57,
@@ -69,22 +137,18 @@ abstract final class AppTheme {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.ink,
-        foregroundColor: AppColors.cream,
-        minimumSize: const Size(double.infinity, 52),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 48),
+        shape: const StadiumBorder(),
+        textStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 15),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.ink,
-        minimumSize: const Size(double.infinity, 52),
-        side: const BorderSide(color: AppColors.line, width: 1.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
+        minimumSize: const Size(double.infinity, 48),
+        side: const BorderSide(color: AppColors.line),
+        shape: const StadiumBorder(),
         textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
       ),
     ),

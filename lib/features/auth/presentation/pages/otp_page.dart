@@ -4,17 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_spacing.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/storage/secure_storage.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/core/utils/jwt_utils.dart';
 import 'package:tutora/features/auth/presentation/controllers/otp_controller.dart';
 import 'package:tutora/features/auth/presentation/pages/login_page.dart';
+import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
+import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/services/push_token_service.dart';
-import 'package:tutora/shared/widgets/app_logo.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 class OtpPage extends ConsumerStatefulWidget {
@@ -213,272 +214,182 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     final isLoading = ref.watch(otpControllerProvider) is OtpLoading;
 
     return Scaffold(
-      backgroundColor: AppColors.cream2,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Container(
-              color: AppColors.cream2,
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthTopDeco(
+                  onBack: () => context.pop(),
+                  hand: 'Sắp xong rồi',
+                  title: _isForgot
+                      ? 'Đặt lại mật khẩu'
+                      : 'Xác minh số điện thoại',
+                  lead: Text.rich(
+                    TextSpan(
+                      style: const TextStyle(height: 1.55),
                       children: [
-                        const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 14,
-                          color: AppColors.ink3,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Quay lại',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: AppColors.ink3,
+                        const TextSpan(text: 'Nhập mã 6 chữ số đã gửi đến\n'),
+                        TextSpan(
+                          text: widget.phone,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: TutorColors.ink,
+                            fontFeatures: [FontFeature.tabularFigures()],
                           ),
                         ),
+                        const TextSpan(text: ' qua Zalo.'),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  const AppLogo(),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.line),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: AppColors.ink,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.phone_android_rounded,
-                        color: AppColors.gold,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    Text(
-                      _isForgot ? 'Đặt lại mật khẩu' : 'Xác minh số điện thoại',
-                      style: GoogleFonts.bricolageGrotesque(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 24,
-                        letterSpacing: -0.5,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text.rich(
-                      TextSpan(
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: AppColors.ink3,
-                          height: 1.6,
-                        ),
-                        children: [
-                          const TextSpan(text: 'Nhập mã 6 chữ số đã gửi đến\n'),
-                          TextSpan(
-                            text: widget.phone,
-                            style: GoogleFonts.ibmPlexMono(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ink,
-                            ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    28,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // OTP boxes
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(
+                          6,
+                          (i) => _OtpBox(
+                            controller: _ctrls[i],
+                            focusNode: _nodes[i],
+                            onChanged: (v) => _onDigit(i, v),
+                            onKey: (e) => _onKey(i, e),
                           ),
-                          const TextSpan(text: ' qua Zalo.'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // OTP boxes
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(
-                        6,
-                        (i) => _OtpBox(
-                          controller: _ctrls[i],
-                          focusNode: _nodes[i],
-                          onChanged: (v) => _onDigit(i, v),
-                          onKey: (e) => _onKey(i, e),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
+                      const SizedBox(height: 14),
 
-                    // Resend timer
-                    Center(
-                      child: _resendCd > 0
-                          ? Text.rich(
-                              TextSpan(
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: AppColors.ink3,
+                      // Resend timer
+                      Center(
+                        child: _resendCd > 0
+                            ? ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: 44,
                                 ),
-                                children: [
-                                  const TextSpan(text: 'Gửi lại sau '),
-                                  TextSpan(
-                                    text:
-                                        '0:${_resendCd.toString().padLeft(2, '0')}',
-                                    style: GoogleFonts.ibmPlexMono(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      color: AppColors.ink,
+                                child: Center(
+                                  widthFactor: 1,
+                                  child: Text.rich(
+                                    TextSpan(
+                                      style: TutorType.rowSub().copyWith(
+                                        fontSize: 14,
+                                      ),
+                                      children: [
+                                        const TextSpan(text: 'Gửi lại sau '),
+                                        TextSpan(
+                                          text:
+                                              '0:${_resendCd.toString().padLeft(2, '0')}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: TutorColors.ink,
+                                            fontFeatures: [
+                                              FontFeature.tabularFigures(),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                            )
-                          : GestureDetector(
-                              onTap: isLoading ? null : _onResend,
-                              child: Text(
-                                'Gửi lại mã →',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.oxblood,
+                                ),
+                              )
+                            : InkWell(
+                                onTap: isLoading ? null : _onResend,
+                                borderRadius: BorderRadius.circular(22),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 44,
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    child: Center(
+                                      widthFactor: 1,
+                                      child: Text(
+                                        'Gửi lại mã →',
+                                        style: TutorType.action().copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          decoration: TextDecoration.underline,
+                                          decorationColor: TutorColors.ink,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                    ),
+                      ),
 
-                    // Forgot password: thêm field nhập mật khẩu mới
-                    if (_isForgot) ...[
+                      // Forgot password: thêm field nhập mật khẩu mới
+                      if (_isForgot) ...[
+                        const SizedBox(height: 20),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: TutorColors.line,
+                        ),
+                        const SizedBox(height: 20),
+                        AuthInput(
+                          label: 'Mật khẩu mới',
+                          controller: _newPassCtrl,
+                          obscureText: true,
+                          hint: 'Tối thiểu $passwordMinLength ký tự',
+                          textInputAction: TextInputAction.next,
+                          enabled: !isLoading,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                        const SizedBox(height: 12),
+                        AuthInput(
+                          label: 'Xác nhận mật khẩu',
+                          controller: _confirmPassCtrl,
+                          obscureText: true,
+                          hint: 'Nhập lại mật khẩu',
+                          textInputAction: TextInputAction.done,
+                          enabled: !isLoading,
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ],
+
                       const SizedBox(height: 28),
-                      const Divider(color: AppColors.line),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Mật khẩu mới',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _newPassCtrl,
-                        obscureText: true,
-                        enabled: !isLoading,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Tối thiểu $passwordMinLength ký tự',
-                          hintStyle: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: AppColors.ink3,
-                          ),
-                          filled: true,
-                          fillColor: AppColors.paper,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(color: AppColors.line),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(color: AppColors.line),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(
-                              color: AppColors.ink,
-                              width: 2,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _confirmPassCtrl,
-                        obscureText: true,
-                        enabled: !isLoading,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Xác nhận mật khẩu',
-                          hintStyle: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: AppColors.ink3,
-                          ),
-                          filled: true,
-                          fillColor: AppColors.paper,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(color: AppColors.line),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(color: AppColors.line),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(
-                              color: AppColors.ink,
-                              width: 2,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                        ),
+
+                      CanvasCta(
+                        label: _isForgot ? 'Đặt lại mật khẩu' : 'Xác nhận',
+                        onPressed: isLoading || !_canSubmit ? null : _onVerify,
+                        icon: isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: TutorColors.ink3,
+                                ),
+                              )
+                            : null,
                       ),
                     ],
-
-                    const SizedBox(height: 28),
-
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ink,
-                        foregroundColor: AppColors.cream,
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: const StadiumBorder(),
-                        textStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      onPressed: isLoading || !_canSubmit ? null : _onVerify,
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.cream,
-                              ),
-                            )
-                          : Text(_isForgot ? 'Đặt lại mật khẩu' : 'Xác nhận'),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
+/// Ô một chữ số — ô lõm sáng, viền mực 8%; đã nhập thì viền xanh rêu.
 class _OtpBox extends StatelessWidget {
   const _OtpBox({
     required this.controller,
@@ -494,6 +405,12 @@ class _OtpBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final empty = controller.text.isEmpty;
+    final side = BorderSide(
+      color: empty ? AuthInput.border : TutorColors.ink,
+      width: empty ? 1.0 : 1.5,
+    );
+    final radius = BorderRadius.circular(AuthInput.radius);
     return SizedBox(
       width: 46,
       height: 56,
@@ -507,34 +424,20 @@ class _OtpBox extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLength: 1,
           onChanged: onChanged,
-          style: GoogleFonts.ibmPlexMono(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: AppColors.ink,
-          ),
+          cursorColor: TutorColors.ink,
+          style: TutorType.display(size: 22, height: 1.2),
           decoration: InputDecoration(
             counterText: '',
             filled: true,
-            fillColor: controller.text.isEmpty
-                ? AppColors.cream2
-                : AppColors.paper,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide(
-                color: controller.text.isEmpty ? AppColors.line : AppColors.ink,
-                width: controller.text.isEmpty ? 1.0 : 2.0,
-              ),
-            ),
+            fillColor: AuthInput.fill,
+            border: OutlineInputBorder(borderRadius: radius, borderSide: side),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide(
-                color: controller.text.isEmpty ? AppColors.line : AppColors.ink,
-                width: controller.text.isEmpty ? 1.0 : 2.0,
-              ),
+              borderRadius: radius,
+              borderSide: side,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: const BorderSide(color: AppColors.ink, width: 2),
+              borderRadius: radius,
+              borderSide: const BorderSide(color: TutorColors.ink, width: 1.5),
             ),
             contentPadding: EdgeInsets.zero,
           ),
