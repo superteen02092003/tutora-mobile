@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:tutora/core/constants/app_colors.dart';
-import 'package:tutora/core/constants/app_spacing.dart';
-import 'package:tutora/core/constants/app_text_styles.dart';
 import 'package:tutora/core/constants/legal_links.dart';
+import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
+import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/core/utils/input_validators.dart';
 import 'package:tutora/features/auth/presentation/controllers/register_controller.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_input.dart';
 import 'package:tutora/features/auth/presentation/widgets/auth_top_deco.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/shared/widgets/app_toast.dart';
 
 /// Đăng ký tài khoản gia sư: họ tên + SĐT + mật khẩu → OTP gửi qua Zalo.
@@ -134,190 +134,170 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final isLoading = state is RegisterLoading;
 
     return Scaffold(
-      body: Column(
-        children: [
-          const AuthTopDeco(
-            bgColor: AppColors.ink,
-            line1: 'Chia sẻ tri thức,',
-            italicWord: 'truyền',
-            line2Suffix: 'cảm hứng học tập',
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _BackLink(onTap: _backToLogin),
-                    const SizedBox(height: 22),
-
-                    Text('Đăng ký gia sư', style: AppTextStyles.h2()),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Mã xác minh sẽ được gửi qua Zalo tới số điện thoại.',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: AppColors.ink3,
+      backgroundColor: TutorColors.bg,
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthTopDeco(
+                  onBack: _backToLogin,
+                  hand: 'Chào gia sư mới',
+                  title: 'Đăng ký gia sư',
+                  lead: const Text(
+                    'Mã xác minh sẽ được gửi qua Zalo tới số điện thoại.',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    24,
+                    TutorSurface.gutter,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AuthInput(
+                        label: 'Họ và tên',
+                        controller: _nameCtrl,
+                        hint: 'Nguyễn Văn A',
+                        textInputAction: TextInputAction.next,
+                        errorText: _nameError,
+                        enabled: !isLoading,
+                        onChanged: (_) => setState(() => _nameError = null),
                       ),
-                    ),
-                    const SizedBox(height: 22),
+                      const SizedBox(height: 12),
 
-                    AuthInput(
-                      label: 'Họ và tên',
-                      controller: _nameCtrl,
-                      hint: 'Nguyễn Văn A',
-                      textInputAction: TextInputAction.next,
-                      errorText: _nameError,
-                      enabled: !isLoading,
-                      onChanged: (_) => setState(() => _nameError = null),
-                    ),
-                    const SizedBox(height: 14),
+                      AuthInput(
+                        label: 'Số điện thoại (Zalo)',
+                        controller: _phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
+                        hint: '09x xxx xxxx',
+                        errorText: _phoneError,
+                        enabled: !isLoading,
+                        onChanged: (_) => setState(() => _phoneError = null),
+                      ),
+                      const SizedBox(height: 12),
 
-                    AuthInput(
-                      label: 'Số điện thoại (Zalo)',
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      hint: '09x xxx xxxx',
-                      errorText: _phoneError,
-                      enabled: !isLoading,
-                      onChanged: (_) => setState(() => _phoneError = null),
-                    ),
-                    const SizedBox(height: 14),
+                      AuthInput(
+                        label: 'Mật khẩu',
+                        controller: _passCtrl,
+                        obscureText: true,
+                        hint: 'Tối thiểu $passwordMinLength ký tự',
+                        textInputAction: TextInputAction.next,
+                        errorText: _passError,
+                        enabled: !isLoading,
+                        onChanged: (_) => setState(() => _passError = null),
+                      ),
+                      if (_passCtrl.text.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _PasswordStrength(password: _passCtrl.text),
+                      ],
+                      const SizedBox(height: 12),
 
-                    AuthInput(
-                      label: 'Mật khẩu',
-                      controller: _passCtrl,
-                      obscureText: true,
-                      hint: 'Tối thiểu $passwordMinLength ký tự',
-                      textInputAction: TextInputAction.next,
-                      errorText: _passError,
-                      enabled: !isLoading,
-                      onChanged: (_) => setState(() => _passError = null),
-                    ),
-                    if (_passCtrl.text.isNotEmpty) ...[
+                      AuthInput(
+                        label: 'Xác nhận mật khẩu',
+                        controller: _confirmCtrl,
+                        obscureText: true,
+                        hint: 'Nhập lại mật khẩu',
+                        textInputAction: TextInputAction.done,
+                        errorText: _confirmError,
+                        enabled: !isLoading,
+                        onChanged: (_) => setState(() => _confirmError = null),
+                      ),
+                      const SizedBox(height: 20),
+
+                      _ConsentRow(
+                        checked: _acceptedTerms,
+                        enabled: !isLoading,
+                        linkLabel: 'Điều khoản sử dụng',
+                        url: LegalLinks.terms,
+                        onChanged: (v) => setState(() => _acceptedTerms = v),
+                        onOpenLink: _openLink,
+                      ),
+                      const SizedBox(height: 12),
+                      _ConsentRow(
+                        checked: _acceptedPrivacy,
+                        enabled: !isLoading,
+                        linkLabel: 'Chính sách quyền riêng tư',
+                        url: LegalLinks.privacy,
+                        onChanged: (v) => setState(() => _acceptedPrivacy = v),
+                        onOpenLink: _openLink,
+                      ),
+                      const SizedBox(height: 24),
+
+                      CanvasCta(
+                        label: 'Tạo tài khoản',
+                        onPressed: isLoading || !_canSubmit ? null : _submit,
+                        icon: isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: TutorColors.ink3,
+                                ),
+                              )
+                            : null,
+                      ),
+
+                      const SizedBox(height: 28),
+                      const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: TutorColors.line,
+                      ),
                       const SizedBox(height: 8),
-                      _PasswordStrength(password: _passCtrl.text),
-                    ],
-                    const SizedBox(height: 14),
 
-                    AuthInput(
-                      label: 'Xác nhận mật khẩu',
-                      controller: _confirmCtrl,
-                      obscureText: true,
-                      hint: 'Nhập lại mật khẩu',
-                      textInputAction: TextInputAction.done,
-                      errorText: _confirmError,
-                      enabled: !isLoading,
-                      onChanged: (_) => setState(() => _confirmError = null),
-                    ),
-                    const SizedBox(height: 18),
-
-                    _ConsentRow(
-                      checked: _acceptedTerms,
-                      enabled: !isLoading,
-                      linkLabel: 'Điều khoản sử dụng',
-                      url: LegalLinks.terms,
-                      onChanged: (v) => setState(() => _acceptedTerms = v),
-                      onOpenLink: _openLink,
-                    ),
-                    const SizedBox(height: 10),
-                    _ConsentRow(
-                      checked: _acceptedPrivacy,
-                      enabled: !isLoading,
-                      linkLabel: 'Chính sách quyền riêng tư',
-                      url: LegalLinks.privacy,
-                      onChanged: (v) => setState(() => _acceptedPrivacy = v),
-                      onOpenLink: _openLink,
-                    ),
-                    const SizedBox(height: 24),
-
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ink,
-                        foregroundColor: AppColors.cream,
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: const StadiumBorder(),
-                        textStyle: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      onPressed: isLoading || !_canSubmit ? null : _submit,
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.cream,
+                      Center(
+                        child: InkWell(
+                          onTap: isLoading ? null : _backToLogin,
+                          borderRadius: BorderRadius.circular(22),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: 44),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
                               ),
-                            )
-                          : const Text('Tạo tài khoản'),
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    Center(
-                      child: GestureDetector(
-                        onTap: isLoading ? null : _backToLogin,
-                        child: Text.rich(
-                          TextSpan(
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: AppColors.ink3,
-                            ),
-                            children: [
-                              const TextSpan(text: 'Đã có tài khoản? '),
-                              TextSpan(
-                                text: 'Đăng nhập',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.oxblood,
+                              child: Center(
+                                widthFactor: 1,
+                                child: Text.rich(
+                                  TextSpan(
+                                    style: TutorType.rowSub().copyWith(
+                                      fontSize: 14,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'Đã có tài khoản? '),
+                                      TextSpan(
+                                        text: 'Đăng nhập',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: TutorColors.ink,
+                                          decoration: TextDecoration.underline,
+                                          decorationColor: TutorColors.ink,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BackLink extends StatelessWidget {
-  const _BackLink({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 14,
-            color: AppColors.ink3,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'Quay lại',
-            style: GoogleFonts.inter(fontSize: 13, color: AppColors.ink3),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -331,9 +311,9 @@ class _PasswordStrength extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (strength, color, label) = switch (password.length) {
-      < 8 => (1, AppColors.error, 'Yếu'),
-      < 12 => (2, AppColors.gold, 'Trung bình'),
-      _ => (3, AppColors.green, 'Mạnh'),
+      < 8 => (1, TutorColors.danger, 'Yếu'),
+      < 12 => (2, TutorColors.warning, 'Trung bình'),
+      _ => (3, TutorColors.success, 'Mạnh'),
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -347,8 +327,8 @@ class _PasswordStrength extends StatelessWidget {
                 margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
                 height: 3,
                 decoration: BoxDecoration(
-                  color: filled ? color : AppColors.line,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  color: filled ? color : TutorColors.line,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             );
@@ -357,11 +337,7 @@ class _PasswordStrength extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: GoogleFonts.inter(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
+          style: TutorType.caption(color: color),
         ),
       ],
     );
@@ -389,8 +365,9 @@ class _ConsentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textStyle = GoogleFonts.inter(
-      fontSize: 12.5,
-      color: AppColors.ink3,
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      color: TutorColors.ink3,
       height: 1.5,
     );
     return GestureDetector(
@@ -401,22 +378,18 @@ class _ConsentRow extends StatelessWidget {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 18,
-            height: 18,
+            width: 20,
+            height: 20,
             margin: const EdgeInsets.only(top: 1),
             decoration: BoxDecoration(
-              color: checked ? AppColors.ink : AppColors.paper,
-              borderRadius: BorderRadius.circular(5),
+              color: checked ? TutorColors.ink : const Color(0xFFFBFAF7),
+              borderRadius: BorderRadius.circular(6),
               border: checked
                   ? null
-                  : Border.all(color: AppColors.line, width: 1.5),
+                  : Border.all(color: const Color(0x291F2A24), width: 1.4),
             ),
             child: checked
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 12,
-                    color: AppColors.cream,
-                  )
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                 : null,
           ),
           const SizedBox(width: 10),
@@ -435,9 +408,9 @@ class _ConsentRow extends StatelessWidget {
                         linkLabel,
                         style: textStyle.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: AppColors.oxblood,
+                          color: TutorColors.ink,
                           decoration: TextDecoration.underline,
-                          decorationColor: AppColors.oxblood,
+                          decorationColor: TutorColors.ink,
                         ),
                       ),
                     ),

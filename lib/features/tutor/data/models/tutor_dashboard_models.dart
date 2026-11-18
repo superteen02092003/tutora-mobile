@@ -237,6 +237,7 @@ class TutorTodaySessionDto {
     required this.scheduledEnd,
     required this.status,
     this.recorderLessonId,
+    this.recorderStudentId,
     this.recorderStatus,
   });
 
@@ -260,6 +261,9 @@ class TutorTodaySessionDto {
 
   /// Có khi là buổi của học sinh ngoài nền tảng — ghi âm vào đúng buổi này.
   final String? recorderLessonId;
+
+  /// Học sinh ngoài nền tảng của buổi — để tìm gợi ý Topi trước buổi.
+  final String? recorderStudentId;
 
   /// Trạng thái gốc bên recorder (scheduled | recording | … | sent).
   final String? recorderStatus;

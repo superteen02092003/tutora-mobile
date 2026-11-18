@@ -85,6 +85,7 @@ final recorderTodayLessonsProvider = FutureProvider<List<TutorTodaySessionDto>>(
                     .toIso8601String(),
             status: l.status,
             recorderLessonId: l.lessonId,
+            recorderStudentId: l.studentId,
             recorderStatus: l.status,
           ),
         )

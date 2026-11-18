@@ -7,9 +7,15 @@ import 'package:tutora/core/constants/tutor_colors.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/tutor_lesson_datasource.dart';
+import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_lesson_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_lesson_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/lesson_attendance.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_schedule/lesson_move_sheet.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
+import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
+import 'package:tutora/shared/widgets/app_toast.dart';
 
 final AutoDisposeFutureProviderFamily<TutorSessionDetailDto, int>
 _sessionDetailProvider = FutureProvider.autoDispose
@@ -21,6 +27,9 @@ _sessionDetailProvider = FutureProvider.autoDispose
 ///
 /// Mở từ một dòng agenda trên tab Lịch. Phần lịch có sẵn (giờ, học sinh, môn,
 /// trạng thái) hiện ngay; học phí và khối lớp tải thêm từ chi tiết buổi.
+///
+/// "Đổi lịch" / "Huỷ buổi": buổi ngoài nền tảng (recorder) dời / huỷ ngay;
+/// buổi booking gửi đề xuất đổi lịch (phụ huynh đồng ý) và không huỷ lẻ được.
 class TutorSessionDetailScreen extends ConsumerWidget {
   const TutorSessionDetailScreen({required this.lesson, super.key});
 
@@ -57,9 +66,15 @@ class TutorSessionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detail = ref
-        .watch(_sessionDetailProvider(lesson.lessonId))
-        .valueOrNull;
+    // Buổi ngoài nền tảng không có chi tiết buổi booking (lessonId = 0).
+    final detail = lesson.isOffPlatform
+        ? null
+        : ref.watch(_sessionDetailProvider(lesson.lessonId)).valueOrNull;
+    final recorderById = lesson.isOffPlatform
+        ? ref.watch(agendaRecorderLessonsProvider).valueOrNull
+        : null;
+    final recorder = recorderById?[lesson.recorderLessonId];
+    final movedFrom = recorder?.movedFromStart;
     final start = lesson.startDt?.toLocal();
     final end = lesson.endDt?.toLocal();
     final now = DateTime.now();
@@ -101,248 +116,230 @@ class TutorSessionDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                children: [
-                  // ── Quay lại + trạng thái ─────────────────────────
-                  Row(
-                    children: [
-                      _CircleBtn(
-                        icon: Icons.chevron_left_rounded,
-                        label: 'Quay lại',
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: status.bg,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          status.label,
-                          style: TutorType.caption(
-                            color: status.fg,
-                          ).copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+      body: DecoratedBox(
+        decoration: TutorSurface.paper,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    TutorSurface.gutter,
+                    16,
+                    TutorSurface.gutter,
+                    24,
                   ),
-                  const SizedBox(height: 20),
-
-                  // ── Học sinh ─────────────────────────────────────
-                  Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: TutorColors.surfaceSunken,
-                          border: Border.all(color: TutorColors.line),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          initial,
-                          style: TutorType.rowTitle().copyWith(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 13),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              lesson.studentName,
-                              style: TutorType.screenTitle().copyWith(
-                                height: 1.1,
-                              ),
-                            ),
-                            if (subtitle.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                subtitle,
-                                style: TutorType.rowTitle(
-                                  color: TutorColors.ink3,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ── Giờ · địa điểm · học phí ──────────────────────
-                  _Card(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 2,
-                    ),
-                    child: Column(
+                  children: [
+                    // ── Quay lại + trạng thái ─────────────────────────
+                    Row(
                       children: [
-                        _InfoRow(
-                          icon: Icons.schedule_rounded,
-                          title: start == null
-                              ? 'Chưa có giờ'
-                              : '${_weekday[start.weekday - 1]}, '
-                                    '${_two(start.day)}/${_two(start.month)} · '
-                                    '${lesson.timeStart}'
-                                    '${end == null ? '' : ' – ${lesson.timeEnd}'}',
-                          sub: lesson.linkLabel,
+                        CanvasBackButton(
+                          onTap: () => Navigator.of(context).pop(),
                         ),
-                        const Divider(height: 1, color: TutorColors.line),
-                        _InfoRow(
-                          icon: Icons.location_on_outlined,
-                          title: _place(lesson.teachingMode),
-                        ),
-                        const Divider(height: 1, color: TutorColors.line),
-                        _InfoRow(
-                          icon: Icons.attach_money_rounded,
-                          title: detail?.price == null
-                              ? '—'
-                              : _money(detail!.price!),
-                          trailing: 'Giải ngân sau khi gửi báo cáo',
-                        ),
+                        const Spacer(),
+                        CanvasTag(status.label, filled: status.filled),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
-                  // ── Báo cáo gửi tới ──────────────────────────────
-                  const _SectionLabel('BÁO CÁO GỬI TỚI'),
-                  const SizedBox(height: 10),
-                  _Card(
-                    child: Row(
+                    // ── Học sinh ─────────────────────────────────────
+                    Row(
                       children: [
                         Container(
-                          width: 38,
-                          height: 38,
+                          width: 52,
+                          height: 52,
                           alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: TutorColors.surfaceSunken,
-                            border: Border.all(color: TutorColors.line),
+                          decoration: const BoxDecoration(
+                            color: TutorColors.sage,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.person_outline_rounded,
-                            size: 18,
-                            color: TutorColors.ink,
+                          child: Text(
+                            initial,
+                            style: TutorType.display(size: 20),
                           ),
                         ),
-                        const SizedBox(width: 11),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Phụ huynh của ${lesson.studentName}',
-                                style: TutorType.rowTitle(),
+                                lesson.studentName,
+                                style: TutorType.screenTitle(),
                               ),
-                              const SizedBox(height: 2),
-                              Text('Phụ huynh', style: TutorType.caption()),
+                              if (subtitle.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(subtitle, style: TutorType.rowSub()),
+                              ],
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // ── Ghi âm & báo cáo ─────────────────────────────
-                  const _SectionLabel('GHI ÂM & BÁO CÁO'),
-                  const SizedBox(height: 10),
-                  _RecordingState(lesson: lesson, isToday: isToday),
-                  if (prev != null) ...[
+                    // ── Giờ · địa điểm · học phí ──────────────────────
+                    _Card(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 2,
+                      ),
+                      child: Column(
+                        children: [
+                          _InfoRow(
+                            icon: Icons.schedule_rounded,
+                            title: start == null
+                                ? 'Chưa có giờ'
+                                : '${_weekday[start.weekday - 1]}, '
+                                      '${_two(start.day)}/${_two(start.month)} · '
+                                      '${lesson.timeStart}'
+                                      '${end == null ? '' : ' – ${lesson.timeEnd}'}',
+                            sub: [
+                              ?lesson.linkLabel,
+                              if (movedFrom != null) movedFromLine(movedFrom),
+                            ].join(' · ').nullIfEmpty,
+                          ),
+                          const Divider(height: 1, color: TutorColors.line),
+                          _InfoRow(
+                            icon: Icons.location_on_outlined,
+                            title: _place(lesson.teachingMode),
+                          ),
+                          // Học phí / giải ngân chỉ có ở buổi booking.
+                          if (!lesson.isOffPlatform) ...[
+                            const Divider(height: 1, color: TutorColors.line),
+                            _InfoRow(
+                              icon: Icons.payments_outlined,
+                              title: detail?.price == null
+                                  ? '—'
+                                  : _money(detail!.price!),
+                              trailing: 'Giải ngân sau khi gửi báo cáo',
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: TutorSurface.sectionGap),
+
+                    // ── Báo cáo gửi tới ──────────────────────────────
+                    const _SectionLabel('Báo cáo gửi tới'),
                     const SizedBox(height: 10),
                     _Card(
                       child: Row(
                         children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            alignment: Alignment.center,
+                            decoration: TutorSurface.well(),
+                            child: const Icon(
+                              Icons.person_outline_rounded,
+                              size: 18,
+                              color: TutorColors.ink,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Buổi trước · '
-                                  '${_two(prev.startDt!.day)}/'
-                                  '${_two(prev.startDt!.month)}',
+                                  'Phụ huynh của ${lesson.studentName}',
                                   style: TutorType.rowTitle(),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
-                                  prev.isFinished
-                                      ? 'Đã hoàn thành'
-                                      : prev.isAwaitingReport
-                                      ? 'Chưa có báo cáo'
-                                      : 'Chưa diễn ra',
-                                  style: TutorType.caption(),
-                                ),
+                                Text('Phụ huynh', style: TutorType.rowSub()),
                               ],
-                            ),
-                          ),
-                          SizedBox(
-                            height: 36,
-                            child: OutlinedButton(
-                              onPressed: () =>
-                                  Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) => TutorSessionDetailScreen(
-                                        lesson: prev,
-                                      ),
-                                    ),
-                                  ),
-                              style: OutlinedButton.styleFrom(
-                                // Theme app đặt minimumSize rộng vô hạn cho OutlinedButton.
-                                minimumSize: const Size(0, 36),
-                                side: const BorderSide(color: TutorColors.line),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                ),
-                                shape: const StadiumBorder(),
-                              ),
-                              child: Text('Xem', style: TutorType.action()),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ],
-              ),
-            ),
+                    const SizedBox(height: TutorSurface.sectionGap),
 
-            // ── Thanh hành động ─────────────────────────────────────
-            Container(
-              decoration: const BoxDecoration(
-                color: TutorColors.bg,
-                border: Border(top: BorderSide(color: TutorColors.line)),
+                    // ── Ghi âm & báo cáo ─────────────────────────────
+                    const _SectionLabel('Ghi âm & báo cáo'),
+                    const SizedBox(height: 10),
+                    _RecordingState(lesson: lesson, isToday: isToday),
+                    if (prev != null) ...[
+                      const SizedBox(height: 10),
+                      _Card(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Buổi trước · '
+                                    '${_two(prev.startDt!.day)}/'
+                                    '${_two(prev.startDt!.month)}',
+                                    style: TutorType.rowTitle(),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    prev.isFinished
+                                        ? 'Đã hoàn thành'
+                                        : prev.isAwaitingReport
+                                        ? 'Chưa có báo cáo'
+                                        : 'Chưa diễn ra',
+                                    style: TutorType.rowSub(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              height: 36,
+                              child: FilledButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) =>
+                                            TutorSessionDetailScreen(
+                                              lesson: prev,
+                                            ),
+                                      ),
+                                    ),
+                                style: FilledButton.styleFrom(
+                                  // Theme app đặt minimumSize rộng vô hạn cho nút.
+                                  minimumSize: const Size(0, 36),
+                                  backgroundColor: TutorColors.sage,
+                                  foregroundColor: TutorColors.ink,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: Text('Xem', style: TutorType.action()),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              padding: EdgeInsets.fromLTRB(
-                20,
-                12,
-                20,
-                12 + MediaQuery.of(context).padding.bottom,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (canRecord) ...[
-                    SizedBox(
-                      height: 52,
-                      width: double.infinity,
-                      child: FilledButton.icon(
+
+              // ── Thanh hành động ─────────────────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: TutorColors.paperBottom,
+                  border: Border(top: TutorSurface.rule),
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  TutorSurface.gutter,
+                  12,
+                  TutorSurface.gutter,
+                  12 + MediaQuery.of(context).padding.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canRecord) ...[
+                      CanvasCta(
+                        label: 'Bắt đầu ghi âm',
+                        icon: const Icon(Icons.mic_none_rounded, size: 18),
                         onPressed: () {
                           final router = GoRouter.of(context);
                           Navigator.of(context).pop();
@@ -351,6 +348,7 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                               AppRoutes.tutorRecording,
                               extra: RecordingTarget(
                                 lessonId: lesson.lessonId,
+                                recorderLessonId: lesson.recorderLessonId,
                                 studentName: lesson.studentName,
                                 subjectName: lesson.subjectName,
                                 timeStart: lesson.timeStart,
@@ -360,46 +358,41 @@ class TutorSessionDetailScreen extends ConsumerWidget {
                             ),
                           );
                         },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: TutorColors.primary,
-                          foregroundColor: TutorColors.surface,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        icon: const Icon(Icons.mic_none_rounded, size: 18),
-                        label: Text(
-                          'Bắt đầu ghi âm',
-                          style: TutorType.action(color: TutorColors.surface),
-                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    children: [
-                      _ActionBtn(
-                        icon: Icons.calendar_today_outlined,
-                        label: 'Đổi lịch',
-                        onTap: () => _soon(context),
-                      ),
-                      _ActionBtn(
-                        icon: Icons.person_outline_rounded,
-                        label: 'Hồ sơ HS',
-                        onTap: () => _soon(context),
-                      ),
-                      _ActionBtn(
-                        icon: Icons.close_rounded,
-                        label: 'Huỷ buổi',
-                        color: TutorColors.primary,
-                        onTap: () => _soon(context),
-                      ),
+                      const SizedBox(height: 12),
                     ],
-                  ),
-                ],
+                    Row(
+                      children: [
+                        _ActionBtn(
+                          icon: Icons.calendar_today_outlined,
+                          label: 'Đổi lịch',
+                          onTap: () =>
+                              unawaited(_reschedule(context, ref, recorder)),
+                        ),
+                        _ActionBtn(
+                          icon: Icons.person_outline_rounded,
+                          label: 'Hồ sơ HS',
+                          onTap: lesson.recorderStudentId != null
+                              ? () => unawaited(
+                                  TutorStudentDetailScreen.open(
+                                    context,
+                                    lesson.recorderStudentId!,
+                                  ),
+                                )
+                              : () => _soon(context),
+                        ),
+                        _ActionBtn(
+                          icon: Icons.close_rounded,
+                          label: 'Huỷ buổi',
+                          onTap: () => unawaited(_cancel(context, ref)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -409,6 +402,45 @@ class TutorSessionDetailScreen extends ConsumerWidget {
     final m = (mode ?? '').toLowerCase();
     if (m.contains('online')) return 'Học trực tuyến';
     return 'Tại nhà học sinh';
+  }
+
+  Future<void> _reschedule(
+    BuildContext context,
+    WidgetRef ref,
+    RecorderLessonDto? recorder,
+  ) async {
+    final navigator = Navigator.of(context);
+    final bool done;
+    if (lesson.isOffPlatform) {
+      done = await moveRecorderLesson(context, ref, lesson, recorder: recorder);
+    } else {
+      done = await proposeBookedReschedule(context, ref, lesson);
+    }
+    // Buổi recorder đã dời: giờ trên màn này đã cũ → quay lại lịch.
+    if (done && lesson.isOffPlatform && navigator.mounted) navigator.pop();
+  }
+
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    if (!lesson.isOffPlatform) return explainBookedCancel(context);
+    final start = lesson.startDt;
+    if (lesson.recorderStatus != 'scheduled' ||
+        start == null ||
+        !start.isAfter(DateTime.now())) {
+      AppToast.show(
+        context,
+        message: 'Chỉ huỷ được buổi chưa diễn ra.',
+        type: AppToastType.warning,
+      );
+      return;
+    }
+    final navigator = Navigator.of(context);
+    final done = await cancelRecorderLesson(
+      context,
+      ref,
+      lessonId: lesson.recorderLessonId!,
+      studentName: lesson.studentName,
+    );
+    if (done && navigator.mounted) navigator.pop();
   }
 
   static void _soon(BuildContext context) {
@@ -421,46 +453,27 @@ class TutorSessionDetailScreen extends ConsumerWidget {
   }
 }
 
+extension on String {
+  String? get nullIfEmpty => isEmpty ? null : this;
+}
+
 class _Status {
-  const _Status(this.label, this.bg, this.fg);
+  const _Status(this.label, {this.filled = false});
 
   final String label;
-  final Color bg;
-  final Color fg;
+
+  /// Nền mực chữ trắng — chỉ cho trạng thái cần chú ý (đang dạy, cần báo cáo).
+  final bool filled;
 
   // Trả về các hằng `_Status` dựng sẵn, không phải khởi tạo mới.
   // ignore: prefer_constructors_over_static_methods
   static _Status of(TutorLessonDto l, DateTime now) {
-    if (l.isLive) {
-      return const _Status(
-        'Đang diễn ra',
-        TutorColors.successBg,
-        TutorColors.success,
-      );
-    }
-    if (l.isAwaitingReport) {
-      return const _Status(
-        'Cần báo cáo',
-        TutorColors.primaryBg,
-        TutorColors.primary,
-      );
-    }
-    if (l.isFinished) {
-      return const _Status(
-        'Đã hoàn thành',
-        TutorColors.successBg,
-        TutorColors.success,
-      );
-    }
+    if (l.isLive) return const _Status('Đang diễn ra', filled: true);
+    if (l.isAwaitingReport) return const _Status('Cần báo cáo', filled: true);
+    if (l.isFinished) return const _Status('Đã hoàn thành');
     final end = l.endDt;
-    if (end != null && end.isBefore(now)) {
-      return const _Status(
-        'Đã qua',
-        TutorColors.surfaceSunken,
-        TutorColors.ink3,
-      );
-    }
-    return const _Status('Sắp diễn ra', Color(0xFFF0E3CA), Color(0xFF5C3A1A));
+    if (end != null && end.isBefore(now)) return const _Status('Đã qua');
+    return const _Status('Sắp diễn ra');
   }
 }
 
@@ -492,36 +505,34 @@ class _RecordingState extends StatelessWidget {
                 : 'Nút ghi âm sẽ hiện vào ngày học.',
           );
     final done = lesson.isFinished;
-    final fg = done ? TutorColors.success : TutorColors.primary;
 
+    // Chưa xong → thẻ sage "cần bạn"; đã xong → thẻ thường.
     return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: done ? TutorColors.successBg : TutorColors.primaryBg,
-        border: Border.all(
-          color: done ? TutorColors.successBorder : TutorColors.primaryBorder,
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
+      padding: const EdgeInsets.all(16),
+      decoration: done ? TutorSurface.card() : TutorSurface.sage(lifted: false),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: fg),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TutorType.rowSub(
-                    color: fg,
-                  ).copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: done ? TutorColors.surfaceSunken : const Color(0xFFF8F7F4),
+              borderRadius: BorderRadius.circular(TutorSurface.radiusSmall),
+            ),
+            child: Icon(icon, size: 18, color: TutorColors.ink),
           ),
-          const SizedBox(height: 12),
-          Text(body, style: TutorType.caption(color: fg).copyWith(height: 1.4)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TutorType.body()),
+                const SizedBox(height: 2),
+                Text(body, style: TutorType.rowSub()),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -529,7 +540,7 @@ class _RecordingState extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.child, this.padding = const EdgeInsets.all(15)});
+  const _Card({required this.child, this.padding = const EdgeInsets.all(16)});
 
   final Widget child;
   final EdgeInsets padding;
@@ -537,11 +548,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: padding,
-    decoration: BoxDecoration(
-      color: TutorColors.surface,
-      border: Border.all(color: TutorColors.line),
-      borderRadius: BorderRadius.circular(14),
-    ),
+    decoration: TutorSurface.card(),
     child: child,
   );
 }
@@ -565,14 +572,14 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 13),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: TutorColors.ink4),
+          Icon(icon, size: 18, color: TutorColors.ink3),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: TutorType.rowTitle()),
-                if (sub != null) Text(sub!, style: TutorType.caption()),
+                if (sub != null) Text(sub!, style: TutorType.rowSub()),
               ],
             ),
           ),
@@ -592,46 +599,8 @@ class _SectionLabel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TutorType.caption().copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.8,
-    ),
-  );
-}
-
-class _CircleBtn extends StatelessWidget {
-  const _CircleBtn({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: Material(
-        color: TutorColors.surface,
-        shape: const CircleBorder(side: BorderSide(color: TutorColors.line)),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox(
-            width: 38,
-            height: 38,
-            child: Icon(icon, size: 20, color: TutorColors.ink),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      Text(text, style: TutorType.sectionTitle().copyWith(fontSize: 17));
 }
 
 class _ActionBtn extends StatelessWidget {
@@ -639,28 +608,26 @@ class _ActionBtn extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.color = TutorColors.ink3,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        customBorder: const StadiumBorder(),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 19, color: color),
+              Icon(icon, size: 19, color: TutorColors.ink3),
               const SizedBox(height: 5),
-              Text(label, style: TutorType.caption(color: color)),
+              Text(label, style: TutorType.caption(color: TutorColors.ink3)),
             ],
           ),
         ),
