@@ -41,15 +41,15 @@ class _TutorShellV2State extends ConsumerState<TutorShellV2> {
 
   @override
   Widget build(BuildContext context) {
+    // Tab khác: Back về Trang chủ. Trang chủ: để hệ thống xử lý Back (thoát app).
+    // Trước đây canPop luôn false và Trang chủ gọi maybePop(), lệnh này lại gọi
+    // PopScope này -> vòng lặp vô hạn, app treo 100% CPU rồi báo ANR (18/11).
+    final atHome = widget.navigationShell.currentIndex == 0;
     return PopScope(
-      canPop: false,
+      canPop: atHome,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        if (widget.navigationShell.currentIndex != 0) {
-          widget.navigationShell.goBranch(0);
-        } else {
-          unawaited(Navigator.of(context).maybePop());
-        }
+        if (didPop || atHome) return;
+        widget.navigationShell.goBranch(0);
       },
       child: Scaffold(
         body: KeyedSubtree(
