@@ -7,7 +7,7 @@ import 'package:tutora/core/theme/tutor_design.dart';
 /// Thành phần dùng chung theo design V5.6 (canvas "TopTutor tutor app V5.6",
 /// 2026-11-12): nhãn nhỏ thường, tiêu đề Bricolage, thẻ bo 20 có bóng nhẹ, đường
 /// kẻ mảnh 10%, nút xanh rêu dạng viên thuốc, thẻ sage "tiếp theo", nhãn
-/// "Nháp AI" (quy tắc D1), bóng đèn cho mọi mẹo, chữ viết tay Charm.
+/// "Gợi ý của Topi" (quy tắc D1), bóng đèn cho mọi mẹo, chữ viết tay Charm.
 ///
 /// Tên lớp và tham số giữ như bản "Swiss" trước để màn cũ vẫn dựng được.
 
@@ -221,7 +221,7 @@ class CanvasTag extends StatelessWidget {
   );
 }
 
-/// Nhãn xám "Nháp AI" trên mọi khối do AI soạn (quy tắc D1).
+/// Nhãn xám "Gợi ý của Topi" trên mọi khối do AI soạn (quy tắc D1).
 class CanvasAiDraftTag extends StatelessWidget {
   const CanvasAiDraftTag({this.onSage = false, super.key});
 
@@ -236,7 +236,7 @@ class CanvasAiDraftTag extends StatelessWidget {
       borderRadius: BorderRadius.circular(11),
     ),
     child: Text(
-      'Nháp AI',
+      'Gợi ý của Topi',
       style: TutorType.caption(
         color: const Color(0xFF4A514C),
       ).copyWith(fontSize: 11.5, height: 1),
