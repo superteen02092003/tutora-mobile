@@ -493,8 +493,8 @@ class _StatsBox extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             '${stats.newSkillsCanDo == stats.newSkills ? 'Cả ${stats.newSkills}' : '${stats.newSkillsCanDo}'} '
-                            'kỹ năng con đã làm được. Lên mức ở buổi sau = '
-                            '1 sao cho con và cho bạn.',
+                            'kỹ năng bé đã làm được. Lên mức ở buổi sau = '
+                            '1 sao cho bé và cho bạn.',
                             style: _sub(),
                           ),
                         ],
@@ -521,9 +521,9 @@ class _StatsBox extends StatelessWidget {
                           Text(
                             improved == 0
                                 ? 'Chưa ghi nhận tiến bộ trong buổi này. '
-                                      'Mỗi kỹ năng lên mức = 1 sao cho con và '
+                                      'Mỗi kỹ năng lên mức = 1 sao cho bé và '
                                       'cho bạn.'
-                                : 'Mỗi kỹ năng lên mức = 1 sao cho con và '
+                                : 'Mỗi kỹ năng lên mức = 1 sao cho bé và '
                                       'cho bạn.',
                             style: _sub(),
                           ),

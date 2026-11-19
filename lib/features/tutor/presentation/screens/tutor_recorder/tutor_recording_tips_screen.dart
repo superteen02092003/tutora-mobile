@@ -25,12 +25,12 @@ class TutorRecordingTipsScreen extends StatelessWidget {
   ];
 
   static const _habits = [
-    'Bấm ghi trước khi chào con',
-    'Nhờ con đọc to đề bài',
+    'Bấm ghi trước khi chào bé',
+    'Nhờ bé đọc to đề bài',
     'Đọc to điều mình viết lên bảng',
     'Hỏi xong, đếm thầm đến ba',
-    'Không nói đè lên con',
-    'Nhắc con nói to hơn nếu nhỏ',
+    'Không nói đè lên bé',
+    'Nhắc bé nói to hơn nếu nhỏ',
   ];
 
   @override
@@ -92,7 +92,7 @@ class TutorRecordingTipsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Con trả lời dài hơn, và mình nghe con rõ hơn.',
+                            'Bé trả lời dài hơn, và mình nghe bé rõ hơn.',
                             style: TutorType.rowSub(),
                           ),
                         ],
