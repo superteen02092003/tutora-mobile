@@ -83,6 +83,32 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
     }
   }
 
+  bool _retrying = false;
+
+  /// AI lỗi nhưng audio vẫn còn: gọi lại /complete để backend xếp job AI mới
+  /// trên đúng bản ghi cũ — không ghi lại, không mất buổi.
+  Future<void> _retryAi() async {
+    final s = _s;
+    if (s == null || _retrying) return;
+    setState(() => _retrying = true);
+    try {
+      final next = await ref
+          .read(appRecordingDatasourceProvider)
+          .complete(widget.args.recordingId, s.durationSec);
+      if (!mounted) return;
+      setState(() => _s = next);
+      _poll?.cancel();
+      _poll = Timer.periodic(const Duration(seconds: 5), (_) {
+        final cur = _s;
+        if (cur == null || _isProcessing(cur)) unawaited(_load());
+      });
+    } on Object catch (e) {
+      if (mounted) setState(() => _error = e);
+    } finally {
+      if (mounted) setState(() => _retrying = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = _s;
@@ -192,6 +218,7 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                         status: s,
                         name: name,
                         onEdit: _openEditor,
+                        onRetryAi: _retrying ? null : _retryAi,
                       ),
                       1 => _MinutesTab(status: s),
                       // Nhận xét buổi dạy (V57-Done) — chỉ gia sư thấy.
@@ -347,11 +374,15 @@ class _SummaryTab extends StatelessWidget {
     required this.status,
     required this.name,
     required this.onEdit,
+    this.onRetryAi,
   });
 
   final AppRecordingStatusDto status;
   final String name;
   final VoidCallback onEdit;
+
+  /// null khi đang gửi lại; chỉ hiện nút khi AI lỗi mà bản ghi còn đoạn.
+  final VoidCallback? onRetryAi;
 
   @override
   Widget build(BuildContext context) {
@@ -425,6 +456,13 @@ class _SummaryTab extends StatelessWidget {
             ],
           ),
         ),
+        if (s.isFailed && !s.isSent && s.partCount > 0) ...[
+          const SizedBox(height: 14),
+          CanvasCta(
+            label: onRetryAi == null ? 'Đang gửi lại cho AI…' : 'Thử lại AI',
+            onPressed: onRetryAi,
+          ),
+        ],
         if (s.isAwaitingApproval || (s.isFailed && !s.isSent)) ...[
           const SizedBox(height: 14),
           CanvasCta(
