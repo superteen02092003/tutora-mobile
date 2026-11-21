@@ -305,6 +305,14 @@ class _TutorReportReviewScreenState
         action: 'Tự viết báo cáo',
         onAction: () => setState(() => _manual = true),
       );
+    } else if (!editable && s.isAiSlow()) {
+      kicker = 'AI đang chậm';
+      body = const _StateCard.error(
+        title: 'AI đang chậm hơn bình thường',
+        text:
+            'Báo cáo chưa xong sau 30 phút. Bản ghi vẫn được giữ. TopTutor '
+            'sẽ gửi thông báo khi báo cáo xong hoặc khi cần bạn tự viết.',
+      );
     } else if (!editable) {
       kicker = 'AI đang viết';
       body = const _StateCard.pending();

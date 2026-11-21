@@ -174,6 +174,9 @@ class SessionMinutesDto {
 }
 
 /// Trạng thái bản ghi + báo cáo AI khi đã có.
+/// Sau bao lâu thì báo "AI đang chậm" (một buổi 90 phút thường xong trong 1–2 phút).
+const aiSlowAfter = Duration(minutes: 30);
+
 class AppRecordingStatusDto {
   const AppRecordingStatusDto({
     required this.recordingId,
@@ -190,6 +193,8 @@ class AppRecordingStatusDto {
     this.zaloHomework,
     this.zaloNotes,
     this.errorMessage,
+    this.aiErrorKind,
+    this.canRetry = true,
     this.studentId,
     this.studentName = '',
     this.deliveryChannel,
@@ -226,6 +231,9 @@ class AppRecordingStatusDto {
         zaloHomework: j['zaloHomework'] as String?,
         zaloNotes: j['zaloNotes'] as String?,
         errorMessage: j['errorMessage'] as String?,
+        aiErrorKind: j['aiErrorKind'] as String?,
+        // Backend cũ không gửi trường này: vẫn cho thử lại như trước.
+        canRetry: j['canRetry'] as bool? ?? true,
         studentId: j['studentId'] as String?,
         studentName: j['studentName'] as String? ?? '',
         deliveryChannel: j['deliveryChannel'] as String?,
@@ -322,6 +330,22 @@ class AppRecordingStatusDto {
   final String? zaloHomework;
   final String? zaloNotes;
   final String? errorMessage;
+
+  /// Loại lỗi AI (billing · quota · auth · rate_limit · timeout · bad_response ·
+  /// other · internal); null khi không lỗi hoặc backend cũ.
+  final String? aiErrorKind;
+
+  /// false khi lỗi do hệ thống AI của TopTutor (hết tiền, hết hạn mức, sai
+  /// quyền): thử lại cũng không được, nên app ẩn nút "Thử lại AI".
+  final bool canRetry;
+
+  /// AI chưa xong sau [aiSlowAfter] kể từ khi buổi kết thúc: báo cho gia sư thay
+  /// vì để "AI đang viết" mãi (Gemini hỏng 2026-11-06 mà không ai thấy).
+  bool isAiSlow([DateTime? now]) {
+    final end = endedAt;
+    if (!(isAiRunning || status == 'processing') || end == null) return false;
+    return (now ?? DateTime.now()).difference(end) > aiSlowAfter;
+  }
 
   bool get isAiDone => aiStatus == 'completed';
   bool get isAiFailed => aiStatus == 'failed';
