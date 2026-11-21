@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/errors/app_exception.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
@@ -25,6 +27,20 @@ class RecordingDetailArgs {
 
 String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// Câu báo lỗi khi "Thử lại AI" không gửi được: câu backend trả về nếu có,
+/// không thì câu chung về mạng.
+@visibleForTesting
+String retryAiErrorMessage(Object e) {
+  if (e is AppException) return e.message;
+  if (e is DioException) {
+    if (e.error is AppException) return (e.error! as AppException).message;
+    final data = e.response?.data;
+    final msg = data is Map ? (data['message'] ?? data['Message']) : null;
+    if (msg is String && msg.trim().isNotEmpty) return msg;
+  }
+  return 'Chưa gửi lại được cho AI. Kiểm tra mạng rồi bấm thử lại.';
+}
 
 /// Chi tiết một buổi đã ghi (V5.6 board V56-LessonDetail): báo cáo gửi phụ
 /// huynh (Báo cáo), tóm tắt buổi (Tóm tắt buổi) và nhận xét buổi dạy chỉ gia
@@ -80,6 +96,42 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
       if (!_isProcessing(s)) _poll?.cancel();
     } on Object catch (e) {
       if (mounted) setState(() => _error = e);
+    }
+  }
+
+  bool _retrying = false;
+
+  /// AI lỗi nhưng audio vẫn còn: gọi lại /complete để backend xếp job AI mới
+  /// trên đúng bản ghi cũ — không ghi lại, không mất buổi.
+  Future<void> _retryAi() async {
+    final s = _s;
+    if (s == null || _retrying) return;
+    setState(() => _retrying = true);
+    try {
+      final next = await ref
+          .read(appRecordingDatasourceProvider)
+          .complete(widget.args.recordingId, s.durationSec);
+      if (!mounted) return;
+      setState(() => _s = next);
+      _poll?.cancel();
+      _poll = Timer.periodic(const Duration(seconds: 5), (_) {
+        final cur = _s;
+        if (cur == null || _isProcessing(cur)) unawaited(_load());
+      });
+    } on Object catch (e) {
+      // Màn đã có dữ liệu nên _error không được vẽ: báo bằng SnackBar, nếu
+      // không nút chỉ quay lại "Thử lại AI" và gia sư tưởng không có gì xảy ra.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(retryAiErrorMessage(e)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _retrying = false);
     }
   }
 
@@ -192,6 +244,7 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
                         status: s,
                         name: name,
                         onEdit: _openEditor,
+                        onRetryAi: _retrying ? null : _retryAi,
                       ),
                       1 => _MinutesTab(status: s),
                       // Nhận xét buổi dạy (V57-Done) — chỉ gia sư thấy.
@@ -347,11 +400,15 @@ class _SummaryTab extends StatelessWidget {
     required this.status,
     required this.name,
     required this.onEdit,
+    this.onRetryAi,
   });
 
   final AppRecordingStatusDto status;
   final String name;
   final VoidCallback onEdit;
+
+  /// null khi đang gửi lại; chỉ hiện nút khi AI lỗi mà bản ghi còn đoạn.
+  final VoidCallback? onRetryAi;
 
   @override
   Widget build(BuildContext context) {
@@ -425,6 +482,13 @@ class _SummaryTab extends StatelessWidget {
             ],
           ),
         ),
+        if (s.isFailed && !s.isSent && s.partCount > 0) ...[
+          const SizedBox(height: 14),
+          CanvasCta(
+            label: onRetryAi == null ? 'Đang gửi lại cho AI…' : 'Thử lại AI',
+            onPressed: onRetryAi,
+          ),
+        ],
         if (s.isAwaitingApproval || (s.isFailed && !s.isSent)) ...[
           const SizedBox(height: 14),
           CanvasCta(
