@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:tutora/core/errors/app_exception.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
 import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/topi_models.dart';
@@ -17,6 +18,9 @@ class _FakeDatasource extends AppRecordingDatasource {
   AppRecordingStatusDto current;
   final completeCalls = <(String, int)>[];
 
+  /// Khác null: complete ném lỗi này (mất mạng, server từ chối).
+  Object? completeError;
+
   @override
   Future<AppRecordingStatusDto> status(String recordingId) async => current;
 
@@ -26,6 +30,8 @@ class _FakeDatasource extends AppRecordingDatasource {
     int durationSec,
   ) async {
     completeCalls.add((recordingId, durationSec));
+    final err = completeError;
+    if (err != null) throw err;
     return current = AppRecordingStatusDto(
       recordingId: recordingId,
       status: 'processing',
@@ -93,6 +99,58 @@ void main() {
       await tester.pump(const Duration(seconds: 30));
     },
   );
+
+  testWidgets(
+    'Thử lại AI lỗi mạng: báo bằng SnackBar và nút bấm lại được',
+    (tester) async {
+      final fake = await pump(tester, _failed());
+      fake.completeError = DioException(
+        requestOptions: RequestOptions(path: '/recording/app/rec-1/complete'),
+        type: DioExceptionType.connectionError,
+      );
+
+      final retry = find.text('Thử lại AI');
+      await tester.ensureVisible(retry);
+      await tester.tap(retry);
+      await tester.pump();
+      await tester.pump();
+
+      expect(fake.completeCalls, [('rec-1', 483)]);
+      expect(
+        find.text('Chưa gửi lại được cho AI. Kiểm tra mạng rồi bấm thử lại.'),
+        findsOneWidget,
+      );
+      expect(find.text('Thử lại AI'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 30));
+    },
+  );
+
+  test('retryAiErrorMessage: ưu tiên câu backend trả về', () {
+    final req = RequestOptions(path: '/x');
+    expect(
+      retryAiErrorMessage(
+        DioException(
+          requestOptions: req,
+          response: Response<Map<String, dynamic>>(
+            requestOptions: req,
+            statusCode: 400,
+            data: {'message': 'Buổi này đã được gửi.'},
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      ),
+      'Buổi này đã được gửi.',
+    );
+    expect(
+      retryAiErrorMessage(const NetworkException()),
+      const NetworkException().message,
+    );
+    expect(
+      retryAiErrorMessage(StateError('x')),
+      'Chưa gửi lại được cho AI. Kiểm tra mạng rồi bấm thử lại.',
+    );
+  });
 
   testWidgets('AI lỗi, không có đoạn nào: không có nút "Thử lại AI"', (
     tester,

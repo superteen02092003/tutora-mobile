@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tutora/core/constants/tutor_colors.dart';
+import 'package:tutora/core/errors/app_exception.dart';
 import 'package:tutora/core/router/app_routes.dart';
 import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/datasources/app_recording_datasource.dart';
@@ -25,6 +27,20 @@ class RecordingDetailArgs {
 
 String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// Câu báo lỗi khi "Thử lại AI" không gửi được: câu backend trả về nếu có,
+/// không thì câu chung về mạng.
+@visibleForTesting
+String retryAiErrorMessage(Object e) {
+  if (e is AppException) return e.message;
+  if (e is DioException) {
+    if (e.error is AppException) return (e.error! as AppException).message;
+    final data = e.response?.data;
+    final msg = data is Map ? (data['message'] ?? data['Message']) : null;
+    if (msg is String && msg.trim().isNotEmpty) return msg;
+  }
+  return 'Chưa gửi lại được cho AI. Kiểm tra mạng rồi bấm thử lại.';
+}
 
 /// Chi tiết một buổi đã ghi (V5.6 board V56-LessonDetail): báo cáo gửi phụ
 /// huynh (Báo cáo), tóm tắt buổi (Tóm tắt buổi) và nhận xét buổi dạy chỉ gia
@@ -103,7 +119,17 @@ class _State extends ConsumerState<TutorRecordingDetailScreen> {
         if (cur == null || _isProcessing(cur)) unawaited(_load());
       });
     } on Object catch (e) {
-      if (mounted) setState(() => _error = e);
+      // Màn đã có dữ liệu nên _error không được vẽ: báo bằng SnackBar, nếu
+      // không nút chỉ quay lại "Thử lại AI" và gia sư tưởng không có gì xảy ra.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(retryAiErrorMessage(e)),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
     } finally {
       if (mounted) setState(() => _retrying = false);
     }
