@@ -11,11 +11,9 @@ import 'package:tutora/features/tutor/data/models/app_recording_models.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/report_after_send_screens.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recording_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/ai_feedback_sheet.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
-import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
-import 'package:tutora/features/tutor/presentation/widgets/topi_tips_card.dart';
 
 /// Tham số mở màn xem báo cáo.
 class ReportReviewArgs {
@@ -236,9 +234,18 @@ class _TutorReportReviewScreenState
         hasParentPhone: (r.parentPhone ?? s.parentPhone ?? '').isNotEmpty,
         approvedAtUtc: DateTime.now().toUtc(),
       );
+      // Luồng gọn (Khanh 2026-11-22): duyệt xong về chi tiết buổi, tab Báo cáo
+      // cho gia sư (bài đã làm, chuẩn bị buổi sau, kỹ năng cần xác nhận).
       unawaited(
         navigator.pushReplacement<void, void>(
-          MaterialPageRoute(builder: (_) => ReportDoneScreen(args: sent)),
+          MaterialPageRoute(
+            builder: (_) => TutorRecordingDetailScreen(
+              args: RecordingDetailArgs(
+                recordingId: sent.lessonId,
+                studentName: sent.studentName,
+              ),
+            ),
+          ),
         ),
       );
     } on Object catch (e) {
@@ -328,7 +335,7 @@ class _TutorReportReviewScreenState
                     24,
                   ),
                   children: [
-                    _TopBar(right: editable ? 'Bước 1/2' : null),
+                    _TopBar(right: editable ? 'Gửi phụ huynh' : null),
                     if (!sent) ...[
                       const SizedBox(height: 16),
                       _Heading(
@@ -360,25 +367,6 @@ class _TutorReportReviewScreenState
                     if (s != null && ((editable && !_manual) || s.isSent)) ...[
                       const SizedBox(height: 8),
                       AiFeedbackButton(recordingId: widget.args.recordingId),
-                    ],
-                    // V56-Review "Kế hoạch buổi sau" → T9; tự ẩn khi cờ `plan`
-                    // tắt hoặc chưa có kế hoạch.
-                    TopiNextPlanRow(
-                      args: BeforeLessonArgs(
-                        lessonId: widget.args.recordingId,
-                        studentName: _name,
-                      ),
-                      padding: const EdgeInsets.only(top: 12),
-                    ),
-                    // Buổi đã gửi mở lại: T13 "Dành cho bạn" và số liệu bản ghi
-                    // (lúc duyệt, hai phần này ở bước 2/3 "Nhận xét buổi dạy").
-                    if (sent) ...[
-                      TopiTipsCard(lessonId: widget.args.recordingId),
-                      LessonInsightsCard(
-                        lessonId: widget.args.recordingId,
-                        kicker: 'Buổi học qua bản ghi · chỉ bạn thấy',
-                        padding: const EdgeInsets.only(top: 20),
-                      ),
                     ],
                   ],
                 ),

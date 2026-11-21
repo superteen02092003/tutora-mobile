@@ -15,7 +15,7 @@ import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_b
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/lesson_insights_card.dart';
-import 'package:tutora/features/tutor/presentation/widgets/topi_skills_section.dart';
+import 'package:tutora/features/tutor/presentation/widgets/topi_skill_review.dart';
 
 /// Tham số mở màn chi tiết một buổi đã ghi.
 class RecordingDetailArgs {
@@ -434,6 +434,48 @@ class _SummaryTab extends StatelessWidget {
     final failedEmpty = s.isFailed && (s.lessonContent ?? '').isEmpty;
     final exercises = s.sessionMinutes?.exercises ?? const [];
 
+    // Buổi đã gửi: tab Báo cáo dành cho gia sư (bài đã làm, chuẩn bị buổi
+    // sau, kỹ năng cần xác nhận); báo cáo phụ huynh thu gọn ở cuối.
+    final parentCard = Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: TutorSurface.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: _StatusChip(
+                  text: stLabel,
+                  icon: stIcon,
+                  filled: stFilled,
+                ),
+              ),
+              const Spacer(),
+              if (!processing && !failedEmpty && sections.isNotEmpty)
+                const CanvasAiDraftTag(),
+            ],
+          ),
+          if (processing)
+            const _Note(
+              'AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.',
+            )
+          else if (failedEmpty)
+            _Note(
+              s.errorMessage ?? 'AI chưa tạo được báo cáo từ bản ghi này.',
+            )
+          else
+            for (final (title, body) in sections) ...[
+              const SizedBox(height: 12),
+              _lbl(title),
+              const SizedBox(height: 4),
+              SelectableText(body!.trim(), style: TutorType.body()),
+            ],
+          if (s.approvedAt != null || s.isSent) _DeliveryState(status: s),
+        ],
+      ),
+    );
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
@@ -443,45 +485,7 @@ class _SummaryTab extends StatelessWidget {
         40,
       ),
       children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          decoration: TutorSurface.card(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    child: _StatusChip(
-                      text: stLabel,
-                      icon: stIcon,
-                      filled: stFilled,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (!processing && !failedEmpty && sections.isNotEmpty)
-                    const CanvasAiDraftTag(),
-                ],
-              ),
-              if (processing)
-                const _Note(
-                  'AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.',
-                )
-              else if (failedEmpty)
-                _Note(
-                  s.errorMessage ?? 'AI chưa tạo được báo cáo từ bản ghi này.',
-                )
-              else
-                for (final (title, body) in sections) ...[
-                  const SizedBox(height: 12),
-                  _lbl(title),
-                  const SizedBox(height: 4),
-                  SelectableText(body!.trim(), style: TutorType.body()),
-                ],
-              if (s.approvedAt != null || s.isSent) _DeliveryState(status: s),
-            ],
-          ),
-        ),
+        if (!s.isSent) parentCard,
         if (s.isFailed && !s.isSent && s.partCount > 0) ...[
           const SizedBox(height: 14),
           CanvasCta(
@@ -500,19 +504,104 @@ class _SummaryTab extends StatelessWidget {
         ],
         if (exercises.isNotEmpty) ...[
           const SizedBox(height: 22),
-          const _SectionHead('Bài đã làm', ai: true),
-          for (final (i, e) in exercises.indexed)
-            _ExerciseRow(exercise: e, first: i == 0),
+          _ExerciseList(exercises: exercises),
         ],
         // Topi v1 — mỗi phần tự ẩn khi cờ tắt hoặc chưa có dữ liệu.
+        if (s.isSent) ...[
+          const SizedBox(height: 22),
+          const _SectionHead('Chuẩn bị cho buổi sau', ai: true),
+        ],
         TopiBeforeLessonEntry(
           args: BeforeLessonArgs(lessonId: s.recordingId, studentName: name),
-          padding: const EdgeInsets.only(top: 20),
+          padding: EdgeInsets.only(top: s.isSent ? 0 : 20),
         ),
-        TopiSkillsSection(lessonId: s.recordingId),
+        TopiSkillReviewSection(lessonId: s.recordingId, grade: s.grade),
+        if (s.isSent) ...[
+          const SizedBox(height: 22),
+          _Collapsible(title: 'Báo cáo đã gửi phụ huynh', child: parentCard),
+        ],
       ],
     );
   }
+}
+
+/// "Bài đã làm": hiện 2 bài, bấm để mở hết.
+class _ExerciseList extends StatefulWidget {
+  const _ExerciseList({required this.exercises});
+
+  final List<MinutesExerciseDto> exercises;
+
+  @override
+  State<_ExerciseList> createState() => _ExerciseListState();
+}
+
+class _ExerciseListState extends State<_ExerciseList> {
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ex = widget.exercises;
+    final shown = _all ? ex : ex.take(2).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionHead('Bài đã làm · ${ex.length} bài', ai: true),
+        for (final (i, e) in shown.indexed)
+          _ExerciseRow(exercise: e, first: i == 0),
+        if (ex.length > 2)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => setState(() => _all = !_all),
+              child: Text(
+                _all ? 'Thu gọn ▴' : 'Xem thêm ${ex.length - 2} bài ▾',
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Khối thu gọn được (mặc định đóng).
+class _Collapsible extends StatefulWidget {
+  const _Collapsible({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  State<_Collapsible> createState() => _CollapsibleState();
+}
+
+class _CollapsibleState extends State<_Collapsible> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      InkWell(
+        onTap: () => setState(() => _open = !_open),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(widget.title, style: TutorType.sectionTitle()),
+              ),
+              Icon(
+                _open
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+              ),
+            ],
+          ),
+        ),
+      ),
+      if (_open) widget.child,
+    ],
+  );
 }
 
 /// Mục phụ huynh nhận: tin Zalo đã duyệt; buổi cũ chưa có thì dùng bản dài.

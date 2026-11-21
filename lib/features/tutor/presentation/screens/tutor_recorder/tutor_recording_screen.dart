@@ -10,7 +10,6 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/presentation/providers/lesson_recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
-import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_recorded_well_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/tutor_report_review_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 
@@ -105,23 +104,12 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     super.dispose();
   }
 
-  /// Đếm mẫu biên độ khi đang ghi, để T11 báo tỉ lệ thời gian máy nghe nhỏ.
-  int _samples = 0;
-  int _quietSamples = 0;
-
   void _pushLevel(double level) {
     setState(() {
       _levels
         ..removeAt(0)
         ..add(level);
     });
-    // "Nhỏ" = cả cửa sổ gần đây đều nhỏ (không tính một lúc im lặng ngắn khi
-    // học sinh đang nghĩ). Ngưỡng ước lượng, chưa đo trên buổi thật.
-    final paused = ref.read(lessonRecordingProvider).isPaused;
-    if (!paused) {
-      _samples++;
-      if (_SoundLevel.of(_levels, paused: false).quiet) _quietSamples++;
-    }
   }
 
   static String _clock(Duration d) {
@@ -146,7 +134,6 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     // chết và snackbar không bao giờ hiện.
     final navigator = Navigator.of(context);
     final router = GoRouter.of(context);
-    final elapsed = ref.read(lessonRecordingProvider).elapsed;
 
     final status = await ref.read(lessonRecordingProvider.notifier).finish();
     if (!mounted) return;
@@ -161,17 +148,13 @@ class _TutorRecordingScreenState extends ConsumerState<TutorRecordingScreen> {
     ref.invalidate(recorderPendingReviewsProvider);
     navigator.pop();
     unawaited(
+      // Luồng gọn: kết thúc ghi âm → đọc và duyệt báo cáo gửi phụ huynh.
       router.push(
-        AppRoutes.tutorRecordedWell,
-        extra: RecordedWellArgs(
-          review: ReportReviewArgs(
-            recordingId: status.recordingId,
-            studentName: widget.target.studentName,
-            subtitle: widget.target.subjectName,
-          ),
-          recordedMin: (elapsed.inSeconds / 60).round(),
-          bookedMin: _bookedMin(),
-          quietShare: _samples == 0 ? 0 : _quietSamples / _samples,
+        AppRoutes.tutorReportReview,
+        extra: ReportReviewArgs(
+          recordingId: status.recordingId,
+          studentName: widget.target.studentName,
+          subtitle: widget.target.subjectName,
         ),
       ),
     );
