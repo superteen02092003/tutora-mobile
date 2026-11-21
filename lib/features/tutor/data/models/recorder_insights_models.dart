@@ -77,7 +77,8 @@ enum RecorderMoveScope {
   thisLesson('this'),
 
   /// Buổi này và các buổi sau (đổi khung giờ hằng tuần).
-  following('following');
+  following('following')
+  ;
 
   const RecorderMoveScope(this.apiValue);
 
