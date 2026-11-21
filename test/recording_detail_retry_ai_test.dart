@@ -19,7 +19,7 @@ class _FakeDatasource extends AppRecordingDatasource {
   final completeCalls = <(String, int)>[];
 
   /// Khác null: complete ném lỗi này (mất mạng, server từ chối).
-  Object? completeError;
+  Exception? completeError;
 
   @override
   Future<AppRecordingStatusDto> status(String recordingId) async => current;
