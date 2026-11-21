@@ -45,8 +45,8 @@ class ReportSentArgs {
   final bool hasParentPhone;
 }
 
-String _dm(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+/// "9/11": ngày/tháng không thêm số 0, giống trang chủ (U4, thử persona 2026-11-20).
+String _dm(DateTime d) => '${d.day}/${d.month}';
 
 /// Tiêu đề + câu báo của bước 3/3 theo kênh và trạng thái gửi.
 ({String title, String text}) reportSentCopy(ReportSentArgs a) {
@@ -408,7 +408,7 @@ class LessonFeedbackSections extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              'Kế hoạch 15 phút đầu buổi sau',
+                              'Kế hoạch đầu buổi sau',
                               style: _big(),
                             ),
                           ),
@@ -442,7 +442,7 @@ class _StatsBox extends StatelessWidget {
     final minutes = stats.minutesRecorded;
     final rows = <(String, String)>[
       if (stats.newGaps != null)
-        ('Mới phát hiện', '${stats.newGaps} kỹ năng cần luyện'),
+        ('Mới phát hiện', '${stats.newGaps} kỹ năng cần luyện tập'),
       if (minutes != null)
         (
           'Thời lượng ghi âm',

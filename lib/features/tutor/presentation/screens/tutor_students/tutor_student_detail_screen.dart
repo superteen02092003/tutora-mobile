@@ -183,6 +183,7 @@ class TutorStudentDetailScreen extends ConsumerWidget {
                                   lessonId: latestReported.lessonId,
                                   studentName: student.fullName,
                                   nextLessonAt: upcoming.firstOrNull?.when,
+                                  studentId: student.studentId,
                                 ),
                               ),
                             // Chuẩn → Vững: kỹ năng đến hạn kiểm tra lại.

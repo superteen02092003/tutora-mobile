@@ -10,8 +10,10 @@ import 'package:tutora/core/theme/tutor_design.dart';
 import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/tutor_dashboard_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
+import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/tutor_dashboard_provider.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/recording_target.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_recorder/topi_before_lesson_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_form_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
@@ -73,15 +75,52 @@ class _TutorRecorderEntryScreenState
     );
   }
 
-  /// Học sinh ngoài nền tảng: đóng sheet rồi đi luồng xác nhận đồng ý + ghi.
-  Future<void> _startStudent(RecorderStudentDto student) =>
-      startStudentRecording(
-        context,
-        ref,
-        student,
-        // Đóng sheet ngay trước khi mở màn "Đang ghi" (giống _start).
-        onBeforeStart: () => context.pop(),
+  /// Học sinh ngoài nền tảng: có kế hoạch Topi cho buổi này thì mở màn
+  /// "đầu buổi" (Chuẩn bị buổi học) trước (nút "Bắt đầu ghi âm" ở đó ghi cho đúng em này);
+  /// không có thì đi thẳng luồng xác nhận đồng ý + ghi.
+  Future<void> _startStudent(RecorderStudentDto student) async {
+    final prep = await _prepFor(student);
+    if (!mounted) return;
+    if (prep != null) {
+      final router = GoRouter.of(context);
+      context.pop();
+      unawaited(router.push(AppRoutes.tutorBeforeLesson, extra: prep));
+      return;
+    }
+    await startStudentRecording(
+      context,
+      ref,
+      student,
+      // Đóng sheet ngay trước khi mở màn "Đang ghi" (giống _start).
+      onBeforeStart: () => context.pop(),
+    );
+  }
+
+  /// Kế hoạch của buổi đã có báo cáo gần nhất, khi cờ `plan` bật và kế hoạch
+  /// không rỗng; null thì ghi luôn. Lỗi mạng cũng ghi luôn (không chặn ghi âm).
+  Future<BeforeLessonArgs?> _prepFor(RecorderStudentDto student) async {
+    if (!ref.read(topiFlagsNowProvider).plan) return null;
+    try {
+      final lessons = await ref.read(
+        recorderStudentLessonsProvider(student.studentId).future,
       );
+      final now = DateTime.now();
+      final recorded = lessons.where((l) => l.status != 'scheduled').toList()
+        ..sort((a, b) => (b.when ?? now).compareTo(a.when ?? now));
+      final latest = latestReportedLesson(recorded);
+      if (latest == null) return null;
+      final topi = await ref.read(lessonTopiProvider(latest.lessonId).future);
+      final plan = topi?.plan;
+      if (plan == null || plan.isEmpty) return null;
+      return BeforeLessonArgs(
+        lessonId: latest.lessonId,
+        studentName: student.fullName,
+        studentId: student.studentId,
+      );
+    } on Object {
+      return null;
+    }
+  }
 
   /// Form tự tải lại danh bạ sau khi lưu (reloadRecorderStudentData).
   Future<void> _addStudent() async {

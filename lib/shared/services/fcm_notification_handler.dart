@@ -16,6 +16,12 @@ import 'package:tutora/shared/providers/notification_provider.dart';
 /// Push nhắc trước buổi học recorder (phase1-api E), referenceId = lessonId.
 const recorderLessonReminderType = 'RecorderLessonReminder';
 
+/// Báo cáo AI viết xong (backend `NotificationType.LessonReportAiFillReady`).
+const lessonReportReadyType = 'lesson_report_ai_fill_ready';
+
+/// AI lỗi khi viết báo cáo (backend, từ PR Tutora-Backend #391).
+const lessonReportFailedType = 'lesson_report_ai_failed';
+
 /// Mở luồng ghi âm cho thông báo nhắc buổi: sheet chọn buổi (liệt kê buổi hôm
 /// nay, tự chọn buổi gần giờ nhất) đè lên Trang chủ. Dùng chung cho push và
 /// khi chạm thông báo trong danh sách.
@@ -155,6 +161,12 @@ class FcmNotificationHandler {
 
       case recorderLessonReminderType:
         return AppRoutes.tutorRecorder;
+
+      // Báo cáo AI xong, hoặc AI lỗi: trang chủ có dòng "Cần bạn duyệt" /
+      // "AI lỗi · bạn tự viết báo cáo" của buổi đó.
+      case lessonReportReadyType:
+      case lessonReportFailedType:
+        return AppRoutes.tutorHome;
 
       default:
         return null;

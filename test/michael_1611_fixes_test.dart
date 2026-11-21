@@ -107,7 +107,7 @@ void main() {
       find.textContaining('Chưa ghi nhận tiến bộ trong buổi này'),
       findsOneWidget,
     );
-    expect(find.text('2 kỹ năng cần luyện'), findsOneWidget);
+    expect(find.text('2 kỹ năng cần luyện tập'), findsOneWidget);
     expect(find.text('75 phút · lịch 120 phút'), findsOneWidget);
     expect(find.textContaining('lỗ hổng tiến bộ'), findsNothing);
   });

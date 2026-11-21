@@ -456,7 +456,12 @@ class _SummaryTab extends StatelessWidget {
                 const CanvasAiDraftTag(),
             ],
           ),
-          if (processing)
+          if (processing && s.isAiSlow())
+            const _Note(
+              'AI đang chậm hơn bình thường: báo cáo chưa xong sau 30 phút. '
+              'Bản ghi vẫn được giữ; TopTutor sẽ báo khi xong.',
+            )
+          else if (processing)
             const _Note(
               'AI đang viết báo cáo. Thường mất 1–2 phút — màn này tự cập nhật.',
             )
@@ -486,7 +491,7 @@ class _SummaryTab extends StatelessWidget {
       ),
       children: [
         if (!s.isSent) parentCard,
-        if (s.isFailed && !s.isSent && s.partCount > 0) ...[
+        if (s.isFailed && !s.isSent && s.partCount > 0 && s.canRetry) ...[
           const SizedBox(height: 14),
           CanvasCta(
             label: onRetryAi == null ? 'Đang gửi lại cho AI…' : 'Thử lại AI',
@@ -512,7 +517,11 @@ class _SummaryTab extends StatelessWidget {
           const _SectionHead('Chuẩn bị cho buổi sau', ai: true),
         ],
         TopiBeforeLessonEntry(
-          args: BeforeLessonArgs(lessonId: s.recordingId, studentName: name),
+          args: BeforeLessonArgs(
+            lessonId: s.recordingId,
+            studentName: name,
+            studentId: s.studentId,
+          ),
           padding: EdgeInsets.only(top: s.isSent ? 0 : 20),
         ),
         TopiSkillReviewSection(lessonId: s.recordingId, grade: s.grade),
