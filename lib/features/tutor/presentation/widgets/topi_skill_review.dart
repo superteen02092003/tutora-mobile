@@ -531,7 +531,10 @@ class _TopiSkillReviewSectionState
     int? n(String id, int i) => int.tryParse(
       id.replaceAll('N', '').split('.').elementAtOrNull(i) ?? '',
     );
-    final ga = n(a, 0), gb = n(b, 0), ia = n(a, 1), ib = n(b, 1);
+    final ga = n(a, 0);
+    final gb = n(b, 0);
+    final ia = n(a, 1);
+    final ib = n(b, 1);
     if (ga == null || gb == null || ia == null || ib == null) return 999;
     return (ga - gb).abs() * 100 + (ia - ib).abs();
   }
