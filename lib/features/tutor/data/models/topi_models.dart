@@ -81,8 +81,7 @@ enum TopiLevel {
   toDo('to_do'),
   improving('improving'),
   standard('standard'),
-  mastered('mastered')
-  ;
+  mastered('mastered');
 
   const TopiLevel(this.wire);
 
