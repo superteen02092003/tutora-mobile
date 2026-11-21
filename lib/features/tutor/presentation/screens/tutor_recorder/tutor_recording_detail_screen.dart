@@ -512,7 +512,11 @@ class _SummaryTab extends StatelessWidget {
           const _SectionHead('Chuẩn bị cho buổi sau', ai: true),
         ],
         TopiBeforeLessonEntry(
-          args: BeforeLessonArgs(lessonId: s.recordingId, studentName: name),
+          args: BeforeLessonArgs(
+            lessonId: s.recordingId,
+            studentName: name,
+            studentId: s.studentId,
+          ),
           padding: EdgeInsets.only(top: s.isSent ? 0 : 20),
         ),
         TopiSkillReviewSection(lessonId: s.recordingId, grade: s.grade),

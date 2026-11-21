@@ -8,6 +8,7 @@ import 'package:tutora/features/tutor/data/models/recorder_models.dart';
 import 'package:tutora/features/tutor/data/models/topi_models.dart';
 import 'package:tutora/features/tutor/presentation/providers/recorder_provider.dart';
 import 'package:tutora/features/tutor/presentation/providers/topi_provider.dart';
+import 'package:tutora/features/tutor/presentation/screens/tutor_students/tutor_student_detail_screen.dart';
 import 'package:tutora/features/tutor/presentation/widgets/canvas_ui.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_math_text.dart';
 import 'package:tutora/features/tutor/presentation/widgets/topi_ui.dart';
@@ -16,16 +17,53 @@ import 'package:tutora/features/tutor/presentation/widgets/topi_ui.dart';
 ///
 /// [lessonId] là buổi đã ghi gần nhất — kế hoạch (`plan`) của buổi đó dành cho
 /// buổi tiếp theo. [nextLessonAt] là giờ buổi tới nếu đã lên lịch.
+/// [studentId] (học sinh ngoài nền tảng): có thì "Bắt đầu ghi âm" ghi ngay cho
+/// đúng học sinh này; không có thì mở màn chọn buổi như trước.
 class BeforeLessonArgs {
   const BeforeLessonArgs({
     required this.lessonId,
     this.studentName = '',
     this.nextLessonAt,
+    this.studentId,
   });
 
   final String lessonId;
   final String studentName;
   final DateTime? nextLessonAt;
+  final String? studentId;
+}
+
+/// "Bắt đầu ghi âm" trên màn chuẩn bị: ghi cho đúng học sinh (luồng đồng ý của
+/// [startStudentRecording]); đóng màn chuẩn bị ngay trước khi mở màn "Đang ghi".
+Future<void> recordFromPrep(
+  BuildContext context,
+  WidgetRef ref,
+  BeforeLessonArgs args,
+) async {
+  final id = args.studentId;
+  if (id == null) {
+    await context.push(AppRoutes.tutorRecorder);
+    return;
+  }
+  final navigator = Navigator.of(context);
+  final students = await ref.read(recorderStudentsProvider.future);
+  RecorderStudentDto? student;
+  for (final s in students) {
+    if (s.studentId == id) student = s;
+  }
+  if (!context.mounted) return;
+  if (student == null) {
+    await context.push(AppRoutes.tutorRecorder);
+    return;
+  }
+  await startStudentRecording(
+    context,
+    ref,
+    student,
+    onBeforeStart: () {
+      if (navigator.canPop()) navigator.pop();
+    },
+  );
 }
 
 /// V5.6 "Chuẩn bị buổi học": lỗ hổng đang luyện (thẻ sage, Sai / Đúng), rồi
@@ -98,7 +136,8 @@ class TopiBeforeLessonScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (hasPlan) const _BottomBar(),
+              if (hasPlan)
+                _BottomBar(onRecord: () => recordFromPrep(context, ref, args)),
             ],
           ),
         ),
@@ -117,7 +156,9 @@ String _when(DateTime d) {
 
 /// Chân màn: mẹo ghi âm (bóng đèn), nút "Bắt đầu ghi âm", nhắc đồng ý.
 class _BottomBar extends StatelessWidget {
-  const _BottomBar();
+  const _BottomBar({required this.onRecord});
+
+  final Future<void> Function() onRecord;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -163,7 +204,7 @@ class _BottomBar extends StatelessWidget {
         CanvasCta(
           label: 'Bắt đầu ghi âm',
           icon: const Icon(Icons.mic_none_rounded, size: 18),
-          onPressed: () => context.push(AppRoutes.tutorRecorder),
+          onPressed: onRecord,
         ),
         const SizedBox(height: 10),
         Text(
@@ -670,6 +711,7 @@ class TopiStudentBeforeLessonEntry extends ConsumerWidget {
         lessonId: latest.lessonId,
         studentName: studentName,
         nextLessonAt: nextLessonAt,
+        studentId: studentId,
       ),
       padding: padding,
     );
@@ -798,9 +840,7 @@ class TopiBeforeLessonEntry extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          focus?.title ??
-                              focus?.node ??
-                              'Kế hoạch 15 phút đầu buổi',
+                          focus?.title ?? focus?.node ?? 'Kế hoạch đầu buổi',
                           style: TutorType.body(),
                         ),
                         // Mức kỹ năng ở dòng cuối, cạnh "Gặp trong N buổi".

@@ -58,8 +58,8 @@ String _shortForZalo(String? text) {
   return '${(space > 0 ? cut.substring(0, space) : cut).trimRight()}…';
 }
 
-String _dm(DateTime d) =>
-    '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+/// "9/11": ngày/tháng không thêm số 0, giống trang chủ (U4, thử persona 2026-11-20).
+String _dm(DateTime d) => '${d.day}/${d.month}';
 
 String _hm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
@@ -343,7 +343,10 @@ class _TutorReportReviewScreenState
                         title: _name.isEmpty
                             ? 'Nội dung buổi'
                             : 'Báo cáo của $_name',
-                        meta: _meta(s?.durationSec ?? 0),
+                        meta: _meta(
+                          s?.durationSec ?? 0,
+                          s?.startedAt ?? s?.scheduledStart,
+                        ),
                       ),
                     ],
                     SizedBox(height: sent ? 30 : 18),
@@ -400,10 +403,11 @@ class _TutorReportReviewScreenState
         : 'Gửi lúc 06:30 · $who';
   }
 
-  /// "Toán · Lớp 8 · 09/11 · 86 phút".
-  String _meta(int durationSec) => [
+  /// "Toán · Lớp 8 · 09/11 · 86 phút": ngày của buổi học, không phải ngày duyệt
+  /// (N1, App Lab 2026-11-18: duyệt muộn thì ngày phải vẫn đúng).
+  String _meta(int durationSec, DateTime? lessonDay) => [
     if (widget.args.subtitle.isNotEmpty) widget.args.subtitle,
-    _dm(DateTime.now()),
+    _dm((lessonDay ?? DateTime.now()).toLocal()),
     if (durationSec > 0) '${(durationSec / 60).round()} phút',
   ].join(' · ');
 }
@@ -450,7 +454,12 @@ class _PreviewScreenState extends ConsumerState<_PreviewScreen> {
     final parentName = student?.parentName?.isNotEmpty ?? false
         ? student!.parentName!
         : 'Phụ huynh của ${widget.studentName}';
-    final date = _dm(DateTime.now());
+    final date = _dm(
+      (widget.status.startedAt ??
+              widget.status.scheduledStart ??
+              DateTime.now())
+          .toLocal(),
+    );
 
     return Scaffold(
       backgroundColor: TutorColors.bg,
